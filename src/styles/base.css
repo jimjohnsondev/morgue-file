@@ -1,0 +1,107 @@
+/* Page-wide defaults and the shared frame: banner, trim, tab bar, footer. */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background: var(--color-page);
+}
+
+a {
+  color: var(--color-link);
+}
+
+a:visited {
+  color: var(--color-link-visited);
+}
+
+a:hover {
+  color: var(--color-link-hover);
+  text-decoration: underline;
+}
+
+.banner {
+  height: var(--banner-height);
+  padding: var(--space-6);
+  background: var(--color-tab-bar-bottom);
+}
+
+.banner__wordmark {
+  margin: 0;
+  font-size: var(--text-wordmark);
+  font-weight: bold;
+  color: var(--color-white);
+  text-shadow: var(--wordmark-shadow) var(--wordmark-shadow) 0 var(--color-border);
+}
+
+.banner__wordmark-accent {
+  color: var(--color-magenta-wordmark);
+}
+
+.banner__tagline {
+  margin: var(--space-1) 0 0;
+  color: var(--color-cyan-link-on-dark);
+}
+
+.trim {
+  height: var(--trim-height);
+  background: linear-gradient(
+    to right,
+    var(--color-cyan),
+    var(--color-violet),
+    var(--color-magenta)
+  );
+}
+
+.tab-bar {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-6) 0;
+  background: linear-gradient(var(--color-tab-bar-top), var(--color-tab-bar-bottom));
+}
+
+.tab {
+  padding: var(--space-2) var(--space-4);
+  color: var(--color-white);
+  text-decoration: none;
+  background: linear-gradient(var(--color-tab-top), var(--color-tab-bottom));
+  border: 1px solid var(--color-border);
+  border-bottom: 0;
+}
+
+.tab:visited {
+  color: var(--color-white);
+}
+
+.tab--current {
+  color: var(--color-text);
+  background: var(--color-page);
+}
+
+.tab--current:visited {
+  color: var(--color-text);
+}
+
+.tab--end {
+  margin-left: auto;
+}
+
+.page {
+  padding: var(--space-6);
+}
+
+.page__title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-page-title);
+}
+
+.footer {
+  padding: var(--space-3) var(--space-6);
+  font-family: var(--font-mono);
+  color: var(--color-cyan-counter);
+  background: var(--color-tab-bar-bottom);
+}

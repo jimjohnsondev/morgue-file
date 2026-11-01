@@ -1,0 +1,78 @@
+/*
+ * The approved design values from the design brief (Fixed specs).
+ * This is the only file allowed to hold colors and sizes. Change the canvas first, then here.
+ */
+:root {
+  /* Type */
+  --font-body: verdana, arial, sans-serif;
+  --font-mono: 'Courier New', courier, monospace;
+  --text-base: 16px;
+  --text-caption: 13px;
+  --text-table: 14px;
+  --text-table-large: 15px;
+  --text-panel-title: 14px;
+  --text-page-title: 24px;
+  --text-wordmark: 52px;
+  --panel-title-spacing: 1px;
+
+  /* Chrome */
+  --color-page: #c6cad1;
+  --color-panel: #e6e9ee;
+  --color-border: #101216;
+  --color-text: #1c1f24;
+  --color-text-quiet: #4c525c;
+  --color-hairline: #9ea5b0;
+  --color-white: #fff;
+  --color-shadow: #8e95a1;
+  --color-tab-bar-top: #2b2f36;
+  --color-tab-bar-bottom: #15171b;
+  --color-tab-top: #5a616d;
+  --color-tab-bottom: #353a43;
+  --color-title-bar-top: #586070;
+  --color-title-bar-bottom: #343944;
+  --color-button-top: #fafbfc;
+  --color-button-bottom: #c6cad1;
+  --color-viewer: #808080;
+
+  /* Accents */
+  --color-cyan: #12c6de;
+  --color-cyan-link-on-dark: #9ff3ff;
+  --color-cyan-counter: #3cf0ff;
+  --color-magenta: #d61f92;
+  --color-magenta-wordmark: #ff3db8;
+  --color-magenta-hover: #b0127a;
+  --color-edit-bar-top: #b0127a;
+  --color-edit-bar-bottom: #5e0a42;
+  --color-violet: #7a6fe0;
+  --color-notice-cyan: #eafcff;
+  --color-notice-magenta: #ffeaf6;
+
+  /* Links */
+  --color-link: #03c;
+  --color-link-visited: #639;
+  --color-link-hover: #b0127a;
+
+  /* Sizes */
+  --banner-height: 240px;
+  --trim-height: 4px;
+  --shadow-offset: 2px;
+  --wordmark-shadow: 3px;
+  --title-square: 8px;
+  --thumb-small: 120px;
+  --thumb-medium: 160px;
+  --thumb-large: 240px;
+  --cover-width: 160px;
+  --cover-height: 232px;
+  --thumb-mat: 4px;
+  --filter-panel-width: 280px;
+  --details-panel-width: 400px;
+  --details-panel-folded: 34px;
+
+  /* Spacing: multiples of 4 px */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+}

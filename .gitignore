@@ -1,0 +1,25 @@
+# Build output and dependencies
+dist/
+node_modules/
+coverage/
+
+# Generated test data (made by scripts/make-fixtures.ts, never committed)
+fixtures/generated/
+tests/perf/*.db
+
+# App data from local runs. Never commit a real library, thumbnail or reference file.
+data/
+morgue-file.json
+*.db
+*.db-wal
+*.db-shm
+
+# Playwright
+test-results/
+playwright-report/
+
+# Editors and OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
