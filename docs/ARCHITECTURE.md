@@ -292,13 +292,14 @@ Every PRD acceptance line becomes an automated test. Every test runs on generate
 
 A merged PR becomes a downloadable Windows zip with no human step. The only manual work is a one-time setup in Phase 0: a token and the branch rules.
 
-| Workflow                 | Trigger                                         | What it does                                                                                                                              |
-| ------------------------ | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| ci.yml                   | Every pull request                              | Jobs `pr-title`, `lint-typecheck`, `unit`, `e2e`, `visual`, `perf` and `baseline-guard`, on the Windows runner (`pr-title` runs on Linux) |
-| release.yml              | Push to main                                    | Runs release-please with `RELEASE_TOKEN` and turns on auto-merge for its release PR. When a release is created, it calls build.yml        |
-| build.yml                | Called by release.yml, or run by hand for a tag | Build, package, smoke test, then attach the zip and its SHA-256 to the GitHub Release                                                     |
-| update-baselines.yml     | Run by hand on a branch                         | Regenerates the screenshots on the Windows runner and commits them                                                                        |
-| dependabot-automerge.yml | Dependabot PRs                                  | Turns on auto-merge for patch and minor updates                                                                                           |
+| Workflow                 | Trigger                                          | What it does                                                                                                                       |
+| ------------------------ | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| ci.yml                   | Every pull request                               | Jobs `lint-typecheck`, `unit`, `e2e`, `visual` and `perf` on the Windows runner                                                    |
+| pr-checks.yml            | Every pull request, plus title and label changes | Jobs `pr-title` and `baseline-guard` on Linux                                                                                      |
+| release.yml              | Push to main                                     | Runs release-please with `RELEASE_TOKEN` and turns on auto-merge for its release PR. When a release is created, it calls build.yml |
+| build.yml                | Called by release.yml, or run by hand for a tag  | Build, package, smoke test, then attach the zip and its SHA-256 to the GitHub Release                                              |
+| update-baselines.yml     | Run by hand on a branch                          | Regenerates the screenshots on the Windows runner and commits them                                                                 |
+| dependabot-automerge.yml | Dependabot PRs                                   | Turns on auto-merge for patch and minor updates                                                                                    |
 
 As built in PR 2:
 
