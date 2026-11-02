@@ -22,5 +22,7 @@ work together today.
 
 ## Consequences
 
-Dependabot will propose the next majors; each should land as its own PR with `npm run check`
-green.
+Dependabot proposes only minor and patch updates (`.github/dependabot.yml` ignores majors). The
+next majors — ESLint 10, TypeScript 7, Stylelint 17 — break the current lint and type setup, so
+each is a deliberate upgrade PR with its plugins, after 1.0. `@types/node` stays on the runtime's
+major (24).

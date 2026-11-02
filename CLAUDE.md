@@ -83,6 +83,10 @@ running `update-baselines.yml` on your branch; never commit baselines made anywh
 8. If CI fails, read the log, fix and push. After 3 failed attempts on the same problem, stop and
    report it: what failed, what you tried, what you need.
 
+**Dependabot PRs are not yours.** Don't fix, merge or wait on them; rule 2 is about your own
+PRs. Dependabot only proposes minor and patch updates, and `dependabot-automerge.yml` merges the
+green ones.
+
 ## When to stop and ask Jim
 
 - The design gate (after PR 10): post built frames 1–12 and E1–E6 next to the mocks and wait.
