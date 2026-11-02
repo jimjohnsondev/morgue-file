@@ -7,6 +7,12 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    # Major versions (TypeScript, ESLint, Stylelint and their plugins move together) are upgraded
+    # on purpose in their own PR, not by Dependabot. @types/node stays on the runtime's major
+    # from .nvmrc for the same reason.
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
     commit-message:
       prefix: chore
       include: scope
