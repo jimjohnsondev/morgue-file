@@ -20,7 +20,9 @@ function normalizeForCompare(target: string): string {
 /** Says whether a folder is the same as, or inside, another. */
 export function isSameOrInside(folder: string, container: string): boolean {
   const relative = path.relative(normalizeForCompare(container), normalizeForCompare(folder));
-  return !relative.startsWith('..') && !path.isAbsolute(relative);
+  // A name like `..data` is inside; only `..` itself or `..\` leads out.
+  const leadsOut = relative === '..' || relative.startsWith(`..${path.sep}`);
+  return !leadsOut && !path.isAbsolute(relative);
 }
 
 /** Says whether either folder holds the other. */

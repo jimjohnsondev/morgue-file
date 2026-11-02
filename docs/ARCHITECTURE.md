@@ -364,7 +364,7 @@ Morgue File is one folder: unzip it anywhere, double-click it, then pick the Ref
 
 **Staying portable.**
 
-- The Reference folder's path is stored twice: absolute, and, if it's on the same drive as the app, relative to the app folder. At launch the absolute path is used if it's there (the app folder moved on its own), else the relative one (a USB drive under a new letter). If neither is there, the folder shows E3 with a link to point it somewhere else.
+- The Reference folder's path is stored twice: absolute, and, if it's on the same drive as the app, relative to the app folder. At launch the absolute path is used if it's there (the app folder moved on its own), else the relative one (a USB drive under a new letter); if both exist, the absolute one wins, which PR 5 should confirm is the right root. If neither is there, the folder shows E3 with a link to point it somewhere else.
 - Setup refuses a Reference folder that holds, or sits inside, the app folder or the data folder, so the app never writes into a root and uninstalling never deletes reference files.
 - Paths with spaces and non-ASCII characters work. CI runs the package test from `C:\Temp\Morgue File tést\`.
 - A lock file in the data folder stops two copies from sharing one database. A second launch just opens a tab.
@@ -415,7 +415,7 @@ Both choices can be changed later in Settings. Move data copies everything to th
 - The lock file is `morgue-file.lock` in the data folder, holding the server's process id and port. A launch that finds a live owner answering `/healthz` opens a tab there; a lock left by a crash is ignored.
 - Check and Save on the setup page post JSON from `src/client/setup-form.ts`, because writes need the `X-Morgue-Token` header, which a plain form can't send. Refusals come back as 400s whose `message` the page shows; the error handler now includes each AppError's message.
 - The setup page's screenshot baselines (one per data choice) join the first baseline PR at the design gate, since no baseline exists before then. This departs from the design brief ("each gets its baseline approved in its own PR"); the gate message to Jim lists it.
-- build.yml also runs on pull requests that touch packaging, the server or the README, so the zip and the package test are proven before a release. The package test has its own Playwright config (`playwright.package.config.ts`) and installs to `C:\Temp\Morgue File tést\`. Until the fixture archive (PR 4) and Index pages (PR 7) exist, it sets up with a one-file Reference folder and opens Home. The hosted runner has one drive, so the move test moves the folder to a new path; a changed drive letter is covered by unit tests of the stored paths.
+- build.yml also runs on pull requests that touch packaging, `src/`, the build config, `.nvmrc` or the README, so the zip and the package test are proven before a release. The package test has its own Playwright config (`playwright.package.config.ts`) and installs to `C:\Temp\Morgue File tést\`. Until the fixture archive (PR 4) and Index pages (PR 7) exist, it sets up with a one-file Reference folder and opens Home. The hosted runner has one drive, so the move test moves the folder to a new path; a changed drive letter is covered by unit tests of the stored paths.
 - README.html is rendered with `marked`, a dev dependency. `npm run check` and CI's lint-typecheck job run `scripts/check-readme.ts`.
 
 ## Code style
