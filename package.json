@@ -46,7 +46,7 @@
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@playwright/test": "^1.63.0",
-    "@types/node": "^22.0.0",
+    "@types/node": "^26.6.6",
     "eslint": "^9.0.0",
     "eslint-plugin-import-x": "^4.0.0",
     "eslint-plugin-jsdoc": "^61.0.0",
