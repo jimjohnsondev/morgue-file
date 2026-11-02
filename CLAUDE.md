@@ -69,7 +69,14 @@ running `update-baselines.yml` on your branch; never commit baselines made anywh
 5. Reread your diff against `docs/STYLE.md` and rewrite anything a newcomer would read twice.
 6. **Run the `code-reviewer` agent** on the branch and fix every blocking finding. Re-run it until
    it approves.
-7. Open the PR with the template filled in and enable auto-merge (`gh pr merge --auto --squash`).
+7. Open the PR with the template filled in and enable auto-merge. In Claude Code cloud sessions
+   GitHub's GraphQL API is blocked, so `gh pr create` and `gh pr merge` fail; use REST:
+   ```sh
+   gh api repos/jimjohnsondev/morgue-file/pulls -f base=main -f head=<branch> \
+     -f title='feat: ...' -F body=@/tmp/pr-body.md
+   gh api -X PUT repos/jimjohnsondev/morgue-file/pulls/<n>/ccr/auto_merge
+   gh api repos/jimjohnsondev/morgue-file/commits/<sha>/check-runs --jq '.check_runs[] | [.name, .status, .conclusion]'
+   ```
 8. If CI fails, read the log, fix and push. After 3 failed attempts on the same problem, stop and
    report it: what failed, what you tried, what you need.
 
