@@ -41,9 +41,12 @@ jobs:
         if: steps.release.outputs.pr != ''
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
+          # Passed as raw text and parsed in the shell: GitHub evaluates a step's env even when its
+          # `if` is false, so fromJSON() on the empty output of a release-only run fails the job
+          # and skips the build that attaches the zip.
+          PR_JSON: ${{ steps.release.outputs.pr }}
           REPO: ${{ github.repository }}
-        run: gh pr merge --auto --squash "$PR_NUMBER" --repo "$REPO"
+        run: gh pr merge --auto --squash "$(jq -er '.number' <<< "$PR_JSON")" --repo "$REPO"
 
   build:
     needs: release-please
