@@ -63,7 +63,7 @@ jobs:
         with:
           ref: ${{ needs.render.outputs.commit }}
           persist-credentials: false
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: baselines
           path: tests/visual/__screenshots__/
