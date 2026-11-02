@@ -29,7 +29,7 @@ jobs:
         run: |
           echo "Baselines change only on a PR branch, never on main."
           exit 1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.branch }}
           persist-credentials: false
@@ -59,7 +59,7 @@ jobs:
     steps:
       # The exact commit that was rendered: if the branch moved since, the push fails as a
       # non-fast-forward instead of committing screenshots of older code onto newer code.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.render.outputs.commit }}
           persist-credentials: false
