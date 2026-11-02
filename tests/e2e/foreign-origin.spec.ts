@@ -44,8 +44,11 @@ async function statusSeenByServer(
   const response = page.waitForResponse((candidate) => candidate.url() === url);
   await page.evaluate(
     async ({ target, verb }) => {
-      // The result is opaque to the page either way; only the server's answer matters here.
-      await fetch(target, { method: verb, mode: 'no-cors' }).catch(() => undefined);
+      try {
+        await fetch(target, { method: verb, mode: 'no-cors' });
+      } catch {
+        // The result is opaque to the page either way; only the server's answer matters here.
+      }
     },
     { target: url, verb: method },
   );
@@ -61,7 +64,10 @@ test('R27: a request from a foreign web page is refused', async ({ page, baseURL
   expect(await statusSeenByServer(page, `${appUrl}/api/anything`, 'POST')).toBe(403);
 });
 
-test('R27: a foreign page cannot read the archive server', async ({ page, baseURL }) => {
+test('R27: a foreign page cannot read responses, because the server sends no CORS headers', async ({
+  page,
+  baseURL,
+}) => {
   const appUrl = baseURL ?? '';
   await page.goto(foreignUrl);
 
