@@ -1,0 +1,88 @@
+# Builds the portable Windows zip, installs it by following the README (the package test), and
+# attaches it to a GitHub Release. release.yml calls it when release-please cuts a release; it
+# also runs on pull requests that change packaging, so the zip is proven before it ships.
+name: build
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag to build and attach, e.g. v0.1.0
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build and attach, e.g. v0.1.0
+        required: true
+  pull_request:
+    paths:
+      - .github/workflows/build.yml
+      - packaging/**
+      - playwright.package.config.ts
+      - README.md
+      - scripts/package-win.ts
+      - src/**
+      - tests/package/**
+      - .nvmrc
+      - package.json
+      - package-lock.json
+      - tsconfig*.json
+      - vite.config.ts
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ inputs.tag || github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: package
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-playwright
+      - run: npm run package
+        shell: bash
+      - name: Install and run the zip as the README says
+        shell: bash
+        run: |
+          export MORGUE_PACKAGE_ZIP="$(ls "$PWD"/release/MorgueFile-*-win-x64.zip)"
+          npx playwright test -c playwright.package.config.ts
+      - uses: actions/upload-artifact@v7
+        with:
+          name: package
+          path: |
+            release/*.zip
+            release/*.sha256
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: package-test-report
+          path: test-results/
+          retention-days: 7
+
+  attach:
+    name: attach
+    needs: package
+    if: inputs.tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: package
+          path: release
+      - name: Attach the zip and its SHA-256 to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: gh release upload "$TAG" release/* --clobber --repo "$REPO"

@@ -4,6 +4,7 @@ import { buildApp } from '#server/app.js';
 import { findAppDir, LOOPBACK_HOST } from '#server/config.js';
 
 import type { ServerConfig } from '#server/config.js';
+import type { InstallStateHolder } from '#server/install/install-state.js';
 import type { FastifyInstance } from 'fastify';
 
 const PORT = 47613;
@@ -14,13 +15,19 @@ const config: ServerConfig = {
   host: LOOPBACK_HOST,
   port: PORT,
   appDir: findAppDir(),
+  homeDir: findAppDir(),
   version: '0.0.0-test',
+};
+
+// A set-up install, so pages render instead of redirecting to /setup. Nothing is written to it.
+const install: InstallStateHolder = {
+  current: { kind: 'ready', dataDir: 'unused-data-dir', referenceDir: undefined },
 };
 
 let app: FastifyInstance;
 
 beforeAll(async () => {
-  app = await buildApp({ config, token: TOKEN });
+  app = await buildApp({ config, install, token: TOKEN });
 });
 
 afterAll(async () => {
@@ -81,7 +88,7 @@ describe('R27: requests from another device or a foreign page are refused', () =
   });
 
   it('listens on 127.0.0.1 only', async () => {
-    const listening = await buildApp({ config, token: TOKEN });
+    const listening = await buildApp({ config, install, token: TOKEN });
     await listening.listen({ host: config.host, port: 0 });
     const addresses = listening.addresses();
     await listening.close();

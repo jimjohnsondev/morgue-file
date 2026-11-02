@@ -1,0 +1,55 @@
+# On every push to main, release-please keeps a release PR up to date (version bump and changelog
+# from the Conventional Commit titles) and turns on auto-merge for it. When that PR merges, it
+# tags the release and this workflow calls build.yml to build and attach the Windows zip.
+# RELEASE_TOKEN opens the release PR, because a PR opened with GITHUB_TOKEN would not run CI.
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: release-please
+    runs-on: ubuntu-latest
+    outputs:
+      created: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - name: Check RELEASE_TOKEN is set
+        env:
+          TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "The RELEASE_TOKEN secret is missing. See 'One-time repo setup' in docs/ARCHITECTURE.md."
+            exit 1
+          fi
+      - id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+      - name: Turn on auto-merge for the release PR
+        if: steps.release.outputs.pr != ''
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
+          REPO: ${{ github.repository }}
+        run: gh pr merge --auto --squash "$PR_NUMBER" --repo "$REPO"
+
+  build:
+    needs: release-please
+    if: needs.release-please.outputs.created == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/build.yml
+    with:
+      tag: ${{ needs.release-please.outputs.tag }}
