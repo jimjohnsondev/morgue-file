@@ -1,6 +1,6 @@
 // Helpers for the package test: unzip the release, start and stop Morgue File.cmd as a user would.
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -82,10 +82,44 @@ export async function waitForExit(child: ChildProcess): Promise<number | null> {
   );
 }
 
+/** Waits until nothing answers the health check, so the server's node.exe has really ended. */
+async function waitForAppToStop(): Promise<void> {
+  for (let attempt = 0; attempt < 120; attempt++) {
+    try {
+      await fetch(`${APP_URL}/healthz`);
+    } catch {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error(`Morgue File still answers at ${APP_URL} after being stopped.`);
+}
+
 /** Closes the "Morgue File server" window: ends cmd.exe and the node.exe it started. */
 export async function stopMorgueFile(child: ChildProcess): Promise<void> {
   if (child.pid !== undefined && child.exitCode === null) {
     execFileSync('taskkill', ['/pid', String(child.pid), '/t', '/f']);
   }
   await waitForExit(child);
+  await waitForAppToStop();
+}
+
+/**
+ * README "Move or back up": moves the closed app's folder. Windows can hold a folder open for a
+ * moment after its process ends (handles closing, antivirus scanning the new files), so a refused
+ * rename is retried for up to 15 s, as a person would simply try again.
+ */
+export async function moveFolder(from: string, to: string): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await rename(from, to);
+      return;
+    } catch (error) {
+      const isBusy = error instanceof Error && 'code' in error && error.code === 'EPERM';
+      if (!isBusy || attempt >= 30) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
 }
