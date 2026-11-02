@@ -50,9 +50,14 @@ npm run check          # format check, lint, typecheck, tests: run before every 
 npm run format         # fix formatting (never mix with logic changes in one PR)
 npm test               # Vitest unit and integration tests
 npm run build          # Vite client bundle + tsc server into dist/
+npm run test:e2e       # build, then Playwright end-to-end tests in Chromium
+npm run test:visual    # build, then screenshot tests (compare only; never update locally)
+npm run test:perf      # build, then performance tests
 ```
 
-Playwright (e2e, visual, perf) arrives in PR 2; its commands will be added here.
+CI (`ci.yml`: lint-typecheck, unit, e2e, visual, perf; `pr-checks.yml`: pr-title,
+baseline-guard) runs on Windows. Screenshot baselines are only ever made on the CI runner, by
+running `update-baselines.yml` on your branch; never commit baselines made anywhere else.
 
 ## Workflow for each PR
 
@@ -64,7 +69,17 @@ Playwright (e2e, visual, perf) arrives in PR 2; its commands will be added here.
 5. Reread your diff against `docs/STYLE.md` and rewrite anything a newcomer would read twice.
 6. **Run the `code-reviewer` agent** on the branch and fix every blocking finding. Re-run it until
    it approves.
-7. Open the PR with the template filled in and enable auto-merge (`gh pr merge --auto --squash`).
+7. Open the PR with the template filled in and enable auto-merge. In Claude Code cloud sessions
+   GitHub's GraphQL API is blocked, so `gh pr create` and `gh pr merge` fail; use REST:
+   ```sh
+   gh api repos/jimjohnsondev/morgue-file/pulls -f base=main -f head=<branch> \
+     -f title='feat: ...' -F body=@/tmp/pr-body.md
+   gh api -X PUT repos/jimjohnsondev/morgue-file/pulls/<n>/ccr/auto_merge -f merge_method=squash
+   gh api repos/jimjohnsondev/morgue-file/commits/<sha>/check-runs --jq '.check_runs[] | [.name, .status, .conclusion]'
+   ```
+   Enable auto-merge right after opening the PR, while its checks are still running: GitHub
+   refuses it once a PR is already green ("clean status"). If that happens, the next push
+   re-opens the window.
 8. If CI fails, read the log, fix and push. After 3 failed attempts on the same problem, stop and
    report it: what failed, what you tried, what you need.
 

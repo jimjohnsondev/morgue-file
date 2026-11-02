@@ -1,0 +1,58 @@
+# Quick checks that must re-run when a PR's title or labels change, kept apart from ci.yml so a
+# label change never re-runs (or skips) the build and test jobs.
+name: pr-checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    name: pr-title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the title is a Conventional Commit
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if ! printf '%s' "$TITLE" | grep -Eq '^(feat|fix|chore|docs|test|refactor|perf|build|ci)(\([a-z0-9-]+\))?!?: .+'; then
+            echo "PR title must be a Conventional Commit, e.g. 'feat: index template'. Got: $TITLE"
+            exit 1
+          fi
+
+  baseline-guard:
+    name: baseline-guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Screenshot baselines change only with the baseline-approved label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          # The REST files endpoint pages through up to 3,000 files; gh pr view stops at 100.
+          # One line per changed file: its path, a tab, then its old path if it was renamed.
+          entries=$(gh api --paginate "repos/$REPO/pulls/$PR/files?per_page=100" --jq '.[] | [.filename, (.previous_filename // "")] | @tsv')
+          listed=$(printf '%s\n' "$entries" | grep -c . || true)
+          # A rename out of the baseline folder shows only its new path, so check the old one too.
+          files=$(printf '%s\n' "$entries" | tr '\t' '\n')
+          total=$(gh api "repos/$REPO/pulls/$PR" --jq '.changed_files')
+          if [ "$listed" != "$total" ]; then
+            echo "Listed $listed of $total changed files, so baseline changes can't be ruled out."
+            exit 1
+          fi
+          changed=$(printf '%s\n' "$files" | grep -c '^tests/visual/__screenshots__/' || true)
+          approved=$(gh api "repos/$REPO/issues/$PR/labels" --jq '[.[].name | select(. == "baseline-approved")] | length')
+          echo "Changed baseline files: $changed. Approved label: $approved."
+          if [ "$changed" != "0" ] && [ "$approved" = "0" ]; then
+            echo "This PR changes screenshot baselines. Jim must add the baseline-approved label."
+            exit 1
+          fi
