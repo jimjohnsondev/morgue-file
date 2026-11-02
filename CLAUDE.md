@@ -74,9 +74,12 @@ running `update-baselines.yml` on your branch; never commit baselines made anywh
    ```sh
    gh api repos/jimjohnsondev/morgue-file/pulls -f base=main -f head=<branch> \
      -f title='feat: ...' -F body=@/tmp/pr-body.md
-   gh api -X PUT repos/jimjohnsondev/morgue-file/pulls/<n>/ccr/auto_merge
+   gh api -X PUT repos/jimjohnsondev/morgue-file/pulls/<n>/ccr/auto_merge -f merge_method=squash
    gh api repos/jimjohnsondev/morgue-file/commits/<sha>/check-runs --jq '.check_runs[] | [.name, .status, .conclusion]'
    ```
+   Enable auto-merge right after opening the PR, while its checks are still running: GitHub
+   refuses it once a PR is already green ("clean status"). If that happens, the next push
+   re-opens the window.
 8. If CI fails, read the log, fix and push. After 3 failed attempts on the same problem, stop and
    report it: what failed, what you tried, what you need.
 
