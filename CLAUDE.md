@@ -50,9 +50,14 @@ npm run check          # format check, lint, typecheck, tests: run before every 
 npm run format         # fix formatting (never mix with logic changes in one PR)
 npm test               # Vitest unit and integration tests
 npm run build          # Vite client bundle + tsc server into dist/
+npm run test:e2e       # build, then Playwright end-to-end tests in Chromium
+npm run test:visual    # build, then screenshot tests (compare only; never update locally)
+npm run test:perf      # build, then performance tests
 ```
 
-Playwright (e2e, visual, perf) arrives in PR 2; its commands will be added here.
+CI (`ci.yml`: lint-typecheck, unit, e2e, visual, perf; `pr-checks.yml`: pr-title,
+baseline-guard) runs on Windows. Screenshot baselines are only ever made on the CI runner, by
+running `update-baselines.yml` on your branch; never commit baselines made anywhere else.
 
 ## Workflow for each PR
 

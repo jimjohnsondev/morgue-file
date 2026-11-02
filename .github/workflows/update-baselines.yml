@@ -1,0 +1,38 @@
+# Regenerates the screenshot baselines on the Windows runner and commits them to the branch.
+# Run by hand from the Actions tab. The PR then needs Jim's baseline-approved label to merge.
+name: update-baselines
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to regenerate baselines on (never main)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    if: inputs.branch != 'main'
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          # Pushing with RELEASE_TOKEN (not GITHUB_TOKEN) makes CI run again on the new commit.
+          token: ${{ secrets.RELEASE_TOKEN }}
+      - uses: ./.github/actions/setup-playwright
+      - run: npx playwright test --project=visual --update-snapshots --pass-with-no-tests
+      - name: Commit the new baselines
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/visual/__screenshots__ || true
+          if git diff --cached --quiet; then
+            echo "No baseline changes."
+          else
+            git commit -m "test: update screenshot baselines"
+            git push
+          fi

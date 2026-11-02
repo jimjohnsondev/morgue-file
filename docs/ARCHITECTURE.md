@@ -42,7 +42,8 @@ morgue-file/
   CLAUDE.md           instructions for Claude Code
   .claude/agents/     code-reviewer.md, the review agent every PR runs before opening
   .github/
-    workflows/        ci.yml, release.yml, build.yml, update-baselines.yml, dependabot-automerge.yml
+    workflows/        ci.yml, pr-checks.yml, release.yml, build.yml, update-baselines.yml, dependabot-automerge.yml
+    actions/          setup-playwright/ (shared steps for the Playwright jobs)
     dependabot.yml
     pull_request_template.md
   docs/
@@ -299,7 +300,13 @@ A merged PR becomes a downloadable Windows zip with no human step. The only manu
 | update-baselines.yml     | Run by hand on a branch                         | Regenerates the screenshots on the Windows runner and commits them                                                                        |
 | dependabot-automerge.yml | Dependabot PRs                                  | Turns on auto-merge for patch and minor updates                                                                                           |
 
-As built in the scaffold: ci.yml has `pr-title`, `lint-typecheck` and `unit`. PR 2 adds `e2e`, `visual`, `perf` and `baseline-guard`.
+As built in PR 2:
+
+- The jobs are split across two workflows. `ci.yml` runs `lint-typecheck`, `unit`, `e2e`, `visual` and `perf` on `windows-2025` for every push to a PR. `pr-checks.yml` runs `pr-title` and `baseline-guard` on Linux and also re-runs when the title or labels change. Keeping them apart means adding a label never re-runs, or skips, the build and test jobs; GitHub can count a skipped required job as passing.
+- `visual` and `perf` run with `--pass-with-no-tests` until their first tests land in PR 7.
+- The Playwright jobs share a composite action, `.github/actions/setup-playwright`: Node from `.nvmrc`, `npm ci`, a cached Chromium, then `npm run build`. Tests run the built server on port 47690.
+- `update-baselines.yml` checks out and pushes with `RELEASE_TOKEN`, because a push made with `GITHUB_TOKEN` wouldn't start CI on the new commit. It refuses to run on `main`.
+- `scripts/setup-repo.ts` runs with plain `node` (Node strips the types itself), so it needs no extra dependency. It also creates the `baseline-approved` label and reports whether `RELEASE_TOKEN` is still missing.
 
 **Why this differs from the PRD.** The PRD has build.yml trigger on `v*` tags. But tags and PRs created with the default `GITHUB_TOKEN` don't start other workflows, so release.yml calls build.yml directly. The release PR is opened with `RELEASE_TOKEN`, a fine-grained token with contents and pull-request write access to this repo. Using that token means CI runs on the release PR, so it can auto-merge. To reach 1.0.0, merge a commit with the footer `Release-As: 1.0.0`.
 

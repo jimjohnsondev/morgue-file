@@ -150,6 +150,11 @@ export default tseslint.config(
     },
   },
   {
+    // One-off scripts report progress on the console.
+    files: ['scripts/**/*.ts'],
+    rules: { 'no-console': ['error', { allow: ['info', 'warn', 'error'] }] },
+  },
+  {
     // Tool config files must use a default export.
     files: ['*.config.js', '*.config.ts'],
     rules: { 'import-x/no-default-export': 'off' },

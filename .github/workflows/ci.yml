@@ -1,34 +1,20 @@
-# Every pull request must pass these jobs before it can merge.
-# PR 2 adds e2e, visual, perf and baseline-guard (see docs/ARCHITECTURE.md, CI and release).
+# The build, test and lint jobs every pull request must pass. pr-checks.yml holds the quick checks
+# that also re-run on title and label changes. scripts/setup-repo.ts makes every job here a
+# required check on main, so a job renamed here must be renamed there too.
 name: ci
 
 on:
   pull_request:
-  merge_group:
 
 permissions:
   contents: read
   pull-requests: read
 
 concurrency:
-  group: ci-${{ github.head_ref || github.run_id }}
+  group: ci-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  pr-title:
-    name: pr-title
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check the title is a Conventional Commit
-        env:
-          TITLE: ${{ github.event.pull_request.title }}
-        run: |
-          if ! printf '%s' "$TITLE" | grep -Eq '^(feat|fix|chore|docs|test|refactor|perf|build|ci)(\([a-z0-9-]+\))?!?: .+'; then
-            echo "PR title must be a Conventional Commit, e.g. 'feat: index template'. Got: $TITLE"
-            exit 1
-          fi
-
   lint-typecheck:
     name: lint-typecheck
     runs-on: windows-2025
@@ -54,4 +40,41 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npm run build
+
+  e2e:
+    name: e2e
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-playwright
+      - run: npx playwright test --project=e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-report
+          path: test-results/
+          retention-days: 7
+
+  visual:
+    name: visual
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-playwright
+      # Visual tests arrive with the templates (PR 7); until then the job passes with none.
+      - run: npx playwright test --project=visual --pass-with-no-tests
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: visual-diffs
+          path: test-results/
+          retention-days: 7
+
+  perf:
+    name: perf
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-playwright
+      # Perf tests arrive with the query engine (PR 7); until then the job passes with none.
+      - run: npx playwright test --project=perf --pass-with-no-tests
