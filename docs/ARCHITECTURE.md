@@ -54,8 +54,10 @@ morgue-file/
     decisions/        one short ADR per departure from this doc
   src/
     server/
-      main.ts         starts the server
-      launcher.ts     shortcut entry: health check, start or reuse, open the browser
+      main.ts         starts the server (npm run dev, tests)
+      launcher.ts     shortcut entry: health check, start or reuse, open the browser (logic in launch.ts)
+      run.ts          listens on the first free port, locks the data folder, saves the port
+      install/        morgue-file.json, the data folder and its settings.json, the lock file, setup
       app.ts          Fastify instance, plugins, security hooks
       config.ts       port, data folder, settings.json; every path resolved from the app folder
       assets.ts       reads Vite's manifest; serves the hashed client files
@@ -76,10 +78,11 @@ morgue-file/
     client/           Vite entries: main, selection, dropzone, keyboard, viewer-image, viewer-video, reader, compare
     styles/           tokens.css (approved design values), base.css, templates.css, banner.svg
   scripts/            make-fixtures.ts, seed-fixtures.ts, make-perf-db.ts, package-win.ts, setup-repo.ts, check-readme.ts
+  packaging/          Morgue File.cmd and Install shortcuts.cmd, copied into the zip as they are
   fixtures/seed.json  invented tags, collections, models, field values
   tests/              unit/, integration/, e2e/, visual/ (+ __screenshots__/), perf/, migrations/, package/
   .nvmrc  .editorconfig  .prettierrc.json  package.json  tsconfig.json  tsconfig.build.json  vite.config.ts  vitest.config.ts
-  playwright.config.ts  eslint.config.js  stylelint.config.js  release-please-config.json  .release-please-manifest.json
+  playwright.config.ts  playwright.package.config.ts  eslint.config.js  stylelint.config.js  release-please-config.json  .release-please-manifest.json
 ```
 
 - The generated fixture archive, `dist/`, `node_modules/` and any local `data\` folder are git-ignored.
@@ -323,9 +326,9 @@ As built in PR 2:
 
 **Packaging (build.yml on the Windows runner).**
 
-1. `npm ci`, then `npm run build` (Vite for the client, tsc for the server, into `dist/`), then `npm prune --omit=dev`.
-2. Download the Node win-x64 zip for the version in `.nvmrc` and verify it against `SHASUMS256.txt`. CI uses the same version, so the better-sqlite3, sharp and @napi-rs/canvas prebuilds match.
-3. Copy `ffmpeg.exe` and `ffprobe.exe` from pinned npm packages into `bin\`, with their license files.
+1. `npm ci`, then `npm run build` (Vite for the client, tsc for the server, into `dist/`). `scripts/package-win.ts` copies `dist/` and the package files into the zip's `app\` and runs `npm ci --omit=dev` there, so the workspace keeps Playwright for the package test.
+2. Download the Node win-x64 zip for the version running the script (CI's, from `.nvmrc`) and verify it against `SHASUMS256.txt`. CI uses the same version, so the better-sqlite3, sharp and @napi-rs/canvas prebuilds match.
+3. Copy `ffmpeg.exe` and `ffprobe.exe` from pinned npm packages into `bin\`, with their license files. (Added in PR 6, which first uses them.)
 4. Assemble and zip `MorgueFile-<version>-win-x64.zip`, then run the smoke test.
 
 ```
@@ -401,6 +404,17 @@ Both choices can be changed later in Settings. Move data copies everything to th
 - `scripts/check-readme.ts` runs in CI and fails if any heading above is missing.
 - The package test in build.yml performs the README's Install and First run steps in order on a clean runner: unzip, launch, set the Reference folder to the fixture archive, run once with each data choice, wait for the index, open an Index page.
 - A PR that changes those steps changes the test in the same PR.
+
+**As built in PR 3.**
+
+- `Morgue File.cmd` sets `MORGUE_HOME` to its own folder (the one holding `morgue-file.json` and `data\`) and runs the launcher; `config.ts` reads it. A development checkout has no launcher, so the repo is its own home folder (both files are git-ignored).
+- Until the roots table arrives in PR 5, the Reference folder is saved in the data folder's `settings.json` beside the port, relative to the home folder when it's on the same drive. PR 5 seeds root 1 from it.
+- `src/server/install/` reads and writes the home and data folders, so it joins the files exempt from the `node:fs` import rule. It never touches a Reference root: setup checks and counts the Reference folder, and creates its `Inbox\`, through `originals.ts` (`inspectReferenceFolder`, `createInbox`).
+- The lock file is `morgue-file.lock` in the data folder, holding the server's process id and port. A launch that finds a live owner answering `/healthz` opens a tab there; a lock left by a crash is ignored.
+- Check and Save on the setup page post JSON from `src/client/setup-form.ts`, because writes need the `X-Morgue-Token` header, which a plain form can't send. Refusals come back as 400s whose `message` the page shows; the error handler now includes each AppError's message.
+- The setup page's screenshot baselines (one per data choice) join the first baseline PR at the design gate, since no baseline exists before then.
+- build.yml also runs on pull requests that touch packaging, the server or the README, so the zip and the package test are proven before a release. The package test has its own Playwright config (`playwright.package.config.ts`) and installs to `C:\Temp\Morgue File tést\`. Until the fixture archive (PR 4) and Index pages (PR 7) exist, it sets up with a one-file Reference folder and opens Home. The hosted runner has one drive, so the move test moves the folder to a new path; a changed drive letter is covered by unit tests of the stored paths.
+- README.html is rendered with `marked`, a dev dependency. `npm run check` and CI's lint-typecheck job run `scripts/check-readme.ts`.
 
 ## Code style
 

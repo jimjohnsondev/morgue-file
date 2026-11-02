@@ -7,7 +7,14 @@ export type AppErrorCode =
   | 'forbidden-cross-site'
   | 'missing-token'
   | 'not-found'
-  | 'invalid-input';
+  | 'invalid-input'
+  | 'folder-missing'
+  | 'folder-unreadable'
+  | 'folder-unwritable'
+  | 'invalid-install-file'
+  | 'setup-required'
+  | 'already-set-up'
+  | 'no-free-port';
 
 /**
  * An expected failure with a stable code, so callers can react to the code
@@ -30,9 +37,24 @@ const statusByCode: Readonly<Record<AppErrorCode, number>> = {
   'missing-token': 403,
   'not-found': 404,
   'invalid-input': 400,
+  'folder-missing': 400,
+  'folder-unreadable': 400,
+  'folder-unwritable': 400,
+  'invalid-install-file': 500,
+  'setup-required': 409,
+  'already-set-up': 409,
+  'no-free-port': 500,
 };
 
 /** Returns the HTTP status for an error code, kept in one place so routes agree. */
 export function httpStatusForCode(code: AppErrorCode): number {
   return statusByCode[code];
+}
+
+/** Returns the Node system error code (ENOENT, EADDRINUSE...) of a thrown value, if it has one. */
+export function systemErrorCode(error: unknown): string | undefined {
+  if (error instanceof Error && 'code' in error && typeof error.code === 'string') {
+    return error.code;
+  }
+  return undefined;
 }

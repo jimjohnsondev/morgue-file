@@ -54,6 +54,7 @@ export default tseslint.config(
       'fixtures/generated/',
       'test-results/',
       'playwright-report/',
+      'release/',
     ],
   },
   js.configs.recommended,
@@ -119,13 +120,15 @@ export default tseslint.config(
   {
     // Only originals.ts may touch the file system under a Reference root (see docs/ARCHITECTURE.md).
     files: ['src/**/*.ts', 'src/**/*.tsx'],
-    // The exceptions read the app's own folders (built assets, package.json, data), never a root.
+    // The exceptions read the app's own folders (built assets, package.json, the home and data
+    // folders), never a root.
     ignores: [
       'src/core/archive/originals.ts',
       'src/core/db/**',
       'src/core/jobs/**',
       'src/server/assets.ts',
       'src/server/config.ts',
+      'src/server/install/**',
       'src/server/main.ts',
     ],
     rules: {

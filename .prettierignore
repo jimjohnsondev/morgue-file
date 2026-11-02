@@ -5,3 +5,5 @@ fixtures/generated/
 data/
 package-lock.json
 tests/visual/__screenshots__/
+release/
+CHANGELOG.md

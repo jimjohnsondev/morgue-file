@@ -1,57 +1,131 @@
 # Morgue File
 
-A personal reference archive for painters. Morgue File turns a folder of reference photos,
-videos, books and magazines into a tagged, browsable gallery with a profile page for each model,
-styled like an early-2000s art site. It runs on your own Windows PC, works offline, and never
-changes your files.
+A personal reference archive for painters.
 
-> **Status:** under construction. There is no release to download yet. The user sections below
-> are filled in by PR 3, when the first Windows zip is built.
+## What it is
+
+Morgue File turns a folder of reference photos, videos, books and magazines into a tagged,
+browsable gallery with a profile page for each model, styled like an early-2000s art site. It runs
+on your own Windows PC in your web browser, works offline, and never changes your files. Only your
+own PC can open it.
+
+> **Status:** under construction. The archive pages arrive over the next releases; a screenshot
+> of the finished gallery is added here once its design is approved.
 
 ## Requirements
 
-64-bit Windows 10 or 11, and Edge or Chrome. Disk space for the app's data folder, which grows
-with your archive.
+- A 64-bit Windows 10 or 11 PC. You don't need admin rights or anything else installed.
+- Microsoft Edge or Google Chrome.
+- Disk space for the app's data folder (its database and thumbnails), which grows with your
+  archive. Plan on a few gigabytes for a large one.
 
 ## Install
 
-Written in PR 3.
+1. Open the [Releases page](https://github.com/jimjohnsondev/morgue-file/releases) and download
+   the newest `MorgueFile-<version>-win-x64.zip`.
+2. Right-click the downloaded zip and choose **Properties**.
+3. If you see an **Unblock** box at the bottom, tick it and click **OK**. (Windows marks files
+   from the internet; unblocking stops it warning you every time Morgue File starts.)
+4. Right-click the zip, choose **Extract All…**, and pick where Morgue File should live, for
+   example `C:\Users\<you>\Morgue File` or a USB drive. Any folder works, even one with spaces in
+   its name.
+5. Open the extracted **MorgueFile** folder.
+6. Optional: double-click **Install shortcuts**. It adds Morgue File to your Desktop and Start
+   menu.
 
 ## First run
 
-Written in PR 3.
+1. Double-click **Morgue File** (or its shortcut). A small window titled "Morgue File server"
+   opens, and your browser opens the setup page.
+2. Under **Reference folder**, type the full path of the folder that holds your reference files,
+   such as `E:\Reference`. If `E:\Reference` exists, it's filled in for you.
+3. Click **Check**. Morgue File says how many files it found there. If the folder doesn't exist
+   or can't be read, it says so; fix the path and click **Check** again.
+4. Under **Where to keep data**, choose one:
+   - **Keep data with the app** (the usual choice). The data goes in a `data` folder beside the
+     app, so everything stays in one folder you can move or back up.
+   - **Use a folder I choose**, for example on a bigger or backed-up drive. Type the folder's
+     path and click **Check**. If that folder already holds a Morgue File library, it is used, not
+     replaced.
+5. Click **Save**. Morgue File creates an `Inbox` folder inside your Reference folder and opens
+   your archive.
+
+The first index of a large archive runs in the background, and you can browse while it works. If
+you close Morgue File, it carries on where it stopped next time.
 
 ## Everyday use
 
-Written as features land.
+- **Start:** double-click **Morgue File** or its shortcut. If it's already running, this just
+  opens a new browser tab.
+- **Stop:** close the "Morgue File server" window. Keep it open, minimized if you like, while you
+  use Morgue File.
+- **Adding files:** put them anywhere in your Reference folder. Files you drag or paste into the
+  app are saved in the `Inbox` folder inside it, sorted by month.
+- Morgue File never changes, moves or deletes your files. Tags, collections and notes live in its
+  own database.
+
+More about browsing, tagging and searching is added here as those features arrive.
 
 ## Update
 
-Written in PR 3.
+1. Close the "Morgue File server" window.
+2. Download and unblock the new zip, as in Install steps 1–3.
+3. Extract it into the folder that holds your current **MorgueFile** folder, and choose to
+   replace the files when Windows asks.
+
+Your settings (`morgue-file.json`) and your `data` folder aren't in the zip, so they stay as they
+are. Before its first launch after an update, Morgue File backs up its database.
 
 ## Move or back up
 
-Written in PR 3.
+- **With Keep data with the app:** close Morgue File, then copy or move the whole **MorgueFile**
+  folder. Everything comes with it. On a USB drive it works under any drive letter.
+- **With a folder you chose:** move the **MorgueFile** folder freely; your data stays where it
+  is. To move the data too, use Settings → Move data (coming in a later release).
+- **Backing up:** copy the **MorgueFile** folder (and your chosen data folder, if you use one)
+  while Morgue File is closed. A one-click backup and restore of the database is coming in a later
+  release.
 
 ## Uninstall
 
-Written in PR 3.
+1. Close the "Morgue File server" window.
+2. Delete the **MorgueFile** folder.
+3. Delete the Morgue File shortcuts from your Desktop and Start menu, if you added them.
+4. If you chose your own data folder, delete it too.
+
+Your Reference folder and its files are never touched; delete its `Inbox` folder only if you want
+to.
 
 ## Troubleshooting
 
-Written in PR 3.
+- **Windows says it protected your PC:** the zip wasn't unblocked. Click **More info**, then
+  **Run anyway**, or delete the folder and repeat Install steps 2–4.
+- **The browser doesn't open:** go to `http://127.0.0.1:47613/` yourself. The "Morgue File
+  server" window shows the address it is using.
+- **Port in use:** if another program uses port 47613, Morgue File tries 47614 up to 47622 and
+  remembers the one it got. If all of them are busy, the server window says so; close the other
+  program and start Morgue File again.
+- **The page says it can't find the data folder:** the drive holding it is probably unplugged.
+  Plug it in and reload the page, or point Morgue File to where the data is now.
+- **The Reference folder's drive is offline:** your items are kept and come back when the drive
+  does.
+- **A video won't play:** your browser can't play that video format (some MOV and HEVC files).
+  Morgue File shows a still frame from it instead.
 
 ## For developers
 
 You need Node.js 24 (see `.nvmrc`).
 
 ```sh
-git clone <this repo>
+git clone https://github.com/jimjohnsondev/morgue-file.git
 cd morgue-file
 npm ci
-npm run dev       # builds, then serves http://127.0.0.1:47613
-npm run check     # format, lint, typecheck and tests
+npm run dev       # builds, then serves http://127.0.0.1:47613 (the repo is its home folder)
+npm run check     # format, lint, README sections, typecheck and tests
+npm run test:e2e  # Playwright end-to-end tests in Chromium
 ```
+
+`npm run package` builds the Windows zip into `release/`; it runs on Windows only.
 
 - `docs/PRD.md` — what the app does, with numbered requirements
 - `docs/DESIGN-BRIEF.md` — what it looks like, with the exact design values

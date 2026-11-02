@@ -1,0 +1,102 @@
+/* Template parts shared by pages: panels, buttons, input fields and notices (design brief). */
+.panel {
+  margin: 0 0 var(--space-5);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  box-shadow:
+    inset 1px 1px 0 var(--color-white),
+    var(--shadow-offset) var(--shadow-offset) 0 var(--color-shadow);
+}
+
+.panel__title {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-panel-title);
+  color: var(--color-white);
+  text-transform: uppercase;
+  letter-spacing: var(--panel-title-spacing);
+  background: linear-gradient(var(--color-title-bar-top), var(--color-title-bar-bottom));
+}
+
+.panel__title::before {
+  content: '';
+  width: var(--title-square);
+  height: var(--title-square);
+  background: var(--color-cyan);
+}
+
+.panel__body {
+  padding: var(--space-3) var(--space-4);
+}
+
+.button {
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-body);
+  font-size: var(--text-table);
+  color: var(--color-text);
+  background: linear-gradient(var(--color-button-top), var(--color-button-bottom));
+  border: 1px solid;
+  border-color: var(--color-white) var(--color-border) var(--color-border) var(--color-white);
+}
+
+.button:active {
+  border-color: var(--color-border) var(--color-white) var(--color-white) var(--color-border);
+}
+
+.button--primary {
+  font-weight: bold;
+  color: var(--color-white);
+  background: linear-gradient(var(--color-magenta), var(--color-magenta-hover));
+}
+
+.field {
+  padding: var(--space-1);
+  font-family: var(--font-body);
+  font-size: var(--text-table);
+  border: 2px inset var(--color-hairline);
+}
+
+.field:focus {
+  outline: 2px solid var(--color-cyan);
+}
+
+.notice {
+  margin: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-notice-cyan);
+  border: 1px solid var(--color-border);
+}
+
+.notice--problem {
+  background: var(--color-notice-magenta);
+}
+
+.notice[hidden] {
+  display: none;
+}
+
+.choice {
+  display: block;
+  margin: var(--space-2) 0;
+}
+
+.folder-field {
+  margin: var(--space-3) 0 0;
+}
+
+.folder-field .button {
+  margin-left: var(--space-2);
+}
+
+.folder-field__label {
+  display: block;
+  margin: 0 0 var(--space-1);
+  font-weight: bold;
+}
+
+.setup__actions {
+  margin: 0;
+}

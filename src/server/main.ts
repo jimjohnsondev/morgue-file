@@ -1,22 +1,23 @@
-// Starts the server on 127.0.0.1. The launcher (PR 3) will call this after its health check.
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
+// Starts the server without opening a browser, for npm run dev and the Playwright tests.
+// The shortcut uses launcher.ts instead, which also reuses a running copy.
+import {
+  candidatePorts,
+  DEFAULT_PORT,
+  findAppDir,
+  findHomeDir,
+  LOOPBACK_HOST,
+  readPortOverride,
+  readVersion,
+} from './config.js';
+import { loadInstallState } from './install/install-state.js';
+import { runServer } from './run.js';
 
-import { buildApp } from './app.js';
-import { loadConfig, findAppDir } from './config.js';
+const appDir = findAppDir();
+const homeDir = findHomeDir(appDir);
+const portOverride = readPortOverride();
 
-/** Reads the version from package.json, so /healthz reports what release-please set. */
-function readVersion(): string {
-  const packagePath = path.join(findAppDir(), 'package.json');
-  const parsed = JSON.parse(readFileSync(packagePath, 'utf8')) as { version?: string };
-  return parsed.version ?? '0.0.0';
-}
-
-/** Builds the app and listens on the loopback address only. */
-async function start(): Promise<void> {
-  const config = loadConfig(readVersion());
-  const app = await buildApp({ config, logger: true });
-  await app.listen({ host: config.host, port: config.port });
-}
-
-await start();
+await runServer({
+  config: { host: LOOPBACK_HOST, appDir, homeDir, version: readVersion(appDir) },
+  install: { current: await loadInstallState(homeDir) },
+  ports: portOverride === undefined ? candidatePorts(DEFAULT_PORT) : [portOverride],
+});
