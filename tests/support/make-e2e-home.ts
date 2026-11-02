@@ -9,10 +9,15 @@ if (homeDir === undefined || homeDir === '') {
 }
 
 const dataDir = path.join(homeDir, 'data');
-const referenceDir = path.join(homeDir, 'Reference');
+// Beside the home folder, never inside it: setup refuses folders nested in each other.
+const referenceDir = `${homeDir}-reference`;
 
 rmSync(homeDir, { recursive: true, force: true });
+rmSync(referenceDir, { recursive: true, force: true });
 mkdirSync(dataDir, { recursive: true });
 mkdirSync(path.join(referenceDir, 'Inbox'), { recursive: true });
 writeFileSync(path.join(homeDir, 'morgue-file.json'), JSON.stringify({ dataDir: 'data' }));
-writeFileSync(path.join(dataDir, 'settings.json'), JSON.stringify({ referenceDir: 'Reference' }));
+writeFileSync(
+  path.join(dataDir, 'settings.json'),
+  JSON.stringify({ referenceDirAbsolute: referenceDir }),
+);

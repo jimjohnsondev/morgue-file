@@ -1,6 +1,9 @@
 // The first-run setup page: Check and Save send the form to the server and show its answer.
 // Writes need the launch token in a header, which a plain form post can't send.
 
+const NO_SERVER_MESSAGE =
+  "Morgue File isn't answering. Start it again with its shortcut, then reload this page.";
+
 type ServerAnswer = {
   readonly isOk: boolean;
   readonly message: string;
@@ -13,23 +16,27 @@ function readToken(): string {
 
 /** Posts JSON with the token and returns the server's message, whether it said yes or no. */
 async function postJson(url: string, body: Record<string, string>): Promise<ServerAnswer> {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-morgue-token': readToken() },
-    body: JSON.stringify(body),
-  });
-  const answer = (await response.json()) as { message?: string };
-  return { isOk: response.ok, message: answer.message ?? 'Something went wrong. Try again.' };
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-morgue-token': readToken() },
+      body: JSON.stringify(body),
+    });
+    const answer = (await response.json()) as { message?: string };
+    return { isOk: response.ok, message: answer.message ?? 'Something went wrong. Try again.' };
+  } catch {
+    // No answer at all: most likely the "Morgue File server" window was closed.
+    return { isOk: false, message: NO_SERVER_MESSAGE };
+  }
 }
 
-/** Shows an answer in the result line it belongs to: cyan when it's fine, magenta when not. */
+/** Shows an answer in the result line it belongs to: cyan (the plain notice) when fine, magenta when not. */
 function showAnswer(form: HTMLFormElement, resultName: string, answer: ServerAnswer): void {
   const line = form.querySelector<HTMLElement>(`[data-setup-result="${resultName}"]`);
   if (line === null) {
     return;
   }
   line.textContent = answer.message;
-  line.classList.toggle('notice--ok', answer.isOk);
   line.classList.toggle('notice--problem', !answer.isOk);
   line.hidden = false;
 }
@@ -45,7 +52,8 @@ async function runCheck(form: HTMLFormElement, check: string): Promise<void> {
   const isReference = check === 'reference';
   const url = isReference ? '/api/setup/check-reference' : '/api/setup/check-data';
   const folder = readField(form, isReference ? 'referenceDir' : 'chosenDataDir');
-  showAnswer(form, check, await postJson(url, { folder }));
+  const referenceDir = readField(form, 'referenceDir');
+  showAnswer(form, check, await postJson(url, { folder, referenceDir }));
 }
 
 /** Saves the choices, then opens Home once the server has switched over. */

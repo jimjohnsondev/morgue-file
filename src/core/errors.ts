@@ -11,6 +11,7 @@ export type AppErrorCode =
   | 'folder-missing'
   | 'folder-unreadable'
   | 'folder-unwritable'
+  | 'folder-overlap'
   | 'invalid-install-file'
   | 'setup-required'
   | 'already-set-up'
@@ -40,6 +41,7 @@ const statusByCode: Readonly<Record<AppErrorCode, number>> = {
   'folder-missing': 400,
   'folder-unreadable': 400,
   'folder-unwritable': 400,
+  'folder-overlap': 400,
   'invalid-install-file': 500,
   'setup-required': 409,
   'already-set-up': 409,

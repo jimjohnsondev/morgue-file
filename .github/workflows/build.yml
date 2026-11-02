@@ -22,10 +22,13 @@ on:
       - playwright.package.config.ts
       - README.md
       - scripts/package-win.ts
-      - src/server/**
+      - src/**
       - tests/package/**
+      - .nvmrc
       - package.json
       - package-lock.json
+      - tsconfig*.json
+      - vite.config.ts
 
 permissions:
   contents: read

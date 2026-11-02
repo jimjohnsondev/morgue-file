@@ -53,6 +53,8 @@ test('R29, R30, R31: the README steps work from a path with spaces, keeping data
     path.join(TEMP_DIR, 'Morgue File tést'),
   );
   await makeReferenceFolder(REFERENCE_DIR);
+  // The README's instructions travel in the zip, readable in any browser.
+  expect(await readFile(path.join(installDir, 'README.html'), 'utf8')).toContain('First run');
 
   const server = startMorgueFile(installDir);
   await waitForApp();

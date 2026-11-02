@@ -255,9 +255,9 @@ Only this PC's browser can reach the server, and only Morgue File's own pages ca
 | Path traversal                                     | Routes take item ids. `originals.ts` resolves root plus rel\_path and refuses anything outside the root                                                                                                                              |
 | Markup injected through filenames, notes or URLs   | Templates escape by default. CSP: `default-src 'self'`, no inline script, images and media from `'self'` and `blob:`                                                                                                                 |
 | Server-side fetch for URL drops                    | http and https only. The resolved address must not be loopback, private or link-local. 200 MB cap; image and video content types only                                                                                                |
-| Writes to originals                                | `originals.ts` is the only module allowed to import `node:fs` for root paths (ESLint `no-restricted-imports`). It opens files read-only and exposes one write, `writeInbox()`                                                        |
+| Writes to originals                                | `originals.ts` is the only module allowed to import `node:fs` for root paths (ESLint `no-restricted-imports`). It opens files read-only and exposes two writes: `writeInbox()`, and `createInbox()` for setup                        |
 
-As built in the scaffold: `src/server/security/security-hooks.ts` runs the Host, Sec-Fetch-Site, Origin and token checks in one `onRequest` hook and sets the CSP, `nosniff` and `no-referrer` headers on every response, refusals included. The `no-restricted-imports` rule also exempts the few server files that read the app's own folders (`assets.ts`, `config.ts`, `main.ts`), plus `core/db` and `core/jobs`, which manage the data folder.
+As built in the scaffold: `src/server/security/security-hooks.ts` runs the Host, Sec-Fetch-Site, Origin and token checks in one `onRequest` hook and sets the CSP, `nosniff` and `no-referrer` headers on every response, refusals included. The `no-restricted-imports` rule also exempts the few server files that read the app's own folders (`assets.ts`, `config.ts`, `main.ts`), plus `core/db`, `core/jobs` and `server/install` (PR 3), which manage the home and data folders.
 
 **Tests.** Unit tests cover the Host, origin and token checks. An e2e test serves a page from a second origin and checks that its requests are refused. The e2e suite hashes every fixture original before it starts and again when it ends, and fails on any change (R3).
 
@@ -364,7 +364,8 @@ Morgue File is one folder: unzip it anywhere, double-click it, then pick the Ref
 
 **Staying portable.**
 
-- If the Reference folder is on the same drive as the app, its path is stored relative to the app folder, so a USB drive works under any drive letter. Otherwise the path is absolute, and a missing folder shows E3 with a link to point it somewhere else.
+- The Reference folder's path is stored twice: absolute, and, if it's on the same drive as the app, relative to the app folder. At launch the absolute path is used if it's there (the app folder moved on its own), else the relative one (a USB drive under a new letter). If neither is there, the folder shows E3 with a link to point it somewhere else.
+- Setup refuses a Reference folder that holds, or sits inside, the app folder or the data folder, so the app never writes into a root and uninstalling never deletes reference files.
 - Paths with spaces and non-ASCII characters work. CI runs the package test from `C:\Temp\Morgue File tést\`.
 - A lock file in the data folder stops two copies from sharing one database. A second launch just opens a tab.
 - If port 47613 is in use, the launcher tries each port up to 47622 and saves the one it got in `settings.json` in the data folder.
@@ -408,11 +409,12 @@ Both choices can be changed later in Settings. Move data copies everything to th
 **As built in PR 3.**
 
 - `Morgue File.cmd` sets `MORGUE_HOME` to its own folder (the one holding `morgue-file.json` and `data\`) and runs the launcher; `config.ts` reads it. A development checkout has no launcher, so the repo is its own home folder (both files are git-ignored).
-- Until the roots table arrives in PR 5, the Reference folder is saved in the data folder's `settings.json` beside the port, relative to the home folder when it's on the same drive. PR 5 seeds root 1 from it.
+- Until the roots table arrives in PR 5, the Reference folder is saved in the data folder's `settings.json` beside the port (`referenceDirAbsolute`, plus `referenceDir` relative to the home folder when on the same drive). PR 5 seeds root 1 from it.
+- A data folder missing at launch is looked for again on each page load, so plugging the drive back in and reloading is enough; the server then claims it as it would at launch.
 - `src/server/install/` reads and writes the home and data folders, so it joins the files exempt from the `node:fs` import rule. It never touches a Reference root: setup checks and counts the Reference folder, and creates its `Inbox\`, through `originals.ts` (`inspectReferenceFolder`, `createInbox`).
 - The lock file is `morgue-file.lock` in the data folder, holding the server's process id and port. A launch that finds a live owner answering `/healthz` opens a tab there; a lock left by a crash is ignored.
 - Check and Save on the setup page post JSON from `src/client/setup-form.ts`, because writes need the `X-Morgue-Token` header, which a plain form can't send. Refusals come back as 400s whose `message` the page shows; the error handler now includes each AppError's message.
-- The setup page's screenshot baselines (one per data choice) join the first baseline PR at the design gate, since no baseline exists before then.
+- The setup page's screenshot baselines (one per data choice) join the first baseline PR at the design gate, since no baseline exists before then. This departs from the design brief ("each gets its baseline approved in its own PR"); the gate message to Jim lists it.
 - build.yml also runs on pull requests that touch packaging, the server or the README, so the zip and the package test are proven before a release. The package test has its own Playwright config (`playwright.package.config.ts`) and installs to `C:\Temp\Morgue File tést\`. Until the fixture archive (PR 4) and Index pages (PR 7) exist, it sets up with a one-file Reference folder and opens Home. The hosted runner has one drive, so the move test moves the folder to a new path; a changed drive letter is covered by unit tests of the stored paths.
 - README.html is rendered with `marked`, a dev dependency. `npm run check` and CI's lint-typecheck job run `scripts/check-readme.ts`.
 

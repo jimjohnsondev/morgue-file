@@ -1,6 +1,6 @@
 // The only module that touches files under a Reference root: it reads, and creates the Inbox.
 import { existsSync } from 'node:fs';
-import { mkdir, readdir } from 'node:fs/promises';
+import { mkdir, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { AppError, systemErrorCode } from '#core/errors.js';
@@ -44,9 +44,30 @@ export async function inspectReferenceFolder(folder: string): Promise<ReferenceF
   }
 }
 
-/** Creates the Inbox folder inside the Reference folder. Existing files are left alone. */
+/**
+ * Creates the Inbox folder inside the Reference folder. Existing files are left alone. A
+ * read-only drive is refused in plain words rather than failing as an internal error.
+ */
 export async function createInbox(referenceFolder: string): Promise<void> {
-  await mkdir(path.join(referenceFolder, INBOX_FOLDER_NAME), { recursive: true });
+  try {
+    await mkdir(path.join(referenceFolder, INBOX_FOLDER_NAME), { recursive: true });
+  } catch {
+    throw new AppError(
+      'folder-unwritable',
+      `Morgue File can't create an Inbox folder in ${referenceFolder}, where dropped files go. ` +
+        "Check that the drive isn't read-only.",
+    );
+  }
+}
+
+/** Says whether a Reference folder is there now, to choose between its saved paths. */
+export async function isReferenceFolderPresent(folder: string): Promise<boolean> {
+  try {
+    return (await stat(folder)).isDirectory();
+  } catch {
+    // Missing, or on a drive that is offline: either way, not usable now.
+    return false;
+  }
 }
 
 /** Returns E:\Reference when this is Windows and that folder exists, for setup to pre-fill. */

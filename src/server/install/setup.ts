@@ -5,6 +5,7 @@ import { createInbox, inspectReferenceFolder } from '#core/archive/originals.js'
 import { AppError } from '#core/errors.js';
 
 import { checkDataFolder, createDataFolder, updateDataSettings } from './data-folder.js';
+import { refuseOverlappingFolders } from './folder-overlap.js';
 import { DATA_WITH_APP, writeInstallFile } from './install-file.js';
 import { toStoredPath } from './stored-path.js';
 
@@ -32,7 +33,8 @@ export type SetupRequest = {
  * depend on where the app happened to start, so it is never accepted.
  */
 export function requireFullPath(typed: string | undefined): string {
-  const trimmed = typed?.trim() ?? '';
+  // Windows' "Copy as path" wraps the path in quotes.
+  const trimmed = (typed?.trim() ?? '').replace(/^"(.*)"$/, '$1').trim();
   if (trimmed === '' || !path.isAbsolute(trimmed)) {
     throw new AppError('invalid-input', 'Type the full path of the folder, like E:\\Reference.');
   }
@@ -56,12 +58,14 @@ export async function completeSetup(request: SetupRequest): Promise<InstallState
   const referenceDir = requireFullPath(choices.referenceDir);
   await inspectReferenceFolder(referenceDir);
   const dataDir = dataDirForChoice(homeDir, choices);
+  refuseOverlappingFolders({ homeDir, referenceDir, dataDir });
   await checkDataFolder(dataDir);
 
   await createDataFolder(dataDir);
   await updateDataSettings(dataDir, {
     port: request.port,
     referenceDir: toStoredPath(homeDir, referenceDir),
+    referenceDirAbsolute: referenceDir,
   });
   await createInbox(referenceDir);
   await writeInstallFile(homeDir, {

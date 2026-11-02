@@ -133,6 +133,7 @@ describe('R30: saving the setup', () => {
     expect(await readJson(path.join(dataDir, 'settings.json'))).toEqual({
       port: PORT,
       referenceDir: path.join('..', 'Reference tést'),
+      referenceDirAbsolute: install.referenceDir,
     });
     await expect(readFile(path.join(dataDir, 'morgue-file.lock'), 'utf8')).resolves.toContain(
       String(process.pid),
@@ -178,10 +179,70 @@ describe('R30: saving the setup', () => {
 });
 
 describe('R29: a data folder that has gone missing', () => {
-  it('R29: shows the setup page with a notice instead of starting over', async () => {
+  /** Points morgue-file.json at a data folder that isn't there, as after unplugging a drive. */
+  async function pointAtMissingDataFolder(): Promise<string> {
     const dataDir = path.join(install.rootDir, 'Unplugged drive', 'MorgueFile');
+    await writeFile(path.join(install.homeDir, 'morgue-file.json'), JSON.stringify({ dataDir }));
     state.current = { kind: 'data-missing', dataDir };
+    return dataDir;
+  }
+
+  it('R29: shows the setup page with a notice instead of starting over', async () => {
+    const dataDir = await pointAtMissingDataFolder();
     const response = await app.inject({ url: '/setup', headers: { host: OWN_HOST } });
     expect(response.body).toContain(`can't find its data folder at ${dataDir}`);
+  });
+
+  it('R29: reloading once the drive is back opens the archive', async () => {
+    const dataDir = await pointAtMissingDataFolder();
+    await mkdir(dataDir, { recursive: true });
+    const response = await app.inject({ url: '/setup', headers: { host: OWN_HOST } });
+    expect(response.headers.location).toBe('/');
+    expect(state.current).toMatchObject({ kind: 'ready', dataDir });
+  });
+});
+
+describe('R30: the app and data folders stay out of the Reference folder', () => {
+  it('R30: refuses a data folder inside the Reference folder', async () => {
+    const inside = path.join(install.referenceDir, 'Morgue data');
+    const check = await post('/api/setup/check-data', {
+      folder: inside,
+      referenceDir: install.referenceDir,
+    });
+    expect(check.json()).toMatchObject({ error: 'folder-overlap' });
+    const save = await post('/api/setup/save', {
+      referenceDir: install.referenceDir,
+      dataChoice: 'chosen',
+      chosenDataDir: inside,
+    });
+    expect(save.statusCode).toBe(400);
+    await expect(readFile(path.join(inside, 'settings.json'))).rejects.toThrow();
+  });
+
+  it('R30: refuses a data folder that holds the Reference folder', async () => {
+    const save = await post('/api/setup/save', {
+      referenceDir: install.referenceDir,
+      dataChoice: 'chosen',
+      chosenDataDir: install.rootDir,
+    });
+    expect(save.json()).toMatchObject({ error: 'folder-overlap' });
+  });
+
+  it('R30: refuses a Reference folder that holds the app, or sits inside it', async () => {
+    const holdsApp = await post('/api/setup/check-reference', { folder: install.rootDir });
+    expect(holdsApp.json()).toMatchObject({ error: 'folder-overlap' });
+
+    const insideApp = path.join(install.homeDir, 'Reference');
+    await mkdir(insideApp);
+    const save = await post('/api/setup/save', { referenceDir: insideApp, dataChoice: 'with-app' });
+    expect(save.json()).toMatchObject({ error: 'folder-overlap' });
+    expect(state.current.kind).toBe('needs-setup');
+  });
+
+  it('R30: accepts a path pasted with quotes, as Copy as path gives it', async () => {
+    const response = await post('/api/setup/check-reference', {
+      folder: `"${install.referenceDir}"`,
+    });
+    expect(response.statusCode).toBe(200);
   });
 });

@@ -5,6 +5,7 @@ import { inspectReferenceFolder } from '#core/archive/originals.js';
 import { AppError } from '#core/errors.js';
 
 import { checkDataFolder } from '../../install/data-folder.js';
+import { refuseOverlappingFolders } from '../../install/folder-overlap.js';
 import { claimDataFolder } from '../../install/lock-file.js';
 import { completeSetup, requireFullPath } from '../../install/setup.js';
 
@@ -19,7 +20,10 @@ export type SetupApiContext = {
   readonly install: InstallStateHolder;
 };
 
-const FolderBody = Type.Object({ folder: Type.String({ maxLength: 4096 }) });
+const FolderBody = Type.Object({
+  folder: Type.String({ maxLength: 4096 }),
+  referenceDir: Type.Optional(Type.String({ maxLength: 4096 })),
+});
 
 const SaveBody = Type.Object({
   referenceDir: Type.String({ maxLength: 4096 }),
@@ -38,18 +42,27 @@ function describeReferenceFolder(folder: string, fileCount: number): string {
 }
 
 /** Registers the two Check routes, which only read. */
-function registerCheckRoutes(app: FastifyInstance): void {
+function registerCheckRoutes(app: FastifyInstance, homeDir: string): void {
   const typed = app.withTypeProvider<TypeBoxTypeProvider>();
   const schema = { body: FolderBody, response: { 200: MessageResponse } };
 
   typed.post('/api/setup/check-reference', { schema }, async (request) => {
     const folder = requireFullPath(request.body.folder);
+    refuseOverlappingFolders({ homeDir, referenceDir: folder });
     const summary = await inspectReferenceFolder(folder);
     return { message: describeReferenceFolder(folder, summary.topLevelFileCount) };
   });
 
   typed.post('/api/setup/check-data', { schema }, async (request) => {
     const folder = requireFullPath(request.body.folder);
+    const referenceDir = request.body.referenceDir?.trim() ?? '';
+    if (referenceDir !== '') {
+      refuseOverlappingFolders({
+        homeDir,
+        referenceDir: requireFullPath(referenceDir),
+        dataDir: folder,
+      });
+    }
     const check = await checkDataFolder(folder);
     const message = check.hasLibrary
       ? `Found an existing library in ${folder}. Morgue File will use it.`
@@ -86,6 +99,6 @@ function registerSaveRoute(app: FastifyInstance, context: SetupApiContext): void
 
 /** Registers the setup API: POST /api/setup/check-reference, check-data and save. */
 export function registerSetupApi(app: FastifyInstance, context: SetupApiContext): void {
-  registerCheckRoutes(app);
+  registerCheckRoutes(app, context.homeDir);
   registerSaveRoute(app, context);
 }

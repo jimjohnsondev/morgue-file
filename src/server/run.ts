@@ -17,6 +17,9 @@ export type RunOptions = {
   readonly logger?: boolean;
 };
 
+/** The listen errors that mean "this port is taken, try the next one". */
+const PORT_BUSY_CODES: ReadonlySet<string> = new Set(['EADDRINUSE', 'EACCES']);
+
 /** A listening server, the port it got, and how to stop it and give up the data folder. */
 export type RunningServer = {
   readonly app: FastifyInstance;
@@ -42,7 +45,8 @@ async function listenOnFirstFreePort(options: RunOptions): Promise<ListeningApp>
       return { app, port };
     } catch (error) {
       await app.close();
-      if (systemErrorCode(error) !== 'EADDRINUSE') {
+      // Windows reports ports in a reserved range (Hyper-V, WSL, Docker) as EACCES.
+      if (!PORT_BUSY_CODES.has(systemErrorCode(error) ?? '')) {
         throw error;
       }
     }

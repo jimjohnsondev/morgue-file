@@ -36,7 +36,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const pageContext = { token, assets };
 
   registerSecurityHooks(app, config.port, token);
-  registerSetupGate(app, install);
+  registerSetupGate(app, { homeDir: config.homeDir, port: config.port, install });
   registerErrorHandler(app);
   registerHealthRoute(app, config.version);
   registerAssetRoute(app, clientDir);

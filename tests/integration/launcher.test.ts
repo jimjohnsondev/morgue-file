@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import path from 'node:path';
 
@@ -45,6 +45,16 @@ async function setUpWithDataBesideApp(homeDir: string, port: number): Promise<st
   const settings = { port, referenceDir: path.join('..', 'Reference tést') };
   await writeFile(path.join(dataDir, 'settings.json'), JSON.stringify(settings));
   return dataDir;
+}
+
+/** Adds the Reference folder's absolute path to settings.json, as setup saves it. */
+async function writeAbsoluteReference(homeDir: string, referenceDir: string): Promise<void> {
+  const settingsPath = path.join(homeDir, 'data', 'settings.json');
+  const settings = JSON.parse(await readFile(settingsPath, 'utf8')) as Record<string, unknown>;
+  await writeFile(
+    settingsPath,
+    JSON.stringify({ ...settings, referenceDirAbsolute: referenceDir }),
+  );
 }
 
 /** Holds a port with a plain TCP server, the way another program would. */
@@ -109,19 +119,34 @@ describe('R29: starting from the shortcut', () => {
     expect(settings.port).toBe(FREE_PORT);
   });
 
-  it('R29: with the default data folder, it still works after the folder is moved', async () => {
+  it('R29: with the default data folder, the app folder can move on its own', async () => {
     await setUpWithDataBesideApp(install.homeDir, SAVED_PORT);
-    // Copying the drive's contents to a new place stands in for the drive getting a new letter.
-    const movedRoot = `${install.rootDir}-moved`;
-    await cp(install.rootDir, movedRoot, { recursive: true });
-    const movedHome = path.join(movedRoot, 'Morgue File tést');
+    await writeAbsoluteReference(install.homeDir, install.referenceDir);
+    // Only the app folder moves, one level deeper; the Reference folder stays where it was.
+    const movedHome = path.join(install.rootDir, 'Apps', 'Morgue File tést');
+    await mkdir(path.dirname(movedHome));
+    await rename(install.homeDir, movedHome);
 
-    const state = await loadInstallState(movedHome);
-    expect(state).toEqual({
+    expect(await loadInstallState(movedHome)).toEqual({
       kind: 'ready',
       dataDir: path.join(movedHome, 'data'),
-      referenceDir: path.join(movedRoot, 'Reference tést'),
+      referenceDir: install.referenceDir,
     });
-    await rm(movedRoot, { recursive: true, force: true });
+  });
+
+  it('R29: when the whole drive moves (a new drive letter), the relative path finds it', async () => {
+    await setUpWithDataBesideApp(install.homeDir, SAVED_PORT);
+    await writeAbsoluteReference(install.homeDir, install.referenceDir);
+    const movedRoot = `${install.rootDir}-moved`;
+    await rename(install.rootDir, movedRoot);
+    try {
+      const movedHome = path.join(movedRoot, 'Morgue File tést');
+      expect(await loadInstallState(movedHome)).toMatchObject({
+        kind: 'ready',
+        referenceDir: path.join(movedRoot, 'Reference tést'),
+      });
+    } finally {
+      await rename(movedRoot, install.rootDir);
+    }
   });
 });

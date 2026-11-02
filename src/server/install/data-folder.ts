@@ -17,15 +17,18 @@ const WRITE_TEST_FILE_NAME = '.morgue-file-write-test';
 const DataSettingsSchema = Type.Object({
   port: Type.Optional(Type.Integer({ minimum: 1, maximum: 65535 })),
   referenceDir: Type.Optional(Type.String({ minLength: 1 })),
+  referenceDirAbsolute: Type.Optional(Type.String({ minLength: 1 })),
 });
 
 /**
  * Launch settings kept in the data folder: the port the server last got, and the Reference
- * folder (relative to the home folder when it's on the same drive).
+ * folder twice: relative to the home folder when it's on the same drive (so a USB drive works
+ * under a new letter), and absolute (so the app folder can move on its own).
  */
 export type DataSettings = {
   readonly port?: number;
   readonly referenceDir?: string;
+  readonly referenceDirAbsolute?: string;
 };
 
 /** What setup's Check reports about a data folder. */
