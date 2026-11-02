@@ -39,11 +39,13 @@ jobs:
           manifest-file: .release-please-manifest.json
       - name: Turn on auto-merge for the release PR
         if: steps.release.outputs.pr != ''
+        # The PR is passed as JSON text and parsed in the shell: fromJSON() in an expression
+        # fails the whole job when the output is empty, which skipped build.yml after a release.
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
+          PR_JSON: ${{ steps.release.outputs.pr }}
           REPO: ${{ github.repository }}
-        run: gh pr merge --auto --squash "$PR_NUMBER" --repo "$REPO"
+        run: gh pr merge --auto --squash "$(jq -r .number <<< "$PR_JSON")" --repo "$REPO"
 
   build:
     needs: release-please
