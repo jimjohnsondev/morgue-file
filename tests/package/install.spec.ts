@@ -1,6 +1,6 @@
 // The release zip, installed and set up by following the README's Install and First run steps
 // on a clean runner (R29, R30, R31). Run by build.yml on Windows; see playwright.package.config.ts.
-import { readFile, rename, rm, stat } from 'node:fs/promises';
+import { readFile, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { expect, test } from '@playwright/test';
@@ -10,6 +10,7 @@ import {
   extractRelease,
   findReleaseZip,
   makeReferenceFolder,
+  moveFolder,
   startMorgueFile,
   stopMorgueFile,
   TEMP_DIR,
@@ -78,7 +79,7 @@ test('R29, R30, R31: the README steps work from a path with spaces, keeping data
   // Moving the whole folder keeps the app and its data together.
   const movedParent = path.join(TEMP_DIR, 'Moved tést');
   await rm(movedParent, { recursive: true, force: true });
-  await rename(path.dirname(installDir), movedParent);
+  await moveFolder(path.dirname(installDir), movedParent);
   const moved = startMorgueFile(path.join(movedParent, 'MorgueFile'));
   await waitForApp();
   await page.goto(`${APP_URL}/`);

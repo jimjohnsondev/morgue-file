@@ -1,8 +1,9 @@
 // Helpers for the package test: unzip the release, start and stop Morgue File.cmd as a user would.
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 import type { ChildProcess } from 'node:child_process';
 
@@ -51,7 +52,7 @@ export async function waitForApp(): Promise<void> {
     } catch {
       // Not listening yet; try again shortly.
     }
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await sleep(250);
   }
   throw new Error(`Morgue File didn't answer at ${APP_URL}.`);
 }
@@ -82,10 +83,56 @@ export async function waitForExit(child: ChildProcess): Promise<number | null> {
   );
 }
 
+/** Waits until the server has stopped listening, so the next start can't reach the old one. */
+async function waitForAppToStop(): Promise<void> {
+  for (let attempt = 0; attempt < 120; attempt++) {
+    try {
+      await fetch(`${APP_URL}/healthz`, { signal: AbortSignal.timeout(1000) });
+    } catch {
+      return;
+    }
+    await sleep(250);
+  }
+  throw new Error(`Morgue File still answers at ${APP_URL} after being stopped.`);
+}
+
 /** Closes the "Morgue File server" window: ends cmd.exe and the node.exe it started. */
 export async function stopMorgueFile(child: ChildProcess): Promise<void> {
   if (child.pid !== undefined && child.exitCode === null) {
     execFileSync('taskkill', ['/pid', String(child.pid), '/t', '/f']);
   }
   await waitForExit(child);
+  await waitForAppToStop();
+}
+
+/** The errors Windows gives for a folder something still holds open. */
+const FOLDER_BUSY_CODES: ReadonlySet<string> = new Set(['EPERM', 'EBUSY', 'EACCES']);
+
+/** Says whether a failed rename was refused because the folder is still held open. */
+function isFolderBusy(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && FOLDER_BUSY_CODES.has(String(error.code));
+}
+
+/**
+ * README "Move or back up": moves the closed app's folder. Windows can hold a folder open for a
+ * moment after its process ends (handles closing, antivirus scanning the new files), so a refused
+ * rename is retried for up to 15 s, as a person would simply try again. Retries are logged, so
+ * CI shows if the hold ever grows.
+ */
+export async function moveFolder(from: string, to: string): Promise<void> {
+  const maxAttempts = 30;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await rename(from, to);
+      if (attempt > 1) {
+        console.warn(`Moving ${from} succeeded on attempt ${String(attempt)}.`);
+      }
+      return;
+    } catch (error) {
+      if (!isFolderBusy(error) || attempt === maxAttempts) {
+        throw error;
+      }
+      await sleep(500);
+    }
+  }
 }
