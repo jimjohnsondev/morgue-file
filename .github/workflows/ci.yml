@@ -1,6 +1,7 @@
 # The build, test and lint jobs every pull request must pass. pr-checks.yml holds the quick checks
 # that also re-run on title and label changes. scripts/setup-repo.ts makes every job here a
-# required check on main, so a job renamed here must be renamed there too.
+# required check on main (as are pr-checks.yml's), so a job renamed in either workflow must be
+# renamed in REQUIRED_CHECKS there too. There is no merge_group trigger: the repo has no merge queue.
 name: ci
 
 on:

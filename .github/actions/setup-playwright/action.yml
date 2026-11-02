@@ -1,4 +1,5 @@
 # Shared steps for the Playwright jobs: Node from .nvmrc, dependencies, Chromium, and a build.
+# Windows runners only: the browser cache path below is Playwright's Windows default.
 name: setup-playwright
 description: Install dependencies and Chromium, then build the app
 runs:

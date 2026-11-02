@@ -305,14 +305,16 @@ As built in PR 2:
 - The jobs are split across two workflows. `ci.yml` runs `lint-typecheck`, `unit`, `e2e`, `visual` and `perf` on `windows-2025` for every push to a PR. `pr-checks.yml` runs `pr-title` and `baseline-guard` on Linux and also re-runs when the title or labels change. Keeping them apart means adding a label never re-runs, or skips, the build and test jobs; GitHub can count a skipped required job as passing.
 - `visual` and `perf` run with `--pass-with-no-tests` until their first tests land in PR 7.
 - The Playwright jobs share a composite action, `.github/actions/setup-playwright`: Node from `.nvmrc`, `npm ci`, a cached Chromium, then `npm run build`. Tests run the built server on port 47690.
-- `update-baselines.yml` checks out and pushes with `RELEASE_TOKEN`, because a push made with `GITHUB_TOKEN` wouldn't start CI on the new commit. It refuses to run on `main`.
+- `update-baselines.yml` pushes with `RELEASE_TOKEN`, because a push made with `GITHUB_TOKEN` wouldn't start CI on the new commit. The token is given only to the final push step, and checkout doesn't keep credentials, so the branch's own code never sees it. It fails on `main`.
+- `baseline-guard` lists the PR's files through the paginated REST API and fails if it can't list them all, so a large baseline PR can't slip through.
+- `ci.yml` has no `merge_group` trigger on purpose: the repo has no merge queue.
 - `scripts/setup-repo.ts` runs with plain `node` (Node strips the types itself), so it needs no extra dependency. It also creates the `baseline-approved` label and reports whether `RELEASE_TOKEN` is still missing.
 
 **Why this differs from the PRD.** The PRD has build.yml trigger on `v*` tags. But tags and PRs created with the default `GITHUB_TOKEN` don't start other workflows, so release.yml calls build.yml directly. The release PR is opened with `RELEASE_TOKEN`, a fine-grained token with contents and pull-request write access to this repo. Using that token means CI runs on the release PR, so it can auto-merge. To reach 1.0.0, merge a commit with the footer `Release-As: 1.0.0`.
 
 **One-time repo setup.** `scripts/setup-repo.ts` applies these through `gh api`. Jim runs it once with admin rights and creates the token by hand.
 
-- A ruleset on main: PRs required; the ci.yml jobs as required checks; squash merges only; linear history; no force pushes or deletion; no bypass list.
+- A ruleset on main: PRs required; the ci.yml and pr-checks.yml jobs as required checks, pinned to GitHub Actions; squash merges only; linear history; no force pushes or deletion; no bypass list.
 - Allow auto-merge, and delete branches on merge.
 - Add the `RELEASE_TOKEN` secret.
 - Dependabot checks npm and GitHub Actions weekly, with minor and patch updates grouped.

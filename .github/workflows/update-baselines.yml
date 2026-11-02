@@ -10,22 +10,33 @@ on:
         required: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   update:
-    if: inputs.branch != 'main'
     runs-on: windows-2025
     steps:
+      - name: Refuse to run on main
+        if: inputs.branch == 'main'
+        shell: bash
+        run: |
+          echo "Baselines change only on a PR branch, never on main."
+          exit 1
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.branch }}
-          # Pushing with RELEASE_TOKEN (not GITHUB_TOKEN) makes CI run again on the new commit.
-          token: ${{ secrets.RELEASE_TOKEN }}
+          # Keep tokens out of .git/config while the branch's own code and install scripts run.
+          persist-credentials: false
       - uses: ./.github/actions/setup-playwright
       - run: npx playwright test --project=visual --update-snapshots --pass-with-no-tests
+      # RELEASE_TOKEN (not GITHUB_TOKEN) pushes, so CI runs again on the new commit. It is given
+      # to this one step only.
       - name: Commit the new baselines
         shell: bash
+        env:
+          TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ inputs.branch }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -34,5 +45,5 @@ jobs:
             echo "No baseline changes."
           else
             git commit -m "test: update screenshot baselines"
-            git push
+            git push "https://x-access-token:${TOKEN}@github.com/${REPO}.git" "HEAD:${BRANCH}"
           fi

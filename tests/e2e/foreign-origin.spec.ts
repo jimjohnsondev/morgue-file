@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 
 import { expect, test } from '@playwright/test';
 
+import type { Page } from '@playwright/test';
 import type { Server } from 'node:http';
 
 const FOREIGN_PAGE = '<!DOCTYPE html><title>foreign</title><p>a website you happened to open</p>';
@@ -34,36 +35,45 @@ test.afterAll(async () => {
   });
 });
 
+/** Sends a no-cors request from the foreign page and returns the status the server answered. */
+async function statusSeenByServer(
+  page: Page,
+  url: string,
+  method: 'GET' | 'POST',
+): Promise<number> {
+  const response = page.waitForResponse((candidate) => candidate.url() === url);
+  await page.evaluate(
+    async ({ target, verb }) => {
+      // The result is opaque to the page either way; only the server's answer matters here.
+      await fetch(target, { method: verb, mode: 'no-cors' }).catch(() => undefined);
+    },
+    { target: url, verb: method },
+  );
+  return (await response).status();
+}
+
 test('R27: a request from a foreign web page is refused', async ({ page, baseURL }) => {
   const appUrl = baseURL ?? '';
   await page.goto(foreignUrl);
 
-  const outcome = await page.evaluate(async (target) => {
-    const results = { read: 'not tried', write: 'not tried' };
-    try {
-      await fetch(`${target}/healthz`);
-      results.read = 'readable';
-    } catch {
-      results.read = 'blocked';
-    }
-    try {
-      const response = await fetch(`${target}/api/anything`, { method: 'POST', mode: 'no-cors' });
-      results.write = response.type;
-    } catch {
-      results.write = 'blocked';
-    }
-    return results;
-  }, appUrl);
-
-  // No CORS headers are sent, so the foreign page can't read a response.
-  expect(outcome.read).toBe('blocked');
-  // A no-cors write gets an opaque response at best; the server side refusal is checked below.
-  expect(['opaque', 'blocked']).toContain(outcome.write);
+  // A page on another site can still send requests; the server must refuse them itself.
+  expect(await statusSeenByServer(page, `${appUrl}/healthz`, 'GET')).toBe(403);
+  expect(await statusSeenByServer(page, `${appUrl}/api/anything`, 'POST')).toBe(403);
 });
 
-test('R27: the server refuses a cross-site request even when its result is never read', async ({
-  request,
-}) => {
-  const response = await request.get('/healthz', { headers: { 'sec-fetch-site': 'cross-site' } });
-  expect(response.status()).toBe(403);
+test('R27: a foreign page cannot read the archive server', async ({ page, baseURL }) => {
+  const appUrl = baseURL ?? '';
+  await page.goto(foreignUrl);
+
+  const readable = await page.evaluate(async (target) => {
+    try {
+      await fetch(`${target}/healthz`);
+      return true;
+    } catch {
+      return false;
+    }
+  }, appUrl);
+
+  // No CORS headers are sent, so even an allowed response could never be read.
+  expect(readable).toBe(false);
 });

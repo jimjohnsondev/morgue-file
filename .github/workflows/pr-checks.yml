@@ -38,8 +38,16 @@ jobs:
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          changed=$(gh pr view "$PR" --repo "$REPO" --json files --jq '[.files[].path | select(startswith("tests/visual/__screenshots__/"))] | length')
-          approved=$(gh pr view "$PR" --repo "$REPO" --json labels --jq '[.labels[].name | select(. == "baseline-approved")] | length')
+          # The REST files endpoint pages through up to 3,000 files; gh pr view stops at 100.
+          files=$(gh api --paginate "repos/$REPO/pulls/$PR/files?per_page=100" --jq '.[].filename')
+          listed=$(printf '%s\n' "$files" | grep -c . || true)
+          total=$(gh api "repos/$REPO/pulls/$PR" --jq '.changed_files')
+          if [ "$listed" != "$total" ]; then
+            echo "Listed $listed of $total changed files, so baseline changes can't be ruled out."
+            exit 1
+          fi
+          changed=$(printf '%s\n' "$files" | grep -c '^tests/visual/__screenshots__/' || true)
+          approved=$(gh api "repos/$REPO/issues/$PR/labels" --jq '[.[].name | select(. == "baseline-approved")] | length')
           echo "Changed baseline files: $changed. Approved label: $approved."
           if [ "$changed" != "0" ] && [ "$approved" = "0" ]; then
             echo "This PR changes screenshot baselines. Jim must add the baseline-approved label."

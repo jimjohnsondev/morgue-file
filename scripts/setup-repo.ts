@@ -3,7 +3,7 @@
 // It is safe to run again; each step replaces what it set before.
 import { execFileSync } from 'node:child_process';
 
-/** The ci.yml jobs every pull request must pass before it can merge. */
+/** The ci.yml and pr-checks.yml jobs every pull request must pass before it can merge. */
 const REQUIRED_CHECKS = [
   'pr-title',
   'lint-typecheck',
@@ -13,6 +13,9 @@ const REQUIRED_CHECKS = [
   'perf',
   'baseline-guard',
 ] as const;
+
+/** GitHub Actions' app id, so only Actions runs (not any posted status) satisfy the checks. */
+const GITHUB_ACTIONS_APP_ID = 15368;
 
 const RULESET_NAME = 'main';
 const BASELINE_LABEL = 'baseline-approved';
@@ -70,7 +73,10 @@ function mainRuleset(): unknown {
         type: 'required_status_checks',
         parameters: {
           strict_required_status_checks_policy: false,
-          required_status_checks: REQUIRED_CHECKS.map((context) => ({ context })),
+          required_status_checks: REQUIRED_CHECKS.map((context) => ({
+            context,
+            integration_id: GITHUB_ACTIONS_APP_ID,
+          })),
         },
       },
     ],
