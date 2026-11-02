@@ -67,6 +67,9 @@ export default tseslint.config(
       },
     },
     plugins: { 'import-x': importX, jsdoc },
+    // Treat the #core and #server aliases as internal on every OS. Without this, import-x
+    // resolves them differently on Windows and orders imports differently from Linux.
+    settings: { 'import-x/internal-regex': '^#' },
     rules: {
       ...readabilityLimits,
       'no-restricted-syntax': ['error', ...bannedSyntax],
