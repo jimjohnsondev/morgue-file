@@ -19,6 +19,9 @@ permissions:
 jobs:
   render:
     runs-on: windows-2025
+    outputs:
+      commit: ${{ steps.result.outputs.commit }}
+      has-baselines: ${{ steps.result.outputs.has-baselines }}
     steps:
       - name: Refuse to run on main
         if: inputs.branch == 'main'
@@ -32,26 +35,38 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-playwright
       - run: npx playwright test --project=visual --update-snapshots --pass-with-no-tests
+      - name: Record the commit rendered and whether any baselines exist
+        id: result
+        shell: bash
+        run: |
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if [ -d tests/visual/__screenshots__ ]; then
+            echo "has-baselines=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-baselines=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/upload-artifact@v4
+        if: steps.result.outputs.has-baselines == 'true'
         with:
           name: baselines
           path: tests/visual/__screenshots__/
-          if-no-files-found: ignore
           retention-days: 1
 
   push:
     needs: render
+    if: needs.render.outputs.has-baselines == 'true'
     runs-on: ubuntu-latest
     steps:
+      # The exact commit that was rendered: if the branch moved since, the push fails as a
+      # non-fast-forward instead of committing screenshots of older code onto newer code.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ needs.render.outputs.commit }}
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
           name: baselines
           path: tests/visual/__screenshots__/
-        continue-on-error: true
       # RELEASE_TOKEN (not GITHUB_TOKEN) pushes, so CI runs again on the new commit. Nothing from
       # the branch has run in this job, and git ignores hooks and any global config.
       - name: Commit the new baselines

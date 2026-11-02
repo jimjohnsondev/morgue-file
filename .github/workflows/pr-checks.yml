@@ -39,6 +39,7 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
         run: |
           # The REST files endpoint pages through up to 3,000 files; gh pr view stops at 100.
+          # One line per changed file: its path, a tab, then its old path if it was renamed.
           entries=$(gh api --paginate "repos/$REPO/pulls/$PR/files?per_page=100" --jq '.[] | [.filename, (.previous_filename // "")] | @tsv')
           listed=$(printf '%s\n' "$entries" | grep -c . || true)
           # A rename out of the baseline folder shows only its new path, so check the old one too.
