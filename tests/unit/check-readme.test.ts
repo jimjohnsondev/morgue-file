@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { findMissingSections, REQUIRED_SECTIONS } from '../../scripts/check-readme.js';
+import { findMissingSections, REQUIRED_SECTIONS } from '../../scripts/check-readme.ts';
 
 describe('R31: the README has every setup section', () => {
   it('R31: the repo README has all of them', async () => {

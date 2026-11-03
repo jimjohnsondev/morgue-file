@@ -53,6 +53,8 @@ npm run build          # Vite client bundle + tsc server into dist/
 npm run test:e2e       # build, then Playwright end-to-end tests in Chromium
 npm run test:visual    # build, then screenshot tests (compare only; never update locally)
 npm run test:perf      # build, then performance tests
+npm run fixtures       # make the fixture archive in fixtures/generated/ (same bytes every run)
+npm run fixtures:perf  # make the synthetic 50,000-item perf library
 ```
 
 CI (`ci.yml`: lint-typecheck, unit, e2e, visual, perf; `pr-checks.yml`: pr-title,

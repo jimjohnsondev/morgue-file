@@ -78,6 +78,7 @@ morgue-file/
     client/           Vite entries: main, selection, dropzone, keyboard, viewer-image, viewer-video, reader, compare
     styles/           tokens.css (approved design values), base.css, templates.css, banner.svg
   scripts/            make-fixtures.ts, seed-fixtures.ts, make-perf-db.ts, package-win.ts, setup-repo.ts, check-readme.ts
+    fixtures/         the fixture planners and writers make-fixtures.ts and make-perf-db.ts run
   packaging/          Morgue File.cmd and Install shortcuts.cmd, copied into the zip as they are
   fixtures/seed.json  invented tags, collections, models, field values
   tests/              unit/, integration/, e2e/, visual/ (+ __screenshots__/), perf/, migrations/, package/
@@ -276,12 +277,17 @@ Every PRD acceptance line becomes an automated test. Every test runs on generate
 
 **Fixture archive.**
 
-- `scripts/make-fixtures.ts` uses a seeded random generator, so its output is the same byte for byte on every run.
-- Images are flat-shaded figures and color fields drawn with sharp. Frame 5's `seated_backlit_017.jpg` is made at its full 4032×3024.
-- Videos are 2-second ffmpeg test clips, and PDFs are lorem pages built with pdf-lib. The set also includes CBZ files and page folders.
-- `fixtures/seed.json` applies tags, collections, models and field values through the app's own API, so seeding exercises real code.
-- Counts match the brief: 4,312 images, 186 videos, 74 publications and 38 collections (4 named, the rest numbered). Elena Varga appears in 212 photos and 4 Library items.
-- CI caches the output, keyed by a hash of the generator and the seed.
+- `npm run fixtures` (`scripts/make-fixtures.ts`) writes the archive to `fixtures/generated/Reference/` and a `manifest.json` beside it with every file's size and SHA-256. Each file is seeded from its own path, so its output is the same byte for byte on every run, whatever order the files are written in. It takes about two minutes and 250 MB. It clears its output folder first, so it refuses any folder outside `fixtures/` or the temp folder.
+- Images are flat-shaded figures on color fields drawn with sharp. They are 1008×756 (or 756×1008), except frame 5's `seated_backlit_017.jpg` at its full 4032×3024. Drapery includes PNG, WebP and GIF, so every P0 image format is present.
+- Videos are 2-second, 640×360 clips of ffmpeg's `testsrc` pattern (it shows a frame counter), encoded with the binary from `ffmpeg-static`; the even timelapses are MOV. Frame 7's `pose_session_04_seated.mp4` is made at its real 1920×1080, 30 fps and 3:15, so its timecodes and loop range fit.
+- PDFs are lorem pages built with pdf-lib. CBZ files (zipped with yazl) and page folders hold page scans named by their number alone (`001.jpg`); page 1 is a cover with the title.
+- The layout follows the brief's Folders row: `Figure`, `Portrait`, `Hands`, `Video/Poses`, `Video/Timelapses`, `Books` and `Magazines` (one subfolder per title) are mapped; Drapery sits in `Misc/` and is filed by hand; the 54 Unsorted downloads sit in `Inbox/`.
+- Names and order follow the mocks. In each Photos folder, slot n holds `figure_000n.jpg` and so on, and file times rise with the slot. Slot 3 of Figure is `seated_backlit_017.jpg`, and Elena's 211 numbered photos (`figure_elena_103.jpg`, `hands_elena_106.jpg` …) fill slots 701 onward in Figure, Hands and Portrait. Frame 7's `pose_session_04_seated.mp4` is likewise third in Poses. Portrait is the newest folder, so `portrait_1488.jpg` heads Recently added. Book titles use frame 2's rule, so Elena's "Notes on Gesture" is `Notes on Gesture, vol. 2`.
+- `fixtures/seed.json` holds the subcategories and folder mappings, Drapery's filing, tags, collections, the model fields, Elena Varga, field values and the viewing history for Home. Items are named by path, or by a pattern where `*` matches within a folder name and `**/` across folders. Its shape is checked by the TypeBox schema in `scripts/fixtures/seed.ts`, and unit tests check every pattern matches and every count against the brief.
+- `scripts/seed-fixtures.ts` applies the seed through the app's own repositories and routes, so seeding exercises real code. It arrives with the repositories (PR 5) and grows as each feature lands. Item page ranges have no label column, so "chapter 4" of Studies in Hands is seeded as pages 61–80.
+- Counts match the brief: 4,312 images, 186 videos, 74 publications and 38 collections (4 named, the rest numbered). Elena Varga appears in 212 photos and 4 Library items, and `tag:hands model:Elena` matches 34 photos and 4 Library items.
+- CI caches `fixtures/generated/`, keyed by a hash of the generator, the seed and `package-lock.json` (sharp and ffmpeg versions change the bytes). The `setup-playwright` action restores it, or makes it on a miss.
+- `npm run fixtures:perf` (`scripts/make-perf-db.ts`) makes the synthetic 50,000-item library for the perf tests from a fixed seed. Until the schema lands in PR 5 it writes the rows to `fixtures/generated/perf-items.jsonl`; PR 5 loads them into `tests/perf/perf.db` through the repositories.
 
 **Stable screenshots.** The viewport is 2560×1440 at device scale 1, and the clock is frozen at 31 Oct 2026. Only system fonts are used. Tests start after every thumbnail exists, then wait for `document.fonts.ready` and for every image to finish loading. The caret is hidden.
 
@@ -500,16 +506,17 @@ A PR is done when its row tests pass, CI is green, no screenshot changed (or the
 
 The biggest technical unknowns are PDF covers rendered in Node and how stable screenshots are on hosted runners. Both are tested early: PDF covers in PR 6, screenshots from PR 2.
 
-| Risk                                                                    | Mitigation                                                                                                                                                                      |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Server-side PDF covers (pdf.js with @napi-rs/canvas) fail on some files | Spike it in PR 6. Fallback: the browser renders the cover the first time it's viewed and posts it back                                                                          |
-| chokidar uses too many handles or too much memory on a large tree       | Measure on a synthetic 50,000-file tree in PR 11. If needed, swap in @parcel/watcher behind the same interface                                                                  |
-| Screenshot diffs flake on hosted runners                                | Windows fonts only, a frozen clock, GPU off, fonts and images loaded before capture. Baselines come only from the CI runner                                                     |
-| A runner image update changes font rendering and fails every PR         | Pin the runner to `windows-2025` rather than `windows-latest`, and refresh baselines on purpose when moving to a new image                                                      |
-| The `baseline-approved` label is a weak control                         | Agent rule 1 forbids adding it. If Claude Code pushes with Jim's GitHub credentials, GitHub can't tell who added the label; a separate bot account for the agent would fix that |
-| Native modules don't match the bundled Node                             | CI and packaging both read `.nvmrc`, and the smoke test launches the packaged app                                                                                               |
-| Windows blocks the downloaded zip (Mark of the Web)                     | The README says to Unblock the zip before extracting it                                                                                                                         |
-| Chromium can't play some video codecs                                   | Show the poster frame and a note; no transcoding in v1                                                                                                                          |
+| Risk                                                                                                              | Mitigation                                                                                                                                                                      |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Server-side PDF covers (pdf.js with @napi-rs/canvas) fail on some files                                           | Spike it in PR 6. Fallback: the browser renders the cover the first time it's viewed and posts it back                                                                          |
+| The page-folder rule as worded also matches photo folders such as `Figure/` (only numbered images, no subfolders) | PR 6 tightens it to files named by a number alone (`001.jpg`, as the fixture's page scans are) and tests it on the fixture                                                      |
+| chokidar uses too many handles or too much memory on a large tree                                                 | Measure on a synthetic 50,000-file tree in PR 11. If needed, swap in @parcel/watcher behind the same interface                                                                  |
+| Screenshot diffs flake on hosted runners                                                                          | Windows fonts only, a frozen clock, GPU off, fonts and images loaded before capture. Baselines come only from the CI runner                                                     |
+| A runner image update changes font rendering and fails every PR                                                   | Pin the runner to `windows-2025` rather than `windows-latest`, and refresh baselines on purpose when moving to a new image                                                      |
+| The `baseline-approved` label is a weak control                                                                   | Agent rule 1 forbids adding it. If Claude Code pushes with Jim's GitHub credentials, GitHub can't tell who added the label; a separate bot account for the agent would fix that |
+| Native modules don't match the bundled Node                                                                       | CI and packaging both read `.nvmrc`, and the smoke test launches the packaged app                                                                                               |
+| Windows blocks the downloaded zip (Mark of the Web)                                                               | The README says to Unblock the zip before extracting it                                                                                                                         |
+| Chromium can't play some video codecs                                                                             | Show the poster frame and a note; no transcoding in v1                                                                                                                          |
 
 | Decision (31 Oct 2026)                                             | Why                                                                                                       |
 | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |

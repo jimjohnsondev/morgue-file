@@ -40,6 +40,10 @@ import path from 'node:path';
 import { AppError } from '#core/errors.js';
 ```
 
+Scripts in `scripts/` run under plain `node`, which strips the types but doesn't rewrite
+extensions, so they import each other with `.ts` (`./fixtures/plan.ts`). Tests that import a
+script use the same `.ts` path.
+
 ### Functions
 
 `function` declarations for anything named. Arrow functions only as short inline callbacks.
