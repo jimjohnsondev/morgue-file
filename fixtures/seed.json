@@ -1,0 +1,540 @@
+{
+  "subcategories": [
+    {
+      "section": "photos",
+      "name": "Figure",
+      "folders": ["Figure"]
+    },
+    {
+      "section": "photos",
+      "name": "Portrait",
+      "folders": ["Portrait"]
+    },
+    {
+      "section": "photos",
+      "name": "Hands",
+      "folders": ["Hands"]
+    },
+    {
+      "section": "photos",
+      "name": "Drapery",
+      "folders": []
+    },
+    {
+      "section": "video",
+      "name": "Poses",
+      "folders": ["Video/Poses"]
+    },
+    {
+      "section": "video",
+      "name": "Timelapses",
+      "folders": ["Video/Timelapses"]
+    },
+    {
+      "section": "library",
+      "name": "Books",
+      "folders": ["Books"]
+    },
+    {
+      "section": "library",
+      "name": "Magazines",
+      "folders": ["Magazines"]
+    }
+  ],
+  "filedByHand": [
+    {
+      "subcategory": "Drapery",
+      "items": ["Misc/drapery_*"]
+    }
+  ],
+  "picklistChoices": {
+    "magazine_title": ["Life Drawing Quarterly", "Gouache Monthly", "The Figure Annual"]
+  },
+  "itemFieldValues": [
+    {
+      "items": ["Figure/seated_backlit_017.jpg"],
+      "values": {
+        "rating": 4,
+        "source_url": "https://example.com/seated-backlit"
+      }
+    },
+    {
+      "items": ["Video/Poses/pose_session_04_seated.mp4"],
+      "values": {
+        "rating": 3
+      }
+    },
+    {
+      "items": ["Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 12.pdf"],
+      "values": {
+        "rating": 5
+      }
+    },
+    {
+      "items": ["Magazines/Life Drawing Quarterly/*"],
+      "values": {
+        "magazine_title": "Life Drawing Quarterly"
+      }
+    },
+    {
+      "items": ["Magazines/Gouache Monthly/*"],
+      "values": {
+        "magazine_title": "Gouache Monthly"
+      }
+    },
+    {
+      "items": ["Magazines/The Figure Annual/*"],
+      "values": {
+        "magazine_title": "The Figure Annual"
+      }
+    },
+    {
+      "items": ["Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 1.pdf"],
+      "values": {
+        "issue_date": "2021-03-01"
+      }
+    },
+    {
+      "items": ["Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 2.pdf"],
+      "values": {
+        "issue_date": "2021-06-01"
+      }
+    },
+    {
+      "items": ["Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 3.pdf"],
+      "values": {
+        "issue_date": "2021-09-01"
+      }
+    },
+    {
+      "items": ["Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 4.pdf"],
+      "values": {
+        "issue_date": "2021-12-01"
+      }
+    },
+    {
+      "items": ["Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 5.pdf"],
+      "values": {
+        "issue_date": "2022-03-01"
+      }
+    },
+    {
+      "items": ["Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 6.pdf"],
+      "values": {
+        "issue_date": "2022-06-01"
+      }
+    },
+    {
+      "items": ["Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 7.pdf"],
+      "values": {
+        "issue_date": "2022-09-01"
+      }
+    },
+    {
+      "items": ["Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 8.pdf"],
+      "values": {
+        "issue_date": "2022-12-01"
+      }
+    },
+    {
+      "items": ["Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 9.pdf"],
+      "values": {
+        "issue_date": "2023-03-01"
+      }
+    },
+    {
+      "items": ["Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 10.pdf"],
+      "values": {
+        "issue_date": "2023-06-01"
+      }
+    },
+    {
+      "items": ["Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 11.pdf"],
+      "values": {
+        "issue_date": "2023-09-01"
+      }
+    },
+    {
+      "items": ["Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 12.pdf"],
+      "values": {
+        "issue_date": "2023-12-01"
+      }
+    },
+    {
+      "items": ["Magazines/Gouache Monthly/Gouache Monthly No. 1.pdf"],
+      "values": {
+        "issue_date": "2024-01-01"
+      }
+    },
+    {
+      "items": ["Magazines/Gouache Monthly/Gouache Monthly No. 2.pdf"],
+      "values": {
+        "issue_date": "2024-02-01"
+      }
+    },
+    {
+      "items": ["Magazines/Gouache Monthly/Gouache Monthly No. 3.pdf"],
+      "values": {
+        "issue_date": "2024-03-01"
+      }
+    },
+    {
+      "items": ["Magazines/Gouache Monthly/Gouache Monthly No. 4.pdf"],
+      "values": {
+        "issue_date": "2024-04-01"
+      }
+    },
+    {
+      "items": ["Magazines/Gouache Monthly/Gouache Monthly No. 5.pdf"],
+      "values": {
+        "issue_date": "2024-05-01"
+      }
+    },
+    {
+      "items": ["Magazines/Gouache Monthly/Gouache Monthly No. 6.pdf"],
+      "values": {
+        "issue_date": "2024-06-01"
+      }
+    },
+    {
+      "items": ["Magazines/The Figure Annual/The Figure Annual No. 1.pdf"],
+      "values": {
+        "issue_date": "2020-11-01"
+      }
+    },
+    {
+      "items": ["Magazines/The Figure Annual/The Figure Annual No. 2.pdf"],
+      "values": {
+        "issue_date": "2021-11-01"
+      }
+    },
+    {
+      "items": ["Magazines/The Figure Annual/The Figure Annual No. 3.pdf"],
+      "values": {
+        "issue_date": "2022-11-01"
+      }
+    },
+    {
+      "items": ["Magazines/The Figure Annual/The Figure Annual No. 4.pdf"],
+      "values": {
+        "issue_date": "2023-11-01"
+      }
+    },
+    {
+      "items": ["Magazines/The Figure Annual/The Figure Annual No. 5.pdf"],
+      "values": {
+        "issue_date": "2024-11-01"
+      }
+    }
+  ],
+  "modelFields": [
+    {
+      "key": "agency_link",
+      "label": "Agency link",
+      "type": "link"
+    },
+    {
+      "key": "first_session",
+      "label": "First session",
+      "type": "date"
+    },
+    {
+      "key": "sessions",
+      "label": "Sessions",
+      "type": "number"
+    },
+    {
+      "key": "pose_length",
+      "label": "Pose length",
+      "type": "picklist",
+      "options": ["Short", "Long", "Both"]
+    }
+  ],
+  "models": [
+    {
+      "name": "Elena Varga",
+      "fields": {
+        "bio": "Dancer and life model. Best in long seated poses and strong back-lit setups.",
+        "agency_link": "https://example.com/elena-varga",
+        "first_session": "2024-03-14",
+        "sessions": 6,
+        "pose_length": "Long"
+      },
+      "tags": ["dancer", "long poses"],
+      "portrait": "Portrait/portrait_elena_109.jpg",
+      "appearsIn": [
+        {
+          "items": ["Figure/seated_backlit_017.jpg", "**/*_elena_*.jpg"]
+        },
+        {
+          "items": ["Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 12.pdf"],
+          "pages": [12, 19]
+        },
+        {
+          "items": ["Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 9.pdf"],
+          "pages": [30, 35]
+        },
+        {
+          "items": ["Books/Studies in Hands.cbz"],
+          "pages": [61, 80]
+        },
+        {
+          "items": ["Books/Notes on Gesture, vol. 2.pdf"],
+          "pages": [88, 95]
+        }
+      ]
+    }
+  ],
+  "tags": [
+    {
+      "name": "hands",
+      "items": [
+        "Figure/seated_backlit_017.jpg",
+        "Figure/figure_elena_103.jpg",
+        "Hands/hands_elena_106.jpg",
+        "Portrait/portrait_elena_109.jpg",
+        "Figure/figure_elena_112.jpg",
+        "Hands/hands_elena_115.jpg",
+        "Portrait/portrait_elena_118.jpg",
+        "Figure/figure_elena_121.jpg",
+        "Hands/hands_elena_124.jpg",
+        "Portrait/portrait_elena_127.jpg",
+        "Figure/figure_elena_130.jpg",
+        "Hands/hands_elena_133.jpg",
+        "Portrait/portrait_elena_136.jpg",
+        "Figure/figure_elena_139.jpg",
+        "Hands/hands_elena_142.jpg",
+        "Portrait/portrait_elena_145.jpg",
+        "Figure/figure_elena_148.jpg",
+        "Hands/hands_elena_151.jpg",
+        "Portrait/portrait_elena_154.jpg",
+        "Figure/figure_elena_157.jpg",
+        "Hands/hands_elena_160.jpg",
+        "Portrait/portrait_elena_163.jpg",
+        "Figure/figure_elena_166.jpg",
+        "Hands/hands_elena_169.jpg",
+        "Portrait/portrait_elena_172.jpg",
+        "Figure/figure_elena_175.jpg",
+        "Hands/hands_elena_178.jpg",
+        "Portrait/portrait_elena_181.jpg",
+        "Figure/figure_elena_184.jpg",
+        "Hands/hands_elena_187.jpg",
+        "Portrait/portrait_elena_190.jpg",
+        "Figure/figure_elena_193.jpg",
+        "Hands/hands_elena_196.jpg",
+        "Portrait/portrait_elena_199.jpg",
+        "Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 12.pdf",
+        "Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 9.pdf",
+        "Books/Studies in Hands.cbz",
+        "Books/Notes on Gesture, vol. 2.pdf",
+        "Hands/hands_00*.jpg"
+      ]
+    },
+    {
+      "name": "foreshortened",
+      "items": ["Hands/hands_02*.jpg"]
+    },
+    {
+      "name": "back-lit",
+      "items": ["Figure/seated_backlit_017.jpg", "Figure/figure_01*.jpg"]
+    },
+    {
+      "name": "seated",
+      "items": [
+        "Figure/seated_backlit_017.jpg",
+        "Video/Poses/*_seated.mp4",
+        "Figure/figure_02*.jpg"
+      ]
+    },
+    {
+      "name": "contrapposto",
+      "items": ["Figure/figure_03*.jpg"]
+    },
+    {
+      "name": "profile",
+      "items": ["Portrait/portrait_02*.jpg"]
+    },
+    {
+      "name": "three-quarter",
+      "items": ["Video/Poses/pose_session_04_seated.mp4", "Portrait/portrait_03*.jpg"]
+    }
+  ],
+  "collections": [
+    {
+      "name": "Spring model session",
+      "items": [
+        "Figure/seated_backlit_017.jpg",
+        "Video/Poses/pose_session_04_seated.mp4",
+        "Figure/figure_elena_*.jpg"
+      ]
+    },
+    {
+      "name": "Gouache palettes",
+      "items": ["Misc/drapery_001*"]
+    },
+    {
+      "name": "Hands foreshortened",
+      "items": ["Hands/hands_02*.jpg"]
+    },
+    {
+      "name": "Old masters drapery",
+      "items": ["Misc/drapery_03*"]
+    },
+    {
+      "name": "Collection 05",
+      "items": ["Portrait/portrait_005*.jpg"]
+    },
+    {
+      "name": "Collection 06",
+      "items": ["Portrait/portrait_006*.jpg"]
+    },
+    {
+      "name": "Collection 07",
+      "items": ["Portrait/portrait_007*.jpg"]
+    },
+    {
+      "name": "Collection 08",
+      "items": ["Portrait/portrait_008*.jpg"]
+    },
+    {
+      "name": "Collection 09",
+      "items": ["Portrait/portrait_009*.jpg"]
+    },
+    {
+      "name": "Collection 10",
+      "items": ["Portrait/portrait_010*.jpg"]
+    },
+    {
+      "name": "Collection 11",
+      "items": ["Portrait/portrait_011*.jpg"]
+    },
+    {
+      "name": "Collection 12",
+      "items": ["Portrait/portrait_012*.jpg"]
+    },
+    {
+      "name": "Collection 13",
+      "items": ["Portrait/portrait_013*.jpg"]
+    },
+    {
+      "name": "Collection 14",
+      "items": ["Portrait/portrait_014*.jpg"]
+    },
+    {
+      "name": "Collection 15",
+      "items": ["Portrait/portrait_015*.jpg"]
+    },
+    {
+      "name": "Collection 16",
+      "items": ["Portrait/portrait_016*.jpg"]
+    },
+    {
+      "name": "Collection 17",
+      "items": ["Portrait/portrait_017*.jpg"]
+    },
+    {
+      "name": "Collection 18",
+      "items": ["Portrait/portrait_018*.jpg"]
+    },
+    {
+      "name": "Collection 19",
+      "items": ["Portrait/portrait_019*.jpg"]
+    },
+    {
+      "name": "Collection 20",
+      "items": ["Portrait/portrait_020*.jpg"]
+    },
+    {
+      "name": "Collection 21",
+      "items": ["Portrait/portrait_021*.jpg"]
+    },
+    {
+      "name": "Collection 22",
+      "items": ["Portrait/portrait_022*.jpg"]
+    },
+    {
+      "name": "Collection 23",
+      "items": ["Portrait/portrait_023*.jpg"]
+    },
+    {
+      "name": "Collection 24",
+      "items": ["Portrait/portrait_024*.jpg"]
+    },
+    {
+      "name": "Collection 25",
+      "items": ["Portrait/portrait_025*.jpg"]
+    },
+    {
+      "name": "Collection 26",
+      "items": ["Portrait/portrait_026*.jpg"]
+    },
+    {
+      "name": "Collection 27",
+      "items": ["Portrait/portrait_027*.jpg"]
+    },
+    {
+      "name": "Collection 28",
+      "items": ["Portrait/portrait_028*.jpg"]
+    },
+    {
+      "name": "Collection 29",
+      "items": ["Portrait/portrait_029*.jpg"]
+    },
+    {
+      "name": "Collection 30",
+      "items": ["Portrait/portrait_030*.jpg"]
+    },
+    {
+      "name": "Collection 31",
+      "items": ["Portrait/portrait_031*.jpg"]
+    },
+    {
+      "name": "Collection 32",
+      "items": ["Portrait/portrait_032*.jpg"]
+    },
+    {
+      "name": "Collection 33",
+      "items": ["Portrait/portrait_033*.jpg"]
+    },
+    {
+      "name": "Collection 34",
+      "items": ["Portrait/portrait_034*.jpg"]
+    },
+    {
+      "name": "Collection 35",
+      "items": ["Portrait/portrait_035*.jpg"]
+    },
+    {
+      "name": "Collection 36",
+      "items": ["Portrait/portrait_036*.jpg"]
+    },
+    {
+      "name": "Collection 37",
+      "items": ["Portrait/portrait_037*.jpg"]
+    },
+    {
+      "name": "Collection 38",
+      "items": ["Portrait/portrait_038*.jpg"]
+    }
+  ],
+  "views": [
+    {
+      "item": "Figure/figure_0193.jpg",
+      "viewedAt": "2026-10-30T16:20:00Z"
+    },
+    {
+      "item": "Magazines/Life Drawing Quarterly/Life Drawing Quarterly No. 12.pdf",
+      "viewedAt": "2026-10-30T19:05:00Z",
+      "position": 12
+    },
+    {
+      "item": "Video/Poses/pose_session_04_seated.mp4",
+      "viewedAt": "2026-10-31T09:40:00Z",
+      "position": 42.12
+    },
+    {
+      "item": "Figure/seated_backlit_017.jpg",
+      "viewedAt": "2026-10-31T10:15:00Z"
+    }
+  ]
+}

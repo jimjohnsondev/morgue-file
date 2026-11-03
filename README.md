@@ -123,6 +123,7 @@ npm ci
 npm run dev       # builds, then serves http://127.0.0.1:47613 (the repo is its home folder)
 npm run check     # format, lint, README sections, typecheck and tests
 npm run test:e2e  # Playwright end-to-end tests in Chromium
+npm run fixtures  # makes the invented test archive in fixtures/generated/ (about 2 minutes)
 ```
 
 `npm run package` builds the Windows zip into `release/`; it runs on Windows only.

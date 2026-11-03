@@ -1,4 +1,5 @@
-# Shared steps for the Playwright jobs: Node from .nvmrc, dependencies, Chromium, and a build.
+# Shared steps for the Playwright jobs: Node from .nvmrc, dependencies, Chromium, the fixture
+# archive (restored from the cache, or made on a miss), and a build.
 # Windows runners only: the browser cache path below is Playwright's Windows default.
 name: setup-playwright
 description: Install dependencies and Chromium, then build the app
@@ -17,6 +18,18 @@ runs:
         path: ~\AppData\Local\ms-playwright
         key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
     - run: npx playwright install chromium
+      shell: bash
+    # The key covers everything that changes the fixture bytes: the generator, the seed, and the
+    # locked sharp and ffmpeg versions (docs/ARCHITECTURE.md, Fixture archive).
+    - name: Cache the fixture archive
+      id: fixtures
+      uses: actions/cache@v4
+      with:
+        path: fixtures/generated
+        key: fixtures-${{ runner.os }}-${{ hashFiles('scripts/make-fixtures.ts', 'scripts/make-perf-db.ts', 'scripts/fixtures/**', 'fixtures/seed.json', 'package-lock.json') }}
+    - name: Make the fixture archive
+      if: steps.fixtures.outputs.cache-hit != 'true'
+      run: npm run fixtures && npm run fixtures:perf
       shell: bash
     - run: npm run build
       shell: bash
