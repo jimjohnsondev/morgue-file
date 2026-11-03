@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.2.0...v1.3.0) (2026-11-03)
+
+
+### Features
+
+* query engine, Index template, tab bar, banner, footer and minimal group-by ([#25](https://github.com/jimjohnsondev/morgue-file/issues/25)) ([8d6e0c7](https://github.com/jimjohnsondev/morgue-file/commit/8d6e0c70db29966b22133898d9e35451de37ccff))
+
 ## [1.2.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.1.0...v1.2.0) (2026-11-03)
 
 
