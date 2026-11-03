@@ -74,7 +74,7 @@ morgue-file/
       slug.ts         URL slugs for subcategories and models
       archive/        originals.ts (only fs access to roots), classify.ts, pagefolder.ts
       indexer/        scanner.ts, watcher.ts, reconcile.ts, moves.ts, roots.ts
-      jobs/           queue.ts, workers/ (thumb-image, thumb-pdf, thumb-video, hash)
+      jobs/           queue.ts, thumbnails.ts, workers/ (thumb-image, thumb-pdf, thumb-video, thumb-pages, hash)
       ingest/         ingest.ts, fetch-url.ts
       backup/         zip export and restore
     client/           Vite entries: main, selection, dropzone, keyboard, viewer-image, viewer-video, reader, compare
@@ -162,9 +162,27 @@ The server starts answering before indexing begins, then indexes in the backgrou
 **Job queue.**
 
 - Jobs run by priority, then newest first: 0 for thumbnails requested by the page being viewed, 1 for ingested files, 2 for background work.
-- Image and PDF jobs run on a piscina worker pool sized max(1, cores ÷ 2). Video frames use at most 2 ffmpeg processes.
+- Image and PDF jobs run on a piscina worker pool sized max(1, cores ÷ 2). Video frames use at most 2 ffmpeg processes. (As built in PR 6, they run in the main process; see below.)
 - A failed job is retried 3 times, then marked failed; the error shows on the item page.
 - Progress (E5) streams to pages over SSE at `/events`, with pause and resume.
+
+**As built in PR 6.**
+
+- `core/indexer/walk.ts` walks a root folder by folder, in name order, through `listFolder()` in `originals.ts` (`fs.opendir` plus a `stat` per file; links are skipped). `scanner.ts` compares what it finds with `items` by path, folding ASCII case as SQLite's `NOCASE` does, and writes 500 changes per transaction. A second file whose name differs only in case (possible off Windows) is counted as ignored.
+- A scanned file's `added_at` is its own modified time (never later than now), so a first index lists the archive newest first by file date, as the fixture's "Recently added" expects. Ingest (PR 12) will use the drop time.
+- A subfolder that can't be read is skipped and counted, and its items aren't marked missing. An unreadable root fails the scan. A root that isn't there is marked offline before anything else happens, so no item is marked missing; the 30 s re-check and banner E3 come with PR 11, as do moves and partial hashes.
+- The page-folder rule takes files named by a number alone (`001.jpg`), never the root itself or anything under `Inbox/`, where pasted screenshots such as `1.png` and `2.png` stay photos. A page folder's size is the sum of its pages and its time is the newest page's.
+- Job types are `thumb-image`, `thumb-video`, `thumb-pdf` and `thumb-pages` (CBZ files and page folders). An item has one row per type; queuing it again resets a finished row. A job gets 4 attempts (one try, three retries), then it and the item's `thumb_state` are marked failed. Finished rows stay as `done`.
+- **Departure: no piscina yet.** Jobs run in the server process in two lanes: images, PDFs and pages share max(1, cores ÷ 2) places, and videos have 2. sharp does its work on libuv's thread pool and ffmpeg runs as a child process, so neither blocks a request. pdf.js renders page 1 on the main thread, which takes about 250 ms for a fixture PDF. If the 50,000-file test in PR 11 or the perf suite shows that hurting page times, `thumb-pdf` moves to a worker pool (piscina) then. piscina isn't a dependency until that happens.
+- The queue makes the default size: 320 px squares for images and videos, 320×464 covers for PDFs, CBZ files and page folders. Files are `thumbs/<id mod 256, two hex digits>/<id>-320.webp` or `<id>-320x464.webp`, written under a `.partial` name and then renamed. Squares crop with sharp's `attention` position; covers keep the centre.
+- Thumbnail jobs also store media details: the displayed width and height of images (after EXIF rotation), ffprobe's size, frame rate and duration for videos, and `page_count` for PDFs (pdf.js), CBZ files (image entries) and page folders.
+- pdf.js is the legacy build, given `pdfjs-dist/standard_fonts/`, because PDFs that name Helvetica without embedding it (as the fixture's do) draw no text without them. It renders onto an `@napi-rs/canvas` canvas.
+- Workers name originals by root and relative path. Images, PDFs and page-folder pages are read with `readOriginal()`; CBZ files are opened read-only by `openOriginal()` and read by yauzl from that descriptor. ffmpeg and ffprobe open videos themselves, so they get the path from `resolveOriginalPath()`, which refuses any path outside the root. That is the only place a path to an original leaves `originals.ts`.
+- ffmpeg and ffprobe come from `ffmpeg-static` and `@ffprobe-installer/ffprobe`, both dev dependencies. A development checkout uses them from `node_modules`; `package-win.ts` copies the Windows binaries into the zip's `bin\`, with their GPL-3.0 license text in `LICENSES\`, and the app looks there first.
+- Runtime dependencies added: sharp (moved from dev), pdfjs-dist, @napi-rs/canvas and yauzl, all named above.
+- `server/library-runtime.ts` opens the library once the install is ready: at launch after the server is listening, when setup's Save finishes, or when a missing data folder comes back. It then scans root 1 once, logs the scan summary (the scan log, with the ignored count) and runs the queue. Stopping the server aborts the scan, waits for running jobs and closes the database.
+- Thumbnails aren't served yet: `/media/thumb`, the other sizes and priority-0 jobs arrive with the Index template in PR 7.
+- Known gap: a file that changes while its thumbnail job is running keeps the old thumbnail until it changes again. The watcher (PR 11) should requeue in that case.
 
 ## Thumbnails and media
 

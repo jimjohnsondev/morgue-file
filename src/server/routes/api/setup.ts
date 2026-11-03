@@ -10,6 +10,7 @@ import { claimDataFolder } from '../../install/lock-file.js';
 import { completeSetup, requireFullPath } from '../../install/setup.js';
 
 import type { InstallStateHolder } from '../../install/install-state.js';
+import type { LibraryRuntime } from '../../library-runtime.js';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance } from 'fastify';
 
@@ -18,6 +19,8 @@ export type SetupApiContext = {
   readonly homeDir: string;
   readonly port: number;
   readonly install: InstallStateHolder;
+  /** Started once setup is done, so indexing begins without a restart. Tests may leave it out. */
+  readonly library?: LibraryRuntime | undefined;
 };
 
 const FolderBody = Type.Object({
@@ -91,6 +94,7 @@ function registerSaveRoute(app: FastifyInstance, context: SetupApiContext): void
     });
     if (state.kind === 'ready') {
       await claimDataFolder(state.dataDir, context.port);
+      context.library?.start(state, request.log);
     }
     context.install.current = state;
     return { message: 'Saved. Opening your archive.' };

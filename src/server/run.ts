@@ -4,9 +4,11 @@ import { AppError, systemErrorCode } from '#core/errors.js';
 
 import { buildApp } from './app.js';
 import { claimDataFolder, releaseLockSync } from './install/lock-file.js';
+import { createLibraryRuntime } from './library-runtime.js';
 
 import type { ServerConfig } from './config.js';
 import type { InstallStateHolder } from './install/install-state.js';
+import type { LibraryRuntime } from './library-runtime.js';
 import type { FastifyInstance } from 'fastify';
 
 /** How to start: the config without a port, the install state, and the ports to try in order. */
@@ -24,21 +26,27 @@ const PORT_BUSY_CODES: ReadonlySet<string> = new Set(['EADDRINUSE', 'EACCES']);
 export type RunningServer = {
   readonly app: FastifyInstance;
   readonly port: number;
+  /** The library, started once the data folder is known; tests wait on its indexing. */
+  readonly library: LibraryRuntime;
   readonly stop: () => Promise<void>;
 };
 
-type ListeningApp = Omit<RunningServer, 'stop'>;
+type ListeningApp = Omit<RunningServer, 'stop' | 'library'>;
 
 /**
  * Listens on the first port that is free. The app is built per port because its Host check
  * needs to know the port it answers on.
  */
-async function listenOnFirstFreePort(options: RunOptions): Promise<ListeningApp> {
+async function listenOnFirstFreePort(
+  options: RunOptions,
+  library: LibraryRuntime,
+): Promise<ListeningApp> {
   for (const port of options.ports) {
     const app = await buildApp({
       config: { ...options.config, port },
       install: options.install,
       logger: options.logger ?? true,
+      library,
     });
     try {
       await app.listen({ host: options.config.host, port });
@@ -91,18 +99,27 @@ function releaseLockOnExit(install: InstallStateHolder): () => void {
   };
 }
 
-/** Starts the server. If setup has already run, it locks the data folder and saves the port. */
+/**
+ * Starts the server. If setup has already run, it locks the data folder, saves the port and
+ * starts indexing once the server is listening, so the first page never waits on the scan.
+ */
 export async function runServer(options: RunOptions): Promise<RunningServer> {
-  const { app, port } = await listenOnFirstFreePort(options);
+  const library = createLibraryRuntime({
+    appDir: options.config.appDir,
+    appVersion: options.config.version,
+  });
+  const { app, port } = await listenOnFirstFreePort(options, library);
   const removeExitHooks = releaseLockOnExit(options.install);
   const state = options.install.current;
   if (state.kind === 'ready') {
     await claimDataFolder(state.dataDir, port);
+    library.start(state, app.log);
   }
   async function stop(): Promise<void> {
     removeExitHooks();
+    await library.stop();
     releaseLock(options.install);
     await app.close();
   }
-  return { app, port, stop };
+  return { app, port, library, stop };
 }

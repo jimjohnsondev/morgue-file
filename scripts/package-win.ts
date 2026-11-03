@@ -5,6 +5,7 @@
 import { execFileSync, execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 
 import { marked } from 'marked';
@@ -77,6 +78,27 @@ function addApp(): void {
   cpSync(path.join(REPO_DIR, 'LICENSE'), path.join(STAGE_DIR, 'LICENSES', 'morgue-file.txt'));
 }
 
+/**
+ * Copies ffmpeg.exe and ffprobe.exe from their pinned dev dependencies into bin\, where the app
+ * looks first (src/core/jobs/workers/media-tools.ts). Both builds are GPL-3.0; ffmpeg-static
+ * ships the license text, which covers both.
+ */
+function addMediaTools(): void {
+  // Both packages are CommonJS modules whose export is the binary's path.
+  const loadPackage = createRequire(import.meta.url);
+  const ffmpeg = loadPackage('ffmpeg-static') as string | null;
+  const ffprobe = (loadPackage('@ffprobe-installer/ffprobe') as { path: string }).path;
+  if (ffmpeg === null) {
+    throw new Error('ffmpeg-static has no binary for this system; run npm ci again.');
+  }
+  cpSync(ffmpeg, path.join(STAGE_DIR, 'bin', 'ffmpeg.exe'));
+  cpSync(ffprobe, path.join(STAGE_DIR, 'bin', 'ffprobe.exe'));
+  cpSync(
+    path.join(path.dirname(ffmpeg), 'ffmpeg.LICENSE'),
+    path.join(STAGE_DIR, 'LICENSES', 'ffmpeg-and-ffprobe.txt'),
+  );
+}
+
 /** Renders README.md into README.html, so the instructions open in any browser. */
 function addReadme(): void {
   const body = marked.parse(readFileSync(path.join(REPO_DIR, 'README.md'), 'utf8'), {
@@ -117,6 +139,7 @@ async function packageForWindows(): Promise<void> {
   mkdirSync(STAGE_DIR, { recursive: true });
   addApp();
   await addNodeRuntime();
+  addMediaTools();
   addReadme();
   addLaunchers();
   const zipPath = writeZip(readAppVersion());

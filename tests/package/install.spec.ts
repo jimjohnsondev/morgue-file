@@ -56,6 +56,10 @@ test('R29, R30, R31: the README steps work from a path with spaces, keeping data
   await makeReferenceFolder(REFERENCE_DIR);
   // The README's instructions travel in the zip, readable in any browser.
   expect(await readFile(path.join(installDir, 'README.html'), 'utf8')).toContain('First run');
+  // Video thumbnails need ffmpeg and ffprobe, which the zip carries in bin\ (R6).
+  for (const tool of ['ffmpeg.exe', 'ffprobe.exe']) {
+    expect((await stat(path.join(installDir, 'bin', tool))).isFile()).toBe(true);
+  }
 
   const server = startMorgueFile(installDir);
   await waitForApp();

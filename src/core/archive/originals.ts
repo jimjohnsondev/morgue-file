@@ -1,6 +1,6 @@
 // The only module that touches files under a Reference root: it reads, and creates the Inbox.
 import { existsSync } from 'node:fs';
-import { mkdir, readdir, stat } from 'node:fs/promises';
+import { mkdir, open, opendir, readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { AppError, systemErrorCode } from '#core/errors.js';
@@ -10,6 +10,21 @@ export const INBOX_FOLDER_NAME = 'Inbox';
 
 /** The Reference folder setup suggests, from the PRD: the secondary drive's root. */
 const SUGGESTED_REFERENCE_FOLDER = 'E:\\Reference';
+
+/** One entry of a folder under a root, with what the scanner compares between scans. */
+export type FolderEntry = {
+  readonly name: string;
+  readonly isFolder: boolean;
+  /** Bytes, and last-modified time in ms since the epoch; 0 for folders. */
+  readonly size: number;
+  readonly mtimeMs: number;
+};
+
+/** A file under a root opened read-only, for readers such as yauzl that take a descriptor. */
+export type OpenOriginal = {
+  readonly fd: number;
+  readonly close: () => Promise<void>;
+};
 
 /** What setup's Check reports about a Reference folder. */
 export type ReferenceFolderSummary = {
@@ -76,4 +91,52 @@ export function findSuggestedReferenceFolder(): string | undefined {
     return undefined;
   }
   return SUGGESTED_REFERENCE_FOLDER;
+}
+
+/**
+ * Joins a root and a path relative to it, refusing any path that would leave the root (`..`, an
+ * absolute path, another drive), so a bad row in the database can never reach other files.
+ */
+export function resolveOriginalPath(rootPath: string, relPath: string): string {
+  const root = path.resolve(rootPath);
+  const resolved = path.resolve(root, relPath);
+  const relative = path.relative(root, resolved);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new AppError('invalid-input', `${relPath} is outside the Reference folder.`);
+  }
+  return resolved;
+}
+
+/**
+ * Lists a folder under a root: its subfolders, and its files with size and time. Other entries
+ * (links, devices) are left out, so a link can't lead a scan outside the root or round in a loop.
+ */
+export async function listFolder(rootPath: string, relDir: string): Promise<FolderEntry[]> {
+  const folder = resolveOriginalPath(rootPath, relDir);
+  const entries: FolderEntry[] = [];
+  for await (const entry of await opendir(folder)) {
+    if (entry.isDirectory()) {
+      entries.push({ name: entry.name, isFolder: true, size: 0, mtimeMs: 0 });
+    } else if (entry.isFile()) {
+      const details = await stat(path.join(folder, entry.name));
+      entries.push({
+        name: entry.name,
+        isFolder: false,
+        size: details.size,
+        mtimeMs: Math.trunc(details.mtimeMs),
+      });
+    }
+  }
+  return entries;
+}
+
+/** Reads a whole file under a root, read-only. */
+export async function readOriginal(rootPath: string, relPath: string): Promise<Buffer> {
+  return readFile(resolveOriginalPath(rootPath, relPath), { flag: 'r' });
+}
+
+/** Opens a file under a root read-only, for a reader that seeks within it (CBZ). */
+export async function openOriginal(rootPath: string, relPath: string): Promise<OpenOriginal> {
+  const handle = await open(resolveOriginalPath(rootPath, relPath), 'r');
+  return { fd: handle.fd, close: async () => handle.close() };
 }
