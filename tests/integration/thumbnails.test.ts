@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 
 import sharp from 'sharp';
@@ -74,7 +74,8 @@ describe('thumbnails for every P0 format', () => {
         size,
       );
       expect(existsSync(thumbnail), file.relPath).toBe(true);
-      const metadata = await sharp(thumbnail).metadata();
+      // From a buffer: given a path, libvips' cache keeps the file open, and Windows then can't delete it.
+      const metadata = await sharp(await readFile(thumbnail)).metadata();
       expect([metadata.format, metadata.width, metadata.height], file.relPath).toEqual([
         'webp',
         size.width,
