@@ -1,6 +1,8 @@
 // Runs ffmpeg or ffprobe and collects what it prints. The one wrapper around execFile in core.
 import { execFile } from 'node:child_process';
 
+import { AppError } from '#core/errors.js';
+
 /** Longest a tool may run; a frame grab or probe takes well under a second. */
 const TOOL_TIMEOUT_MS = 60_000;
 
@@ -27,7 +29,7 @@ export async function runTool(program: string, args: readonly string[]): Promise
           resolve(stdout);
         } else {
           const detail = stderr.toString().trim();
-          reject(new Error(detail === '' ? error.message : detail));
+          reject(new AppError('media-unreadable', detail === '' ? error.message : detail));
         }
       },
     );

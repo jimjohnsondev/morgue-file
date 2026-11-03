@@ -52,6 +52,7 @@ beforeAll(async () => {
     onGiveUp: (job) => {
       markThumbnailFailed(library.db, job);
     },
+    onQueueError: () => undefined,
   });
   await queue.whenIdle();
 }, 180_000);

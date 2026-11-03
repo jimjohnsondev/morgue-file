@@ -4,6 +4,7 @@ import { readOriginal, resolveOriginalPath } from '#core/archive/originals.js';
 import { setItemMediaDetails, setThumbState } from '#core/db/repositories/item-files.js';
 import { findItemById } from '#core/db/repositories/items.js';
 import { findRootById } from '#core/db/repositories/roots.js';
+import { AppError } from '#core/errors.js';
 
 import { defaultThumbnailSize, saveThumbnail, thumbnailPath } from './thumbnail-files.js';
 import { makeImageThumbnail } from './workers/thumb-image.js';
@@ -48,7 +49,10 @@ async function makeThumbnail(input: WorkerInput): Promise<ThumbnailResult> {
       return makePageFolderThumbnail(original, size);
     case 'video': {
       if (input.mediaTools === undefined) {
-        throw new Error('ffmpeg and ffprobe were not found, so video thumbnails cannot be made.');
+        throw new AppError(
+          'media-unreadable',
+          'ffmpeg and ffprobe were not found, so video thumbnails cannot be made.',
+        );
       }
       // ffmpeg opens the file itself; originals.ts still checks the path stays in the root.
       const file = resolveOriginalPath(original.rootPath, original.relPath);
@@ -62,7 +66,7 @@ export async function runThumbnailJob(context: ThumbnailContext, job: Job): Prom
   const item = findItemById(context.db, job.itemId);
   const root = item === undefined ? undefined : findRootById(context.db, item.rootId);
   if (item === undefined || root === undefined) {
-    throw new Error(`Item ${String(job.itemId)} or its root no longer exists.`);
+    throw new AppError('not-found', `Item ${String(job.itemId)} or its root no longer exists.`);
   }
   const size = defaultThumbnailSize(item.kind);
   const result = await makeThumbnail({

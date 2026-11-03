@@ -80,7 +80,7 @@ describe('indexing in the background', () => {
     expect(countItems(dataDir)).toEqual({ items: ITEMS_IN_SAMPLE, thumbnails: ITEMS_IN_SAMPLE });
   }, 120_000);
 
-  it('R30: finishing setup starts indexing without a restart', async () => {
+  it('finishing setup starts indexing without a restart', async () => {
     install = await makeTempInstall();
     cleanups.push(install.remove);
     const library = createLibraryRuntime({ appDir: install.config.appDir, appVersion: 'test' });

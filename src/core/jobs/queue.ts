@@ -36,6 +36,8 @@ export type JobQueueOptions = {
   readonly lanes: readonly QueueLane[];
   readonly runJob: (job: Job) => Promise<void>;
   readonly onGiveUp: (job: Job, error: unknown) => void;
+  /** Told when the queue itself can't record a job's outcome (a locked or closed database). */
+  readonly onQueueError: (job: Job, error: unknown) => void;
 };
 
 /** A running queue. */
@@ -65,17 +67,29 @@ type QueueState = {
   isStopped: boolean;
 };
 
-/** Runs one job and records how it went; a job that throws is retried or given up on. */
+/** Records a failed attempt; a job that has used all its attempts is given up on. */
+function recordFailure(queue: QueueState, job: Job, error: unknown): void {
+  const now = new Date().toISOString();
+  if (failJob(queue.options.db, { job, error: errorText(error), now }) === 'failed') {
+    queue.options.onGiveUp(job, error);
+  }
+}
+
+/**
+ * Runs one job and records how it went. It never rejects: if even the record can't be written,
+ * that is reported, so one bad write can't crash the server with an unhandled rejection.
+ */
 async function runOne(queue: QueueState, job: Job): Promise<void> {
-  const { db } = queue.options;
   try {
-    await queue.options.runJob(job);
-    completeJob(db, job.id, new Date().toISOString());
-  } catch (error) {
-    const now = new Date().toISOString();
-    if (failJob(db, { job, error: errorText(error), now }) === 'failed') {
-      queue.options.onGiveUp(job, error);
+    try {
+      await queue.options.runJob(job);
+    } catch (error) {
+      recordFailure(queue, job, error);
+      return;
     }
+    completeJob(queue.options.db, job.id, new Date().toISOString());
+  } catch (error) {
+    queue.options.onQueueError(job, error);
   }
 }
 

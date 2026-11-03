@@ -1,5 +1,7 @@
 // Video thumbnails: ffprobe reads the duration, frame rate and size; ffmpeg grabs the frame 10%
 // of the way in, past any fade from black; sharp crops it.
+import { AppError } from '#core/errors.js';
+
 import { cropToThumbnail } from './crop.js';
 import { runTool } from './run-tool.js';
 
@@ -40,7 +42,7 @@ export async function probeVideo(tools: MediaTools, file: string): Promise<Media
   ) as ProbeOutput;
   const stream = output.streams?.[0];
   if (stream === undefined) {
-    throw new Error('The file has no video stream.');
+    throw new AppError('media-unreadable', 'The file has no video stream.');
   }
   const seconds = Number(output.format?.duration);
   return {

@@ -56,6 +56,7 @@ describe('the job queue', () => {
         throw new Error('Unreadable image');
       },
       onGiveUp: (job) => givenUp.push(job),
+      onQueueError: () => undefined,
     });
     await queue.whenIdle();
     expect(attempts).toBe(MAX_JOB_ATTEMPTS);
@@ -79,6 +80,7 @@ describe('the job queue', () => {
         await Promise.resolve();
       },
       onGiveUp: () => undefined,
+      onQueueError: () => undefined,
     });
     await queue.whenIdle();
     expect(ran).toEqual([itemId]);
@@ -102,6 +104,7 @@ describe('the job queue', () => {
         running -= 1;
       },
       onGiveUp: () => undefined,
+      onQueueError: () => undefined,
     });
     await queue.whenIdle();
     expect(mostAtOnce).toBe(2);

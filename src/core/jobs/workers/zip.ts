@@ -5,6 +5,7 @@ import yauzl from 'yauzl';
 
 import { isImageFileName } from '#core/archive/classify.js';
 import { sortPageNames } from '#core/archive/pagefolder.js';
+import { AppError } from '#core/errors.js';
 
 /** The page images of a CBZ in reading order, and the bytes of the first. */
 export type ZipPages = {
@@ -33,7 +34,7 @@ export async function readZipPages(fd: number): Promise<ZipPages> {
   const firstName = sortPageNames([...entries.keys()])[0];
   const first = firstName === undefined ? undefined : entries.get(firstName);
   if (first === undefined) {
-    throw new Error('The CBZ holds no page images.');
+    throw new AppError('media-unreadable', 'The CBZ holds no page images.');
   }
   const firstPage = await buffer(await zip.openReadStreamPromise(first));
   return { pageCount: entries.size, firstPage };

@@ -55,6 +55,7 @@ async function scanReferenceFolder(
       rootId: REFERENCE_ROOT_ID,
       rootPath: referenceDir,
       signal: library.abortScan.signal,
+      onBatchWritten: library.queue.wake,
     });
     log.info({ scan: summary }, 'Scan of the Reference folder finished');
   } catch (error) {
@@ -89,6 +90,9 @@ function startLibrary(
       markThumbnailFailed(db, job);
       log.warn({ err: error, itemId: job.itemId }, 'Gave up making a thumbnail');
     },
+    onQueueError: (job, error) => {
+      log.error({ err: error, jobId: job.id }, 'Could not record a job’s outcome');
+    },
   });
   const started = { db, queue, abortScan: new AbortController() };
   const scanning =
@@ -103,7 +107,16 @@ export function createLibraryRuntime(options: LibraryRuntimeOptions): LibraryRun
   let library: StartedLibrary | undefined;
   return {
     start: (install, log) => {
-      library ??= startLibrary(options, install, log);
+      if (library !== undefined) {
+        return;
+      }
+      // A library that won't open (a failed migration, a corrupt file) is logged rather than
+      // thrown, so the server keeps answering and setup's Save still succeeds.
+      try {
+        library = startLibrary(options, install, log);
+      } catch (error) {
+        log.error({ err: error }, 'Could not open the library');
+      }
     },
     whenIndexed: async () => {
       await library?.scanning;

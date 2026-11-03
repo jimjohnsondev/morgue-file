@@ -15,7 +15,8 @@ export type AppErrorCode =
   | 'invalid-install-file'
   | 'setup-required'
   | 'already-set-up'
-  | 'no-free-port';
+  | 'no-free-port'
+  | 'media-unreadable';
 
 /**
  * An expected failure with a stable code, so callers can react to the code
@@ -46,6 +47,7 @@ const statusByCode: Readonly<Record<AppErrorCode, number>> = {
   'setup-required': 409,
   'already-set-up': 409,
   'no-free-port': 500,
+  'media-unreadable': 500,
 };
 
 /** Returns the HTTP status for an error code, kept in one place so routes agree. */

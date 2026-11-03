@@ -12,13 +12,16 @@ import type { ThumbnailSize } from '../thumbnail-files.js';
 
 /**
  * pdf.js's copies of the 14 standard PDF fonts. PDFs that name Helvetica or Times without
- * embedding them, as most do, need these to draw their text.
+ * embedding them, as most do, need these to draw their text. pdf.js refuses the folder unless it
+ * ends in a forward slash, even on Windows, so it is written with forward slashes throughout;
+ * Node reads such paths on Windows too.
  */
-const STANDARD_FONTS_DIR =
-  path.join(
+export const STANDARD_FONTS_DIR = `${path
+  .join(
     path.dirname(createRequire(import.meta.url).resolve('pdfjs-dist/package.json')),
     'standard_fonts',
-  ) + path.sep;
+  )
+  .replaceAll('\\', '/')}/`;
 
 /** Renders page 1 at a scale that covers the thumbnail, so cropping never scales it up. */
 async function renderFirstPage(

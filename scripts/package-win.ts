@@ -80,8 +80,9 @@ function addApp(): void {
 
 /**
  * Copies ffmpeg.exe and ffprobe.exe from their pinned dev dependencies into bin\, where the app
- * looks first (src/core/jobs/workers/media-tools.ts). Both builds are GPL-3.0; ffmpeg-static
- * ships the license text, which covers both.
+ * looks first (src/core/jobs/workers/media-tools.ts). Both builds are GPL-3.0. ffmpeg-static
+ * ships that license text; the ffprobe build (from @ffprobe-installer/win32-x64) ships none, so a
+ * note naming its source goes beside it.
  */
 function addMediaTools(): void {
   // Both packages are CommonJS modules whose export is the binary's path.
@@ -96,6 +97,12 @@ function addMediaTools(): void {
   cpSync(
     path.join(path.dirname(ffmpeg), 'ffmpeg.LICENSE'),
     path.join(STAGE_DIR, 'LICENSES', 'ffmpeg-and-ffprobe.txt'),
+  );
+  writeFileSync(
+    path.join(STAGE_DIR, 'LICENSES', 'ffprobe-source.txt'),
+    "bin\\ffprobe.exe is the FFmpeg project's ffprobe (GPL-3.0, see ffmpeg-and-ffprobe.txt), " +
+      'as built by the npm package @ffprobe-installer/win32-x64: ' +
+      'https://www.npmjs.com/package/@ffprobe-installer/win32-x64\n',
   );
 }
 

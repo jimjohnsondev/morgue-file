@@ -33,6 +33,8 @@ export type ScanOptions = {
   readonly now?: () => Date;
   /** Stops the scan between entries when the server shuts down. */
   readonly signal?: AbortSignal;
+  /** Called after each batch is written, so thumbnails start before a long scan ends. */
+  readonly onBatchWritten?: () => void;
 };
 
 /** What a scan did, for the scan log. An offline root is left exactly as it was. */
@@ -96,6 +98,7 @@ type ScanRun = {
   readonly rootPath: string;
   readonly now: Date;
   readonly signal?: AbortSignal | undefined;
+  readonly onBatchWritten?: (() => void) | undefined;
 };
 
 /** Writes one batch of changes in one transaction, queuing a thumbnail for each. */
@@ -182,6 +185,7 @@ async function walkAndWrite(
     writeFoundAgain(scan.db, foundAgain);
     changes = [];
     foundAgain = [];
+    scan.onBatchWritten?.();
   }
   for await (const entry of walkRoot(scan.rootPath)) {
     scan.signal?.throwIfAborted();
@@ -200,9 +204,14 @@ async function walkAndWrite(
   return tally;
 }
 
-/** Says whether a path sits in a folder the scan couldn't read, where nothing can be called missing. */
+/**
+ * Says whether a path is a folder the scan couldn't read (a page folder) or sits inside one;
+ * nothing there can be called missing.
+ */
 function isInUnreadableFolder(foldedPath: string, unreadableFolders: readonly string[]): boolean {
-  return unreadableFolders.some((folder) => foldedPath.startsWith(`${folder}/`));
+  return unreadableFolders.some(
+    (folder) => foldedPath === folder || foldedPath.startsWith(`${folder}/`),
+  );
 }
 
 /** Marks every stored item the walk didn't see as missing, and returns how many it marked. */
