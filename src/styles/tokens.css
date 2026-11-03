@@ -13,6 +13,11 @@
   --text-panel-title: 14px;
   --text-page-title: 24px;
   --text-wordmark: 52px;
+  --text-query-title: 22px;
+  --text-group-heading: 18px;
+  --text-counter: 15px;
+  --wordmark-spacing: -1px;
+  --tagline-spacing: 2px;
   --panel-title-spacing: 1px;
 
   /* Chrome */
@@ -47,6 +52,23 @@
   --color-notice-cyan: #eafcff;
   --color-notice-magenta: #ffeaf6;
 
+  /* Shades the approved canvas uses alongside the brief's (frames 1-4): the dark ground behind
+     the banner and the current page number, bevel edges, and text on the dark bars. */
+  --color-ground: #2a2d33;
+  --color-ink: #0a0b0e;
+  --color-bevel-dark: #606773;
+  --color-tab-text: #eff2f6;
+  --color-tab-highlight: #9aa2ae;
+  --color-tab-hover-top: #6b7380;
+  --color-tab-hover-bottom: #40464f;
+  --color-title-bar-highlight: #9aa3b1;
+  --color-tagline: #d8dee8;
+  --color-footer-text: #cdd2da;
+  --color-footer-link: #7fe9ff;
+  --color-trim-top: #a8f4ff;
+  --color-trim-bottom: #3a1048;
+  --color-heading-bottom: #d5d9e0;
+
   /* Links */
   --color-link: #03c;
   --color-link-visited: #639;
@@ -67,6 +89,13 @@
   --filter-panel-width: 280px;
   --details-panel-width: 400px;
   --details-panel-folded: 34px;
+  --search-box-width: 380px;
+  --grid-min-width: 560px;
+  --button-height: 28px;
+  --thumb-border: 1px;
+  --chip-padding: 2px;
+  --box-padding: 1px;
+  --counter-spacing: 1px;
 
   /* Spacing: multiples of 4 px */
   --space-1: 4px;

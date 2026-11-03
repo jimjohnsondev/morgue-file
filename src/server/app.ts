@@ -8,7 +8,10 @@ import { registerErrorHandler } from './error-handler.js';
 import { registerSetupApi } from './routes/api/setup.js';
 import { registerAssetRoute } from './routes/assets.js';
 import { registerHealthRoute } from './routes/healthz.js';
+import { registerMediaRoutes } from './routes/media.js';
 import { registerHomeRoute } from './routes/pages/home.js';
+import { registerIndexRoutes } from './routes/pages/index-routes.js';
+import { registerSearchRoute } from './routes/pages/search-route.js';
 import { registerSetupPage } from './routes/pages/setup.js';
 import { registerSetupGate } from './routes/setup-gate.js';
 import { createLaunchToken, registerSecurityHooks } from './security/security-hooks.js';
@@ -36,7 +39,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const token = options.token ?? createLaunchToken();
   const clientDir = path.join(config.appDir, 'dist', 'client');
   const assets = await loadPageAssets(clientDir);
-  const pageContext = { token, assets };
+  const pageContext = { token, assets, library };
 
   registerSecurityHooks(app, config.port, token);
   registerSetupGate(app, { homeDir: config.homeDir, port: config.port, install, library });
@@ -46,6 +49,9 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerSetupPage(app, pageContext, install);
   registerSetupApi(app, { homeDir: config.homeDir, port: config.port, install, library });
   registerHomeRoute(app, pageContext);
+  registerIndexRoutes(app, pageContext);
+  registerSearchRoute(app, pageContext);
+  registerMediaRoutes(app, library);
 
   return app;
 }

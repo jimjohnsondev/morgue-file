@@ -47,6 +47,7 @@ export default defineConfig({
     url: `http://127.0.0.1:${String(TEST_PORT)}/healthz`,
     env: { MORGUE_PORT: String(TEST_PORT), MORGUE_HOME: TEST_HOME },
     reuseExistingServer: false,
-    timeout: 30_000,
+    // The home is made by indexing and seeding the fixture archive first, which takes a while.
+    timeout: 180_000,
   },
 });

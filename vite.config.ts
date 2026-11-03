@@ -9,6 +9,8 @@ export default defineConfig({
     emptyOutDir: true,
     manifest: true,
     minify: true,
+    // The banner SVG stays a file: the CSP allows images from 'self' only, not data: URIs.
+    assetsInlineLimit: 0,
     rolldownOptions: {
       input: { main: 'src/client/main.ts' },
     },

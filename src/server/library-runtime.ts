@@ -13,14 +13,26 @@ import { findMediaTools } from '#core/jobs/workers/media-tools.js';
 
 import type { Db } from '#core/db/connection.js';
 import type { JobQueue } from '#core/jobs/queue.js';
+import type { ThumbnailContext } from '#core/jobs/thumbnails.js';
 import type { InstallState } from './install/install-state.js';
 import type { FastifyBaseLogger } from 'fastify';
 
 /** A set-up install: the data folder and the Reference folder, if one was chosen. */
 export type ReadyInstall = Extract<InstallState, { kind: 'ready' }>;
 
+/** An open library, as page and media routes use it. */
+export type OpenLibrary = {
+  readonly db: Db;
+  /** What making a thumbnail needs, for the sizes a page asks for that the queue doesn't make. */
+  readonly thumbnails: ThumbnailContext;
+  /** Tells the queue there is new work, such as a thumbnail the page being viewed is missing. */
+  readonly wakeQueue: () => void;
+};
+
 /** The open library and its background work. */
 export type LibraryRuntime = {
+  /** The library once it is open, or undefined before setup or if it couldn't be opened. */
+  readonly open: () => OpenLibrary | undefined;
   /** Opens the library and starts indexing. Later calls do nothing. */
   readonly start: (install: ReadyInstall, log: FastifyBaseLogger) => void;
   /** Resolves once the scan has finished and no thumbnail job is left (tests wait on it). */
@@ -38,6 +50,7 @@ export type LibraryRuntimeOptions = {
 /** A library that has been started. */
 type StartedLibrary = {
   readonly db: Db;
+  readonly thumbnails: ThumbnailContext;
   readonly queue: JobQueue;
   readonly scanning: Promise<void>;
   readonly abortScan: AbortController;
@@ -94,7 +107,7 @@ function startLibrary(
       log.error({ err: error, jobId: job.id }, 'Could not record a job’s outcome');
     },
   });
-  const started = { db, queue, abortScan: new AbortController() };
+  const started = { db, thumbnails: context, queue, abortScan: new AbortController() };
   const scanning =
     install.referenceDir === undefined
       ? Promise.resolve()
@@ -106,6 +119,8 @@ function startLibrary(
 export function createLibraryRuntime(options: LibraryRuntimeOptions): LibraryRuntime {
   let library: StartedLibrary | undefined;
   return {
+    open: () =>
+      library && { db: library.db, thumbnails: library.thumbnails, wakeQueue: library.queue.wake },
     start: (install, log) => {
       if (library !== undefined) {
         return;

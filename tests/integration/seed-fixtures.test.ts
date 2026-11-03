@@ -31,16 +31,19 @@ let db: Db;
 beforeAll(async () => {
   library = await makeTempLibrary();
   db = library.db;
-  for (const file of planFixtures()) {
-    insertItem(db, {
-      rootId: REFERENCE_ROOT_ID,
-      relPath: file.relPath,
-      kind: file.kind,
-      size: 1000,
-      mtimeMs: file.mtimeMs,
-      addedAt: '2026-10-31T12:00:00.000Z',
-    });
-  }
+  // One transaction, as the scanner writes in batches: 4,572 separate commits are slow on Windows.
+  db.transaction(() => {
+    for (const file of planFixtures()) {
+      insertItem(db, {
+        rootId: REFERENCE_ROOT_ID,
+        relPath: file.relPath,
+        kind: file.kind,
+        size: 1000,
+        mtimeMs: file.mtimeMs,
+        addedAt: '2026-10-31T12:00:00.000Z',
+      });
+    }
+  })();
   const seed = await loadSeed(path.resolve(import.meta.dirname, '../../fixtures/seed.json'));
   applySeed(db, seed, { rootId: REFERENCE_ROOT_ID, now: '2026-10-31T12:00:00.000Z' });
 });

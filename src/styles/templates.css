@@ -1,0 +1,236 @@
+/* The Index template: breadcrumb, title and count, filter panel beside the grid (frames 1-4). */
+.index-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.breadcrumb {
+  font-size: var(--text-table);
+  color: var(--color-ground);
+}
+
+.index-page__heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: baseline;
+}
+
+.index-page__body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  align-items: flex-start;
+}
+
+.index-page__body > .panel {
+  margin: 0;
+}
+
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-table);
+}
+
+.chip {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--chip-padding) var(--space-2);
+  font-size: var(--text-table);
+  background: var(--color-white);
+  border: 1px solid var(--color-hairline);
+  box-shadow: 1px 1px 0 var(--color-shadow);
+}
+
+/* The filter panel */
+.filter-panel {
+  flex: 0 0 var(--filter-panel-width);
+}
+
+.filter-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  font-size: var(--text-table);
+}
+
+.filter-panel__words {
+  width: 100%;
+}
+
+.filter-panel__select {
+  width: 100%;
+}
+
+.filter-panel__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.filter-group--inline {
+  flex-flow: row wrap;
+  gap: var(--space-1) var(--space-3);
+}
+
+.filter-group__title {
+  display: block;
+  width: 100%;
+  margin: 0 0 var(--space-1);
+  padding: 0 0 var(--space-1);
+  font-size: var(--text-table);
+  font-weight: bold;
+  color: var(--color-text);
+  border-bottom: 1px dotted var(--color-hairline);
+}
+
+/* The grid panel */
+.grid-panel {
+  flex: 999 1 var(--grid-min-width);
+  min-width: 0;
+}
+
+.grid-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.grid-panel__empty {
+  margin: 0;
+}
+
+.grid-panel__footer {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-3);
+  border-top: 1px dotted var(--color-hairline);
+}
+
+.list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--space-2);
+  font-size: var(--text-table);
+  border-bottom: 1px dotted var(--color-hairline);
+}
+
+.list-toolbar__choice + .list-toolbar__choice {
+  margin-left: var(--space-6);
+}
+
+.pager {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.pager a {
+  padding: var(--box-padding) var(--space-2);
+  background: var(--color-white);
+  border: 1px solid var(--color-hairline);
+}
+
+.pager__current {
+  padding: var(--box-padding) var(--space-2);
+  color: var(--color-white);
+  background: var(--color-ground);
+  border: 1px solid var(--color-ink);
+}
+
+.card-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.card-group__heading {
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-group-heading);
+  background: linear-gradient(var(--color-white), var(--color-heading-bottom));
+  border: 1px solid var(--color-hairline);
+}
+
+/* Thumbnails: a white mat, a border and a hard shadow; magenta on hover. Files are twice the
+   size shown, so the image box sets the size. */
+.thumb-grid {
+  --thumb-size: var(--thumb-medium);
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-3);
+  align-items: flex-end;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.thumb-grid--small {
+  --thumb-size: var(--thumb-small);
+}
+
+.thumb-grid--large {
+  --thumb-size: var(--thumb-large);
+}
+
+.thumb-card {
+  --card-width: var(--thumb-size);
+  --card-height: var(--thumb-size);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: calc(var(--card-width) + 2 * var(--thumb-mat) + 2 * var(--thumb-border));
+}
+
+.thumb-card--cover {
+  --card-width: var(--cover-width);
+  --card-height: var(--cover-height);
+}
+
+.thumb {
+  display: block;
+  padding: var(--thumb-mat);
+  background: var(--color-white);
+  border: var(--thumb-border) solid var(--color-border);
+  box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--color-shadow);
+}
+
+.thumb:hover {
+  border-color: var(--color-magenta);
+  box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--color-magenta);
+}
+
+.thumb__image {
+  display: block;
+  width: var(--card-width);
+  height: var(--card-height);
+  object-fit: cover;
+  background: var(--color-hairline);
+}
+
+.thumb-card__label {
+  margin-top: var(--space-1);
+  overflow: hidden;
+  font-size: var(--text-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

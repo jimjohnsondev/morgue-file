@@ -16,7 +16,8 @@ export type AppErrorCode =
   | 'setup-required'
   | 'already-set-up'
   | 'no-free-port'
-  | 'media-unreadable';
+  | 'media-unreadable'
+  | 'library-unavailable';
 
 /**
  * An expected failure with a stable code, so callers can react to the code
@@ -48,6 +49,7 @@ const statusByCode: Readonly<Record<AppErrorCode, number>> = {
   'already-set-up': 409,
   'no-free-port': 500,
   'media-unreadable': 500,
+  'library-unavailable': 503,
 };
 
 /** Returns the HTTP status for an error code, kept in one place so routes agree. */
