@@ -138,6 +138,29 @@ describe('subcategories', () => {
   });
 });
 
+describe('names in any script', () => {
+  it('slugs accented and non-Latin names, and refuses names with no letters', () => {
+    insertSubcategory(db, 'library', 'Études');
+    insertSubcategory(db, 'photos', '李娜');
+    expect(findSubcategoryBySlug(db, 'library', 'etudes')?.name).toBe('Études');
+    expect(findSubcategoryBySlug(db, 'photos', '李娜')?.name).toBe('李娜');
+    expect(() => insertSubcategory(db, 'photos', '!!!')).toThrow(/letter or digit/);
+    expect(() => insertSubcategory(db, 'library', 'etudes')).toThrow(/already a subcategory/);
+    createModel(db, 'Zoë Ångström');
+    expect(findModelBySlug(db, 'zoe-angstrom')).toBeDefined();
+  });
+
+  it('refuses empty tag names', () => {
+    const item = addTestItem(db, 'a.jpg');
+    expect(() => {
+      tagItems(db, [item], '  ');
+    }).toThrow(/needs a name/);
+    expect(() => {
+      tagModel(db, createModel(db, 'Elena Varga'), '');
+    }).toThrow(/needs a name/);
+  });
+});
+
 describe('roots', () => {
   it('records a root going offline', () => {
     setRootStatus(db, REFERENCE_ROOT_ID, 'offline');
@@ -179,7 +202,7 @@ describe('models', () => {
     expect(findModelBySlug(db, 'elena-varga-2')?.id).toBe(second);
   });
 
-  it('links items whole or by page range, once each, with tags and a portrait', () => {
+  it('R14: a model links to items whole or by page range, has tags, and any photo can be its portrait', () => {
     const elena = createModel(db, 'Elena Varga');
     const photo = addTestItem(db, 'Portrait/portrait_elena_109.jpg');
     const magazine = addTestItem(db, 'Magazines/LDQ No. 12.pdf', 'pdf');

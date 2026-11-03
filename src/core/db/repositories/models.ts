@@ -1,6 +1,7 @@
 // Models: their profile rows, model tags, portraits, and the items they appear in (R14–R17).
 // A model's name and other details are field values; see #core/fields.
 import { optional } from './sql-values.js';
+import { requireTagName } from './tags.js';
 
 import type { Db } from '../connection.js';
 
@@ -47,6 +48,7 @@ export function setModelPortrait(db: Db, modelId: number, itemId: number): void 
 
 /** Gives a model a tag. Model tags are their own namespace, apart from item tags. */
 export function tagModel(db: Db, modelId: number, tagName: string): void {
+  requireTagName(tagName);
   db.transaction(() => {
     db.prepare('INSERT INTO model_tags (name) VALUES (?) ON CONFLICT (name) DO NOTHING').run(
       tagName,

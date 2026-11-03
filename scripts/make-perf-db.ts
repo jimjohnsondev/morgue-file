@@ -1,6 +1,6 @@
 // Makes the synthetic 50,000-item library the performance tests run against (docs/ARCHITECTURE.md,
 // Testing). Imports the built app, so `npm run fixtures:perf` builds the server first. Usage:
-//   node scripts/make-perf-db.ts [output file, default fixtures/generated/perf.db]
+//   node scripts/make-perf-db.ts [output file, default tests/perf/perf.db]
 import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
@@ -32,6 +32,4 @@ function makePerfDb(outputPath: string): void {
   }
 }
 
-makePerfDb(
-  path.resolve(process.argv[2] ?? path.join(REPO_DIR, 'fixtures', 'generated', 'perf.db')),
-);
+makePerfDb(path.resolve(process.argv[2] ?? path.join(REPO_DIR, 'tests', 'perf', 'perf.db')));

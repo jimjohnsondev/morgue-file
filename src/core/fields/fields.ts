@@ -14,6 +14,7 @@ import {
   upsertFieldValue,
 } from '#core/db/repositories/fields.js';
 import { AppError } from '#core/errors.js';
+import { joinWords } from '#core/slug.js';
 
 import { fromStoredValue, toStoredValue } from './field-values.js';
 
@@ -61,10 +62,7 @@ export type FieldOwner = {
 
 /** Turns a label into a search key: "Agency link" becomes agency_link. */
 export function keyFromLabel(label: string): string {
-  return label
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, '_')
-    .replaceAll(/^_|_$/g, '');
+  return joinWords(label, '_');
 }
 
 /** The fields an item or model shows, in order: not removed, and not limited to another place. */

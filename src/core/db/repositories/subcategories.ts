@@ -1,5 +1,6 @@
 // Subcategories within a section (Figure, Books...) and the folder mappings that file items into
 // them (R4). Unsorted is an item with no subcategory, not a row here.
+import { AppError } from '#core/errors.js';
 import { slugify } from '#core/slug.js';
 
 import { optional } from './sql-values.js';
@@ -35,6 +36,13 @@ type SubcategoryRow = {
 
 /** Adds a subcategory at the end of its section and returns its id. */
 export function insertSubcategory(db: Db, section: Section, name: string): number {
+  const slug = slugify(name);
+  if (slug === '') {
+    throw new AppError('invalid-input', 'A subcategory needs a name with a letter or digit.');
+  }
+  if (findSubcategoryBySlug(db, section, slug) !== undefined) {
+    throw new AppError('invalid-input', `There is already a subcategory called "${name}".`);
+  }
   const thumbShape: ThumbShape = section === 'library' ? 'cover' : 'square';
   const result = db
     .prepare(
@@ -42,7 +50,7 @@ export function insertSubcategory(db: Db, section: Section, name: string): numbe
        VALUES (?, ?, ?,
          (SELECT coalesce(max(position), 0) + 1 FROM subcategories WHERE section = ?), ?)`,
     )
-    .run(section, name, slugify(name), section, thumbShape);
+    .run(section, name, slug, section, thumbShape);
   return Number(result.lastInsertRowid);
 }
 

@@ -1,8 +1,11 @@
 // Free-form item tags (R10). Names are unique ignoring case, so "Hands" and "hands" are one tag.
+import { AppError } from '#core/errors.js';
+
 import type { Db } from '../connection.js';
 
 /** Returns the id of the tag with this name, creating the tag if it's new. */
 export function findOrCreateTagId(db: Db, name: string): number {
+  requireTagName(name);
   db.prepare('INSERT INTO tags (name) VALUES (?) ON CONFLICT (name) DO NOTHING').run(name);
   const row = db.prepare('SELECT id FROM tags WHERE name = ?').get(name) as { id: number };
   return row.id;
@@ -30,4 +33,11 @@ export function findTagNamesByItem(db: Db, itemId: number): string[] {
     )
     .all(itemId) as { name: string }[];
   return rows.map((row) => row.name);
+}
+
+/** Refuses an empty tag, which would show as a blank link. Shared with model tags. */
+export function requireTagName(name: string): void {
+  if (name.trim() === '' || name !== name.trim()) {
+    throw new AppError('invalid-input', 'A tag needs a name, with no spaces at either end.');
+  }
 }

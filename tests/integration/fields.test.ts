@@ -46,7 +46,7 @@ function profileValue(modelId: number, key: string): unknown {
 describe('R14: model fields are data, so every profile follows a change in settings', () => {
   it('R14: a field added in settings appears on every profile', () => {
     const elena = createModel(db, 'Elena Varga');
-    const marco = createModel(db, 'Marco Ruiz');
+    const marco = createModel(db, 'Second Model');
     expect(profileLabels(elena)).toEqual(['Name', 'Bio']);
 
     addField(db, { entity: 'model', label: 'Agency link', type: 'link' });
@@ -66,7 +66,7 @@ describe('R14: model fields are data, so every profile follows a change in setti
 
   it('R14: removing a field hides it from every profile', () => {
     const elena = createModel(db, 'Elena Varga');
-    const marco = createModel(db, 'Marco Ruiz');
+    const marco = createModel(db, 'Second Model');
     const field = addField(db, { entity: 'model', label: 'First session', type: 'date' });
 
     removeField(db, field.id, new Date('2026-11-01T00:00:00Z'));
@@ -142,6 +142,8 @@ describe('field values are checked against their type', () => {
 describe('managing fields', () => {
   it('makes search keys from labels and refuses clashes and search words', () => {
     expect(keyFromLabel('Agency link')).toBe('agency_link');
+    expect(keyFromLabel('Première séance')).toBe('premiere_seance');
+    expect(keyFromLabel('身長')).toBe('身長');
     addField(db, { entity: 'model', label: 'Height', type: 'text' });
     expect(() => addField(db, { entity: 'model', label: 'height', type: 'text' })).toThrow(
       /already a field/,

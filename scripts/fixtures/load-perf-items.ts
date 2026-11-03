@@ -28,10 +28,10 @@ export function loadPerfItems(db: Db, rootId: number, items: readonly PerfItem[]
     const modelled = new Map<string, number[]>();
     for (const { item, itemId } of added) {
       for (const tag of item.tags) {
-        tagged.set(tag, [...(tagged.get(tag) ?? []), itemId]);
+        addTo(tagged, tag, itemId);
       }
       if (item.model !== undefined) {
-        modelled.set(item.model, [...(modelled.get(item.model) ?? []), itemId]);
+        addTo(modelled, item.model, itemId);
       }
       if (item.rating !== undefined) {
         setFieldValue(db, { entity: 'item', entityId: itemId, key: 'rating' }, item.rating);
@@ -44,6 +44,16 @@ export function loadPerfItems(db: Db, rootId: number, items: readonly PerfItem[]
       linkModelToItems(db, createModel(db, name), { itemIds: modelledIds });
     }
   })();
+}
+
+/** Adds an item id to the list kept under a name. */
+function addTo(lists: Map<string, number[]>, name: string, itemId: number): void {
+  const list = lists.get(name);
+  if (list === undefined) {
+    lists.set(name, [itemId]);
+  } else {
+    list.push(itemId);
+  }
 }
 
 /** One subcategory per folder the perf items use (Books and Magazines already exist), mapped to it. */
