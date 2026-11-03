@@ -1,4 +1,3 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -18,12 +17,5 @@ describe('the fixture generator’s output folder', () => {
     expect(canClearOutputDir(path.parse(process.cwd()).root)).toBe(false);
     expect(canClearOutputDir(homedir())).toBe(false);
     expect(canClearOutputDir(path.resolve(import.meta.dirname, '../..'))).toBe(false);
-  });
-
-  it('may be a folder an earlier run made, which holds manifest.json', async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), 'morgue-manifest-'));
-    await writeFile(path.join(dir, 'manifest.json'), '[]');
-    expect(canClearOutputDir(dir)).toBe(true);
-    await rm(dir, { recursive: true });
   });
 });

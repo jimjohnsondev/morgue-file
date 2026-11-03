@@ -277,7 +277,7 @@ Every PRD acceptance line becomes an automated test. Every test runs on generate
 
 **Fixture archive.**
 
-- `npm run fixtures` (`scripts/make-fixtures.ts`) writes the archive to `fixtures/generated/Reference/` and a `manifest.json` beside it with every file's size and SHA-256. Each file is seeded from its own path, so its output is the same byte for byte on every run, whatever order the files are written in. It takes about two minutes and 250 MB. It clears its output folder first, so it refuses any folder outside `fixtures/` or the temp folder that an earlier run didn't make.
+- `npm run fixtures` (`scripts/make-fixtures.ts`) writes the archive to `fixtures/generated/Reference/` and a `manifest.json` beside it with every file's size and SHA-256. Each file is seeded from its own path, so its output is the same byte for byte on every run, whatever order the files are written in. It takes about two minutes and 250 MB. It clears its output folder first, so it refuses any folder outside `fixtures/` or the temp folder.
 - Images are flat-shaded figures on color fields drawn with sharp. They are 1008×756 (or 756×1008), except frame 5's `seated_backlit_017.jpg` at its full 4032×3024. Drapery includes PNG, WebP and GIF, so every P0 image format is present.
 - Videos are 2-second, 640×360 clips of ffmpeg's `testsrc` pattern (it shows a frame counter), encoded with the binary from `ffmpeg-static`; the even timelapses are MOV. Frame 7's `pose_session_04_seated.mp4` is made at its real 1920×1080, 30 fps and 3:15, so its timecodes and loop range fit.
 - PDFs are lorem pages built with pdf-lib. CBZ files (zipped with yazl) and page folders hold page scans named by their number alone (`001.jpg`); page 1 is a cover with the title.
