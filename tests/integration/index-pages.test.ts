@@ -258,6 +258,7 @@ describe('thumbnails by id', () => {
     const response = await get(`/media/thumb/${String(id)}/480`);
     expect(response.headers['content-type']).toBe('image/webp');
     expect(response.body).toBe('default');
+    expect(response.headers['cache-control']).toBe('no-store');
     expect(library.db.prepare('SELECT 1 FROM jobs WHERE item_id = ?').get(id)).toBeUndefined();
   });
 

@@ -62,24 +62,39 @@ function hurryDefaultThumbnail(library: OpenLibrary, item: Item): void {
 }
 
 /**
+ * What a thumbnail request finds: the file at that size (cached forever), the default size
+ * standing in while a larger one can't be made (not cached, so the real one is fetched once the
+ * original is back), or nothing yet.
+ */
+type FoundThumbnail =
+  { readonly kind: 'exact' | 'stand-in'; readonly bytes: Buffer } | { readonly kind: 'none' };
+
+/** Wraps bytes that may not be there. */
+function found(kind: 'exact' | 'stand-in', bytes: Buffer | undefined): FoundThumbnail {
+  return bytes === undefined ? { kind: 'none' } : { kind, bytes };
+}
+
+/**
  * Reads the thumbnail at a size, making a non-default size from the original the first time.
- * Returns undefined while the default one is still waiting for the queue.
+ * Finds nothing while the default one is still waiting for the queue.
  */
 async function findOrMakeThumbnail(
   library: OpenLibrary,
   item: Item,
   size: ThumbnailSize,
-): Promise<Buffer | undefined> {
+): Promise<FoundThumbnail> {
   const { thumbsDir } = library.thumbnails;
   const cached = await readThumbnail(thumbnailPath(thumbsDir, item.id, size));
   if (cached !== undefined || isDefaultSize(item, size) || item.thumbState !== 'ready') {
-    return cached;
+    return found('exact', cached);
   }
   try {
-    return await readThumbnail(await makeThumbnailAtSize(library.thumbnails, item.id, size));
+    const made = await makeThumbnailAtSize(library.thumbnails, item.id, size);
+    return found('exact', await readThumbnail(made));
   } catch {
     // The original may be offline or unreadable; the default size stands in until it is back.
-    return readThumbnail(thumbnailPath(thumbsDir, item.id, defaultThumbnailSize(item.kind)));
+    const fallback = thumbnailPath(thumbsDir, item.id, defaultThumbnailSize(item.kind));
+    return found('stand-in', await readThumbnail(fallback));
   }
 }
 
@@ -95,19 +110,15 @@ export function registerMediaRoutes(app: FastifyInstance, library: LibraryRuntim
         throw new AppError('not-found', 'No such thumbnail.');
       }
       const thumbnail = await findOrMakeThumbnail(open, item, size);
-      if (thumbnail === undefined) {
-        // Only the default size comes from the queue, and a ready or failed one stays as it is.
-        if (
-          item.thumbState === 'pending' ||
-          (item.thumbState === 'ready' && isDefaultSize(item, size))
-        ) {
+      if (thumbnail.kind === 'none') {
+        // Nothing found means the default file itself is missing; a failed one stays failed.
+        if (item.thumbState !== 'failed') {
           hurryDefaultThumbnail(open, item);
         }
         return sendPlaceholder(reply);
       }
-      return reply
-        .type('image/webp')
-        .header('cache-control', 'public, max-age=31536000, immutable')
-        .send(thumbnail);
+      const caching =
+        thumbnail.kind === 'exact' ? 'public, max-age=31536000, immutable' : 'no-store';
+      return reply.type('image/webp').header('cache-control', caching).send(thumbnail.bytes);
     });
 }
