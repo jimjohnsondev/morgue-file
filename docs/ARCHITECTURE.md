@@ -67,9 +67,11 @@ morgue-file/
       views/          Preact SSR: layout/, templates/ (Index, Item, ModelProfile), parts/
     core/
       errors.ts       AppError and its codes
-      db/             connection, migrations/NNN_name.sql, repositories
+      db/             connection, library.ts (open and migrate), migrations/NNN_name.sql, repositories/
       query/          lexer, parser, AST, compiler to SQL, canonical form
       fields/         the shared field system for items and models
+      models/         creating a model profile (unique slug, Name field)
+      slug.ts         URL slugs for subcategories and models
       archive/        originals.ts (only fs access to roots), classify.ts, pagefolder.ts
       indexer/        scanner.ts, watcher.ts, reconcile.ts, moves.ts, roots.ts
       jobs/           queue.ts, workers/ (thumb-image, thumb-pdf, thumb-video, hash)
@@ -77,7 +79,7 @@ morgue-file/
       backup/         zip export and restore
     client/           Vite entries: main, selection, dropzone, keyboard, viewer-image, viewer-video, reader, compare
     styles/           tokens.css (approved design values), base.css, templates.css, banner.svg
-  scripts/            make-fixtures.ts, seed-fixtures.ts, make-perf-db.ts, package-win.ts, setup-repo.ts, check-readme.ts
+  scripts/            make-fixtures.ts, seed-fixtures.ts, make-perf-db.ts, copy-migrations.ts, package-win.ts, setup-repo.ts, check-readme.ts
     fixtures/         the fixture planners and writers make-fixtures.ts and make-perf-db.ts run
   packaging/          Morgue File.cmd and Install shortcuts.cmd, copied into the zip as they are
   fixtures/seed.json  invented tags, collections, models, field values
@@ -125,6 +127,15 @@ All metadata lives in `library.db`, opened with better-sqlite3 in WAL mode. Orig
 - One write connection on the main thread. Worker threads never write to the database; they post results back.
 - Migrations are numbered SQL files applied at startup in one transaction. If any are pending, `library.db` is first copied to `backups\library-<version>-<timestamp>.db`, keeping the last 5 copies.
 - Each migration is tested against the fixture database of every released version.
+
+**As built in PR 5.**
+
+- `001_initial.sql` creates every table above except `item_search` and `model_search`, which arrive with the query language in PR 15 as their own migration, together with the code that rewrites search rows. All tables are `STRICT`. Timestamps are ISO text; `items.mtime` is milliseconds since the epoch. `rel_path`, `rel_prefix` and tag names compare `NOCASE`, as Windows paths do, so one file can't get two rows.
+- The schema version is SQLite's `user_version`. The backup is a `VACUUM INTO` copy (it includes what's still in the WAL), named `library-<app version>-<UTC time>.db`; the five newest by time are kept. A brand-new database has nothing to back up. `tsc` emits only JavaScript, so `build:server` runs `scripts/copy-migrations.ts` to copy the SQL files into `dist/core/db/migrations/`.
+- `openLibrary()` (`core/db/library.ts`) opens `library.db` in the data folder, migrates it and points root 1 at the Reference folder from `settings.json`. The server starts calling it in PR 6, at launch and when setup finishes, which is when the indexer first needs the database.
+- Folder mappings match whole folder names (`Figure` holds `Figure/a.jpg`, not `Figures/a.jpg`), and `insertItem` and `refileItemsByMappings` share the one SQL rule. Items filed by hand are left alone.
+- Field keys come from labels (`Agency link` → `agency_link`) and never change, so renaming keeps searches working. Keys that are search words (`tag`, `model`, `in`, `sub`, `type`, `rating`, `collection`, `unsorted`) are refused. Link values must be http or https, dates `YYYY-MM-DD`, pick-list values one of the choices. A model's Name can be renamed but not removed. Removal and the 30-day restore are in the core now; the Settings page for them is PR 17, and purging after 30 days lands with it. The 1–5 range of rating is enforced with the item fields UI in PR 18.
+- No released version has a database yet, so the migration tests run against a fresh database and a hand-made next migration. The first release with a schema adds its fixture database under `tests/migrations/`.
 
 ## Indexing and file watching
 
@@ -284,10 +295,10 @@ Every PRD acceptance line becomes an automated test. Every test runs on generate
 - The layout follows the brief's Folders row: `Figure`, `Portrait`, `Hands`, `Video/Poses`, `Video/Timelapses`, `Books` and `Magazines` (one subfolder per title) are mapped; Drapery sits in `Misc/` and is filed by hand; the 54 Unsorted downloads sit in `Inbox/`.
 - Names and order follow the mocks. In each Photos folder, slot n holds `figure_000n.jpg` and so on, and file times rise with the slot. Slot 3 of Figure is `seated_backlit_017.jpg`, and Elena's 211 numbered photos (`figure_elena_103.jpg`, `hands_elena_106.jpg` …) fill slots 701 onward in Figure, Hands and Portrait. Frame 7's `pose_session_04_seated.mp4` is likewise third in Poses. Portrait is the newest folder, so `portrait_1488.jpg` heads Recently added. Book titles use frame 2's rule, so Elena's "Notes on Gesture" is `Notes on Gesture, vol. 2`.
 - `fixtures/seed.json` holds the subcategories and folder mappings, Drapery's filing, tags, collections, the model fields, Elena Varga, field values and the viewing history for Home. Items are named by path, or by a pattern where `*` matches within a folder name and `**/` across folders. Its shape is checked by the TypeBox schema in `scripts/fixtures/seed.ts`, and unit tests check every pattern matches and every count against the brief.
-- `scripts/seed-fixtures.ts` applies the seed through the app's own repositories and routes, so seeding exercises real code. It arrives with the repositories (PR 5) and grows as each feature lands. Item page ranges have no label column, so "chapter 4" of Studies in Hands is seeded as pages 61–80.
+- `scripts/seed-fixtures.ts` applies the seed through the app's own repositories and routes, so seeding exercises real code. It arrives with the repositories (PR 5) and grows as each feature lands. It seeds a library whose items are already indexed (the scanner, PR 6, does that), and runs on the built app. Until then, `tests/integration/seed-fixtures.test.ts` adds the items from the fixture plan and checks the brief's counts after seeding. Item page ranges have no label column, so "chapter 4" of Studies in Hands is seeded as pages 61–80.
 - Counts match the brief: 4,312 images, 186 videos, 74 publications and 38 collections (4 named, the rest numbered). Elena Varga appears in 212 photos and 4 Library items, and `tag:hands model:Elena` matches 34 photos and 4 Library items.
 - CI caches `fixtures/generated/`, keyed by a hash of the generator, the seed and `package-lock.json` (sharp and ffmpeg versions change the bytes). The `setup-playwright` action restores it, or makes it on a miss.
-- `npm run fixtures:perf` (`scripts/make-perf-db.ts`) makes the synthetic 50,000-item library for the perf tests from a fixed seed. Until the schema lands in PR 5 it writes the rows to `fixtures/generated/perf-items.jsonl`; PR 5 loads them into `tests/perf/perf.db` through the repositories.
+- `npm run fixtures:perf` (`scripts/make-perf-db.ts`) makes the synthetic 50,000-item library for the perf tests from a fixed seed, through the repositories and field system, at `fixtures/generated/perf.db`. It builds the server first, since scripts import the app from `dist/`. It takes about 15 s, and the file follows the schema, so CI's `perf` job makes it fresh on every run instead of caching it with the archive.
 
 **Stable screenshots.** The viewport is 2560×1440 at device scale 1, and the clock is frozen at 31 Oct 2026. Only system fonts are used. Tests start after every thumbnail exists, then wait for `document.fonts.ready` and for every image to finish loading. The caret is hidden.
 

@@ -27,11 +27,14 @@ export const SeedSchema = Type.Object({
     Type.Object({
       key: Type.String(),
       label: Type.String(),
-      type: Type.Union(
-        ['text', 'longtext', 'link', 'date', 'number', 'picklist'].map((type) =>
-          Type.Literal(type),
-        ),
-      ),
+      type: Type.Union([
+        Type.Literal('text'),
+        Type.Literal('longtext'),
+        Type.Literal('link'),
+        Type.Literal('date'),
+        Type.Literal('number'),
+        Type.Literal('picklist'),
+      ]),
       options: Type.Optional(Type.Array(Type.String())),
     }),
   ),
