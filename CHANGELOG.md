@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.0.1...v1.1.0) (2026-11-03)
+
+
+### Features
+
+* schema, migrations, field system and repositories ([#21](https://github.com/jimjohnsondev/morgue-file/issues/21)) ([69d3219](https://github.com/jimjohnsondev/morgue-file/commit/69d32193a6dce70ebf050596b241cafb15aaf00b))
+
 ## [1.0.1](https://github.com/jimjohnsondev/morgue-file/compare/v1.0.0...v1.0.1) (2026-11-02)
 
 
