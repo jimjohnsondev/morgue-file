@@ -15,6 +15,7 @@ import { createLaunchToken, registerSecurityHooks } from './security/security-ho
 
 import type { ServerConfig } from './config.js';
 import type { InstallStateHolder } from './install/install-state.js';
+import type { LibraryRuntime } from './library-runtime.js';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance } from 'fastify';
 
@@ -24,11 +25,13 @@ export type BuildAppOptions = {
   readonly install: InstallStateHolder;
   readonly token?: string;
   readonly logger?: boolean;
+  /** The library to start when setup finishes or a missing data folder comes back. */
+  readonly library?: LibraryRuntime;
 };
 
 /** Creates the app with every route registered, ready to listen or to inject requests into. */
 export async function buildApp(options: BuildAppOptions): Promise<FastifyInstance> {
-  const { config, install } = options;
+  const { config, install, library } = options;
   const app = Fastify({ logger: options.logger ?? false }).withTypeProvider<TypeBoxTypeProvider>();
   const token = options.token ?? createLaunchToken();
   const clientDir = path.join(config.appDir, 'dist', 'client');
@@ -36,12 +39,12 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const pageContext = { token, assets };
 
   registerSecurityHooks(app, config.port, token);
-  registerSetupGate(app, { homeDir: config.homeDir, port: config.port, install });
+  registerSetupGate(app, { homeDir: config.homeDir, port: config.port, install, library });
   registerErrorHandler(app);
   registerHealthRoute(app, config.version);
   registerAssetRoute(app, clientDir);
   registerSetupPage(app, pageContext, install);
-  registerSetupApi(app, { homeDir: config.homeDir, port: config.port, install });
+  registerSetupApi(app, { homeDir: config.homeDir, port: config.port, install, library });
   registerHomeRoute(app, pageContext);
 
   return app;

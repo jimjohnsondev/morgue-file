@@ -49,6 +49,11 @@ export function setRootStatus(db: Db, id: number, status: RootStatus): void {
   db.prepare('UPDATE roots SET status = ? WHERE id = ?').run(status, id);
 }
 
+/** Records a finished scan: the root was reachable, and when it was last read in full. */
+export function markRootScanned(db: Db, id: number, now: string): void {
+  db.prepare(`UPDATE roots SET status = 'online', last_scan_at = ? WHERE id = ?`).run(now, id);
+}
+
 function toRoot(row: RootRow): Root {
   return {
     id: row.id,

@@ -5,13 +5,16 @@ import { loadInstallState } from '../install/install-state.js';
 import { claimDataFolder } from '../install/lock-file.js';
 
 import type { InstallStateHolder } from '../install/install-state.js';
-import type { FastifyInstance } from 'fastify';
+import type { LibraryRuntime } from '../library-runtime.js';
+import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 
 /** What the gate needs: the install state, and where to look again for a missing data folder. */
 export type SetupGateContext = {
   readonly homeDir: string;
   readonly port: number;
   readonly install: InstallStateHolder;
+  /** Started once setup is done, so indexing begins without a restart. Tests may leave it out. */
+  readonly library?: LibraryRuntime | undefined;
 };
 
 /** Paths that work before setup: the setup page and the health check. */
@@ -30,13 +33,17 @@ function isOpenBeforeSetup(url: string): boolean {
  * Looks again for a data folder that was missing at launch, e.g. a drive plugged in since, so
  * reloading the page is enough. Once found, the server claims it as it would at launch.
  */
-async function recheckMissingDataFolder(context: SetupGateContext): Promise<void> {
+async function recheckMissingDataFolder(
+  context: SetupGateContext,
+  log: FastifyBaseLogger,
+): Promise<void> {
   if (context.install.current.kind !== 'data-missing') {
     return;
   }
   const state = await loadInstallState(context.homeDir);
   if (state.kind === 'ready') {
     await claimDataFolder(state.dataDir, context.port);
+    context.library?.start(state, log);
   }
   context.install.current = state;
 }
@@ -49,7 +56,7 @@ export function registerSetupGate(app: FastifyInstance, context: SetupGateContex
   const { install } = context;
   app.addHook('onRequest', async (request, reply) => {
     if (request.method === 'GET') {
-      await recheckMissingDataFolder(context);
+      await recheckMissingDataFolder(context, request.log);
     }
     if (install.current.kind === 'ready' || isOpenBeforeSetup(request.url)) {
       return;

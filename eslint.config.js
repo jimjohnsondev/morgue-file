@@ -125,7 +125,9 @@ export default tseslint.config(
     ignores: [
       'src/core/archive/originals.ts',
       'src/core/db/**',
-      'src/core/jobs/**',
+      // The thumbnail cache, and the app's bin\ folder; workers read originals via originals.ts.
+      'src/core/jobs/thumbnail-files.ts',
+      'src/core/jobs/workers/media-tools.ts',
       'src/server/assets.ts',
       'src/server/config.ts',
       'src/server/install/**',
