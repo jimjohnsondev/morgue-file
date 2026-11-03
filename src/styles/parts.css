@@ -4,7 +4,7 @@
   background: var(--color-panel);
   border: 1px solid var(--color-border);
   box-shadow:
-    inset 1px 1px 0 var(--color-white),
+    inset 0 0 0 1px var(--color-white),
     var(--shadow-offset) var(--shadow-offset) 0 var(--color-shadow);
 }
 
@@ -19,6 +19,26 @@
   text-transform: uppercase;
   letter-spacing: var(--panel-title-spacing);
   background: linear-gradient(var(--color-title-bar-top), var(--color-title-bar-bottom));
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: inset 0 1px 0 var(--color-title-bar-highlight);
+}
+
+/* A link or note at the right end of a title bar: "« hide", "page 3 of 13". */
+.panel__title--split > :last-child {
+  margin-left: auto;
+}
+
+.panel__title a,
+.panel__title a:visited {
+  color: var(--color-cyan-link-on-dark);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.panel__title-note {
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .panel__title::before {
@@ -32,18 +52,34 @@
   padding: var(--space-3) var(--space-4);
 }
 
-.button {
+.button,
+.button:visited {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--button-height);
   padding: var(--space-1) var(--space-3);
   font-family: var(--font-body);
-  font-size: var(--text-table);
+  font-size: var(--text-caption);
+  font-weight: bold;
   color: var(--color-text);
+  text-decoration: none;
+  cursor: pointer;
   background: linear-gradient(var(--color-button-top), var(--color-button-bottom));
   border: 1px solid;
-  border-color: var(--color-white) var(--color-border) var(--color-border) var(--color-white);
+  border-color: var(--color-white) var(--color-bevel-dark) var(--color-bevel-dark)
+    var(--color-white);
+  box-shadow: 0 0 0 1px var(--color-ground);
+}
+
+.button:hover {
+  color: var(--color-text);
+  text-decoration: none;
 }
 
 .button:active {
-  border-color: var(--color-border) var(--color-white) var(--color-white) var(--color-border);
+  background: linear-gradient(var(--color-button-bottom), var(--color-button-top));
+  border-color: var(--color-bevel-dark) var(--color-white) var(--color-white)
+    var(--color-bevel-dark);
 }
 
 .button--primary {
@@ -56,7 +92,9 @@
   padding: var(--space-1);
   font-family: var(--font-body);
   font-size: var(--text-table);
-  border: 2px inset var(--color-hairline);
+  color: var(--color-text);
+  background: var(--color-white);
+  border: 2px inset var(--color-page);
 }
 
 .field:focus {

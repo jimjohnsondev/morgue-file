@@ -125,7 +125,7 @@ These are partial frames that show only the area that changes. They're quick to 
 
 **Claude Code then:**
 
-- [x] Copies Fixed specs into `tokens.css` (done in the scaffold) and the banner SVG into `src/styles/` (still to do: export it from the canvas)
+- [x] Copies Fixed specs into `tokens.css` (done in the scaffold) and the banner SVG into `src/styles/` (copied from the canvas in PR 7)
 - [ ] Builds the nav, three templates and Home against the fixture archive
 - [ ] Posts built frames 1–12 and E1–E6 next to the mocks for the gate
 - [ ] After approval, saves those screens as the CI baseline

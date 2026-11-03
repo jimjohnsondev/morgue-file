@@ -37,7 +37,14 @@ export async function loadPageAssets(clientDir: string): Promise<PageAssets> {
 }
 
 /** Matches the only file names the asset route will serve: Vite's hashed output. */
-const ASSET_NAME = /^[\w-]+\.(css|js)$/;
+const ASSET_NAME = /^[\w-]+\.(css|js|svg)$/;
+
+/** The content type of each kind of built file. */
+const ASSET_TYPES = {
+  css: 'text/css; charset=utf-8',
+  js: 'text/javascript; charset=utf-8',
+  svg: 'image/svg+xml',
+} as const;
 
 /** Returns a built asset's bytes and type, or undefined for any other name. */
 export async function readAsset(
@@ -48,7 +55,7 @@ export async function readAsset(
   if (match === null) {
     return undefined;
   }
-  const type = match[1] === 'css' ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8';
+  const type = ASSET_TYPES[match[1] as keyof typeof ASSET_TYPES];
   try {
     const body = await readFile(path.join(clientDir, 'assets', fileName));
     return { body, type };

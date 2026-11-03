@@ -1,7 +1,9 @@
 // Where thumbnails live in the data folder and how big the default ones are
 // (docs/ARCHITECTURE.md, Thumbnails and media).
-import { mkdir, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+
+import { systemErrorCode } from '#core/errors.js';
 
 import type { ItemKind } from '#core/db/repositories/items.js';
 
@@ -20,16 +22,37 @@ export const DEFAULT_SQUARE: ThumbnailSize = { width: 320, height: 320 };
 /** Library covers are shown at 160×232. */
 export const DEFAULT_COVER: ThumbnailSize = { width: 320, height: 464 };
 
+/** Square thumbnails at Small (120 px shown), Medium (160) and Large (240), made at twice that. */
+export const SQUARE_SIZES = {
+  small: { width: 240, height: 240 },
+  medium: DEFAULT_SQUARE,
+  large: { width: 480, height: 480 },
+} as const satisfies Readonly<Record<string, ThumbnailSize>>;
+
+/** The thumbnail sizes a page can choose between. */
+export type SquareSizeName = keyof typeof SQUARE_SIZES;
+
 /** The size the queue makes for each kind; other sizes are made when a page first asks. */
 export function defaultThumbnailSize(kind: ItemKind): ThumbnailSize {
-  return kind === 'image' || kind === 'video' ? DEFAULT_SQUARE : DEFAULT_COVER;
+  return hasSquareThumbnail(kind) ? DEFAULT_SQUARE : DEFAULT_COVER;
 }
 
 /** Names a size in file names: 320 for a square, 320x464 for a cover. */
-function sizeLabel(size: ThumbnailSize): string {
+export function sizeToLabel(size: ThumbnailSize): string {
   return size.width === size.height
     ? String(size.width)
     : `${String(size.width)}x${String(size.height)}`;
+}
+
+/** Says whether an item's thumbnails are squares (photos and videos) rather than covers. */
+export function hasSquareThumbnail(kind: ItemKind): boolean {
+  return kind === 'image' || kind === 'video';
+}
+
+/** Reads a size back from its label in a URL (`320`, `320x464`), or undefined for any other. */
+export function parseSizeLabel(label: string): ThumbnailSize | undefined {
+  const sizes: ThumbnailSize[] = [...Object.values(SQUARE_SIZES), DEFAULT_COVER];
+  return sizes.find((size) => sizeToLabel(size) === label);
 }
 
 /**
@@ -38,7 +61,7 @@ function sizeLabel(size: ThumbnailSize): string {
  */
 export function thumbnailPath(thumbsDir: string, itemId: number, size: ThumbnailSize): string {
   const folder = (itemId % 256).toString(16).padStart(2, '0');
-  return path.join(thumbsDir, folder, `${String(itemId)}-${sizeLabel(size)}.webp`);
+  return path.join(thumbsDir, folder, `${String(itemId)}-${sizeToLabel(size)}.webp`);
 }
 
 /**
@@ -50,4 +73,16 @@ export async function saveThumbnail(file: string, webp: Buffer): Promise<void> {
   const partial = `${file}.${String(process.pid)}.partial`;
   await writeFile(partial, webp);
   await rename(partial, file);
+}
+
+/** Reads a cached thumbnail, or returns undefined if it hasn't been made. */
+export async function readThumbnail(file: string): Promise<Buffer | undefined> {
+  try {
+    return await readFile(file);
+  } catch (error) {
+    if (systemErrorCode(error) === 'ENOENT') {
+      return undefined;
+    }
+    throw error;
+  }
 }

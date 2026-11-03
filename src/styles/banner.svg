@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 240" width="2560" height="240" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4C525E"></stop><stop offset="0.55" stop-color="#2C3038"></stop><stop offset="1" stop-color="#15171B"></stop></linearGradient>
+<radialGradient id="glowc" cx="2040" cy="110" r="460" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3FE6FF" stop-opacity="0.45"></stop><stop offset="0.5" stop-color="#12C6DE" stop-opacity="0.12"></stop><stop offset="1" stop-color="#12C6DE" stop-opacity="0"></stop></radialGradient>
+<radialGradient id="glowm" cx="1420" cy="240" r="540" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FF3DB8" stop-opacity="0.4"></stop><stop offset="0.5" stop-color="#D61F92" stop-opacity="0.1"></stop><stop offset="1" stop-color="#D61F92" stop-opacity="0"></stop></radialGradient>
+<linearGradient id="band" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#12C6DE"></stop><stop offset="0.5" stop-color="#7A6FE0"></stop><stop offset="1" stop-color="#D61F92"></stop></linearGradient>
+<linearGradient id="vignette" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0A0B0E" stop-opacity="0.6"></stop><stop offset="0.36" stop-color="#0A0B0E" stop-opacity="0"></stop></linearGradient>
+<linearGradient id="shine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.15"></stop><stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0"></stop></linearGradient>
+<linearGradient id="fade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0"></stop><stop offset="1" stop-color="#FFFFFF" stop-opacity="1"></stop></linearGradient>
+<pattern id="pin" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="1" height="12" fill="#FFFFFF" fill-opacity="0.05"></rect></pattern>
+<pattern id="dots" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="2.2" fill="#9FF3FF"></circle></pattern>
+<mask id="dotfade"><rect x="2140" y="0" width="420" height="240" fill="url(#fade)"></rect></mask>
+</defs>
+<rect width="2560" height="240" fill="url(#sky)"></rect>
+<rect width="2560" height="240" fill="url(#pin)"></rect>
+<rect width="2560" height="240" fill="url(#glowm)"></rect>
+<rect width="2560" height="240" fill="url(#glowc)"></rect>
+<path d="M1060 240 L1260 0 H1700 L1500 240 Z" fill="url(#band)" fill-opacity="0.22"></path>
+<path d="M1560 240 L1760 0 H1800 L1600 240 Z" fill="url(#band)" fill-opacity="0.5"></path>
+<path d="M980 240 L1180 0 H1196 L996 240 Z" fill="#3FE6FF" fill-opacity="0.45"></path>
+<circle cx="1560" cy="150" r="92" fill="#FF3DB8" fill-opacity="0.32"></circle>
+<circle cx="1660" cy="86" r="64" fill="none" stroke="#3FE6FF" stroke-width="3" stroke-opacity="0.75"></circle>
+<g fill="none" stroke="#7FE9FF" stroke-opacity="0.38">
+<circle cx="2040" cy="110" r="58" stroke-width="2"></circle>
+<circle cx="2040" cy="110" r="108"></circle>
+<circle cx="2040" cy="110" r="164" stroke-dasharray="4 8"></circle>
+<path d="M1740 110 H2340 M2040 -20 V260" stroke-opacity="0.2"></path>
+</g>
+<rect x="2140" y="0" width="420" height="240" fill="url(#dots)" fill-opacity="0.28" mask="url(#dotfade)"></rect>
+<rect x="1310" y="44" width="22" height="22" fill="#3FE6FF" fill-opacity="0.85"></rect>
+<rect x="1344" y="44" width="10" height="10" fill="#FF3DB8" fill-opacity="0.85"></rect>
+<rect x="1880" y="186" width="16" height="16" fill="#FF3DB8" fill-opacity="0.8"></rect>
+<rect x="2250" y="40" width="12" height="12" fill="#3FE6FF" fill-opacity="0.75"></rect>
+<rect x="1180" y="176" width="40" height="4" fill="#FFFFFF" fill-opacity="0.35"></rect>
+<rect x="1180" y="186" width="24" height="4" fill="#FFFFFF" fill-opacity="0.25"></rect>
+<rect x="0" y="230" width="2560" height="1" fill="#FFFFFF" fill-opacity="0.18"></rect>
+<rect width="2560" height="240" fill="url(#vignette)"></rect>
+<rect width="2560" height="120" fill="url(#shine)"></rect>
+<rect width="2560" height="1" fill="#FFFFFF" fill-opacity="0.25"></rect>
+</svg>

@@ -78,6 +78,12 @@ test('R29, R30, R31: the README steps work from a path with spaces, keeping data
   await waitForApp();
   await page.goto(`${APP_URL}/`);
   await expect(page).toHaveTitle('Home · Morgue File');
+  // An Index page lists the indexed Reference folder; the library opens just after listening.
+  await expect(async () => {
+    const photos = await page.goto(`${APP_URL}/photos`);
+    expect(photos?.status()).toBe(200);
+  }).toPass();
+  await expect(page).toHaveTitle('Photos · Morgue File');
   await stopMorgueFile(restarted);
 
   // Moving the whole folder keeps the app and its data together.

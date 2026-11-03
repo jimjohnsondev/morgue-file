@@ -13,8 +13,9 @@ import { makePdfThumbnail } from './workers/thumb-pdf.js';
 import { makeVideoThumbnail } from './workers/thumb-video.js';
 
 import type { Db } from '#core/db/connection.js';
-import type { ItemKind } from '#core/db/repositories/items.js';
+import type { Item, ItemKind } from '#core/db/repositories/items.js';
 import type { Job } from '#core/db/repositories/jobs.js';
+import type { Root } from '#core/db/repositories/roots.js';
 import type { ThumbnailSize } from './thumbnail-files.js';
 import type { ThumbnailResult } from './workers/crop.js';
 import type { MediaTools } from './workers/media-tools.js';
@@ -61,14 +62,23 @@ async function makeThumbnail(input: WorkerInput): Promise<ThumbnailResult> {
   }
 }
 
-/** Makes and saves the default thumbnail for a job's item, and stores its media details. */
-export async function runThumbnailJob(context: ThumbnailContext, job: Job): Promise<void> {
-  const item = findItemById(context.db, job.itemId);
-  const root = item === undefined ? undefined : findRootById(context.db, item.rootId);
+/** Reads an item and its root, failing if either has gone. */
+function requireItemAndRoot(db: Db, itemId: number): { item: Item; root: Root } {
+  const item = findItemById(db, itemId);
+  const root = item === undefined ? undefined : findRootById(db, item.rootId);
   if (item === undefined || root === undefined) {
-    throw new AppError('not-found', `Item ${String(job.itemId)} or its root no longer exists.`);
+    throw new AppError('not-found', `Item ${String(itemId)} or its root no longer exists.`);
   }
-  const size = defaultThumbnailSize(item.kind);
+  return { item, root };
+}
+
+/** Makes one item's thumbnail at one size and saves it to the cache. */
+async function makeAndSave(
+  context: ThumbnailContext,
+  itemId: number,
+  size: ThumbnailSize,
+): Promise<ThumbnailResult> {
+  const { item, root } = requireItemAndRoot(context.db, itemId);
   const result = await makeThumbnail({
     kind: item.kind,
     original: { rootPath: root.path, relPath: item.relPath },
@@ -76,7 +86,28 @@ export async function runThumbnailJob(context: ThumbnailContext, job: Job): Prom
     mediaTools: context.mediaTools,
   });
   await saveThumbnail(thumbnailPath(context.thumbsDir, item.id, size), result.webp);
-  setItemMediaDetails(context.db, item.id, result.details);
+  return result;
+}
+
+/** Makes and saves the default thumbnail for a job's item, and stores its media details. */
+export async function runThumbnailJob(context: ThumbnailContext, job: Job): Promise<void> {
+  const item = findItemById(context.db, job.itemId);
+  const size = defaultThumbnailSize(item?.kind ?? 'image');
+  const result = await makeAndSave(context, job.itemId, size);
+  setItemMediaDetails(context.db, job.itemId, result.details);
+}
+
+/**
+ * Makes a size other than the default the first time a page asks for it (Small and Large
+ * squares), from the original, so it is as sharp as the default. Returns the cache file.
+ */
+export async function makeThumbnailAtSize(
+  context: ThumbnailContext,
+  itemId: number,
+  size: ThumbnailSize,
+): Promise<string> {
+  await makeAndSave(context, itemId, size);
+  return thumbnailPath(context.thumbsDir, itemId, size);
 }
 
 /** Records that an item's thumbnail couldn't be made, so the item page can show it instead of waiting. */
