@@ -2,12 +2,14 @@
 
 /**
  * Lowercases a name and joins its words with a separator, keeping letters and digits of any
- * script: accents are dropped ("Études" becomes "etudes") and "李娜" stays "李娜".
+ * script. Accents on Latin letters are dropped ("Études" becomes "etudes"); marks in other
+ * scripts are part of the letter (ガ, Hangul syllables), so they stay.
  */
 export function joinWords(name: string, separator: '-' | '_'): string {
   const words = name
     .normalize('NFKD')
-    .replaceAll(/\p{M}/gu, '')
+    .replaceAll(/(\p{Script=Latin})\p{M}+/gu, '$1')
+    .normalize('NFC')
     .toLowerCase()
     .match(/[\p{L}\p{N}]+/gu);
   return (words ?? []).join(separator);

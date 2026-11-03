@@ -46,12 +46,12 @@ function profileValue(modelId: number, key: string): unknown {
 describe('R14: model fields are data, so every profile follows a change in settings', () => {
   it('R14: a field added in settings appears on every profile', () => {
     const elena = createModel(db, 'Elena Varga');
-    const marco = createModel(db, 'Second Model');
+    const secondModel = createModel(db, 'Second Model');
     expect(profileLabels(elena)).toEqual(['Name', 'Bio']);
 
     addField(db, { entity: 'model', label: 'Agency link', type: 'link' });
     expect(profileLabels(elena)).toEqual(['Name', 'Bio', 'Agency link']);
-    expect(profileLabels(marco)).toEqual(['Name', 'Bio', 'Agency link']);
+    expect(profileLabels(secondModel)).toEqual(['Name', 'Bio', 'Agency link']);
   });
 
   it('R14: renaming a field renames it on every profile and keeps its values', () => {
@@ -66,12 +66,12 @@ describe('R14: model fields are data, so every profile follows a change in setti
 
   it('R14: removing a field hides it from every profile', () => {
     const elena = createModel(db, 'Elena Varga');
-    const marco = createModel(db, 'Second Model');
+    const secondModel = createModel(db, 'Second Model');
     const field = addField(db, { entity: 'model', label: 'First session', type: 'date' });
 
     removeField(db, field.id, new Date('2026-11-01T00:00:00Z'));
     expect(profileLabels(elena)).toEqual(['Name', 'Bio']);
-    expect(profileLabels(marco)).toEqual(['Name', 'Bio']);
+    expect(profileLabels(secondModel)).toEqual(['Name', 'Bio']);
   });
 
   it('R14: fields take every type: text, long text, link, date, number and pick-list', () => {

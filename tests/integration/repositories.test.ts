@@ -141,13 +141,15 @@ describe('subcategories', () => {
 describe('names in any script', () => {
   it('slugs accented and non-Latin names, and refuses names with no letters', () => {
     insertSubcategory(db, 'library', 'Études');
-    insertSubcategory(db, 'photos', '李娜');
+    insertSubcategory(db, 'photos', '人物画');
     expect(findSubcategoryBySlug(db, 'library', 'etudes')?.name).toBe('Études');
-    expect(findSubcategoryBySlug(db, 'photos', '李娜')?.name).toBe('李娜');
+    expect(findSubcategoryBySlug(db, 'photos', '人物画')?.name).toBe('人物画');
     expect(() => insertSubcategory(db, 'photos', '!!!')).toThrow(/letter or digit/);
     expect(() => insertSubcategory(db, 'library', 'etudes')).toThrow(/already a subcategory/);
-    createModel(db, 'Zoë Ångström');
-    expect(findModelBySlug(db, 'zoe-angstrom')).toBeDefined();
+    createModel(db, 'Modèle Deux');
+    expect(findModelBySlug(db, 'modele-deux')).toBeDefined();
+    createModel(db, 'ガ');
+    expect(findModelBySlug(db, 'ガ')).toBeDefined();
   });
 
   it('refuses empty tag names', () => {
