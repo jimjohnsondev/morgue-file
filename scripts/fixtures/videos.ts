@@ -8,6 +8,7 @@ const CLIP = { width: 640, height: 360, fps: 30, durationSeconds: 2 } as const;
 
 /** Frame 7's video is made at its real size and length, so its timecodes and loop range fit. */
 const FRAME_7_VIDEO = 'pose_session_04_seated.mp4';
+const FRAME_7_SLOT = 3;
 const FRAME_7_CLIP = { width: 1920, height: 1080, fps: 30, durationSeconds: 195 } as const;
 
 /** Every planned video. */
@@ -15,21 +16,23 @@ export function planVideos(): FixtureFile[] {
   return [...planPoses(), ...planTimelapses()];
 }
 
-/** pose_session_01_seated.mp4 to pose_session_35_twisting.mp4, one session a day. */
+/**
+ * pose_session_01_seated.mp4 to pose_session_35_twisting.mp4, one every six hours. Frame 7's
+ * video is moved to third place ("3 of 140 in Poses"), as frame 5's photo is in Figure.
+ */
 function planPoses(): FixtureFile[] {
-  const videos: FixtureFile[] = [];
+  const names: string[] = [];
   for (let session = 1; session <= SESSION_COUNT; session++) {
-    for (const [poseIndex, pose] of POSES.entries()) {
-      const name = `pose_session_${padNumber(session, 2)}_${pose}.mp4`;
-      videos.push({
-        relPath: `Video/Poses/${name}`,
-        kind: 'video',
-        mtimeMs: minutesAfter('2024-03-14', session * 1440 + poseIndex * 30),
-        ...(name === FRAME_7_VIDEO ? FRAME_7_CLIP : CLIP),
-      });
-    }
+    names.push(...POSES.map((pose) => `pose_session_${padNumber(session, 2)}_${pose}.mp4`));
   }
-  return videos;
+  names.splice(names.indexOf(FRAME_7_VIDEO), 1);
+  names.splice(FRAME_7_SLOT - 1, 0, FRAME_7_VIDEO);
+  return names.map((name, index) => ({
+    relPath: `Video/Poses/${name}`,
+    kind: 'video',
+    mtimeMs: minutesAfter('2024-03-14', (index + 1) * 360),
+    ...(name === FRAME_7_VIDEO ? FRAME_7_CLIP : CLIP),
+  }));
 }
 
 /** timelapse_001 to timelapse_046; the even ones are MOV, so both P0 video formats exist. */

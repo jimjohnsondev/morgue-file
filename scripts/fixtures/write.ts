@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readdir, readFile, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { figureSvg, type ImageFormat, renderSvg } from './draw.ts';
+import { figureSvg, IMAGE_FORMATS, type ImageFormat, renderSvg } from './draw.ts';
 import { type Publication, writeCbz, writePageFolder, writePdf } from './publications.ts';
 import { createRandom, hashText, type Random } from './random.ts';
 import { encodeClip } from './video.ts';
@@ -41,8 +41,18 @@ export async function writeFixtureFile(file: FixtureFile, referenceDir: string):
 /** Draws an image in the format its extension names. */
 async function writeImage({ file, outputPath, random }: Target): Promise<void> {
   const picture = { width: file.width ?? 1, height: file.height ?? 1, random };
-  const format = path.extname(file.relPath).slice(1) as ImageFormat;
+  const format = imageFormatOf(file.relPath);
   await writeFile(outputPath, await renderSvg(figureSvg(picture), format));
+}
+
+/** The image format a file's extension names, or an error for one the generator can't write. */
+function imageFormatOf(relPath: string): ImageFormat {
+  const extension = path.extname(relPath).slice(1);
+  const format = IMAGE_FORMATS.find((candidate) => candidate === extension);
+  if (format === undefined) {
+    throw new Error(`No image writer for ${relPath}.`);
+  }
+  return format;
 }
 
 /** Encodes a video at its planned size, rate and length. */

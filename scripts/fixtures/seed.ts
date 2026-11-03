@@ -66,11 +66,11 @@ export type Seed = Static<typeof SeedSchema>;
 /** Reads and checks seed.json, failing with the first schema error. */
 export async function loadSeed(seedPath: string): Promise<Seed> {
   const parsed: unknown = JSON.parse(await readFile(seedPath, 'utf8'));
-  const firstError = Value.Errors(SeedSchema, parsed).First();
-  if (firstError !== undefined) {
-    throw new Error(`${seedPath} ${firstError.path}: ${firstError.message}`);
+  if (Value.Check(SeedSchema, parsed)) {
+    return parsed;
   }
-  return parsed as Seed;
+  const firstError = Value.Errors(SeedSchema, parsed).First();
+  throw new Error(`${seedPath} ${firstError?.path ?? ''}: ${firstError?.message ?? 'invalid'}`);
 }
 
 /** Turns an item pattern into a regular expression over the whole path. */

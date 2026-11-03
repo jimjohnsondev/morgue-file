@@ -10,6 +10,9 @@ const PORTRAIT = { width: 756, height: 1008 } as const;
 const ELENA_FIRST_SLOT = 701;
 const ELENA_PHOTO_COUNT = 211;
 
+/** Shifts the folder turns so that the run 103–105 (the 35th) starts in Figure. */
+const ELENA_FOLDER_OFFSET = 2;
+
 /** Frame 5's photo, third in Figure ("3 of 1,236 in Figure"). */
 const FRAME_5_PHOTO = { folder: 'Figure', slot: 3, name: 'seated_backlit_017.jpg' } as const;
 
@@ -55,14 +58,16 @@ export function planPhotos(): FixtureFile[] {
 }
 
 /**
- * Names Elena's photos figure_elena_001.jpg to portrait_elena_211.jpg. The folder cycles every
- * three numbers so that 103, 106 and 109 land in Figure, Hands and Portrait, as frame 10 shows.
+ * Names Elena's photos figure_elena_001.jpg to portrait_elena_211.jpg. Each run of three numbers
+ * shares a folder, and the folders take turns: 103–105 Figure, 106–108 Hands, 109–111 Portrait,
+ * as frame 10 shows.
  */
 function planElenaNames(): Map<string, string[]> {
   const folders = ['Figure', 'Hands', 'Portrait'] as const;
   const names = new Map<string, string[]>(folders.map((folder) => [folder, []]));
   for (let number = 1; number <= ELENA_PHOTO_COUNT; number++) {
-    const folder = folders[Math.floor((number + 5) / 3) % 3] ?? 'Figure';
+    const runOfThree = Math.floor((number - 1) / 3);
+    const folder = folders[(runOfThree + ELENA_FOLDER_OFFSET) % 3] ?? 'Figure';
     names.get(folder)?.push(`${folder.toLowerCase()}_elena_${padNumber(number, 3)}.jpg`);
   }
   return names;

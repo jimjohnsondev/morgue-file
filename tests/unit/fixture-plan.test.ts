@@ -45,6 +45,13 @@ describe('fixture plan matches the Sample content table in docs/DESIGN-BRIEF.md'
     );
   });
 
+  it('has frame 7’s video third in Poses, oldest first', () => {
+    const poses = plan
+      .filter((file) => file.relPath.startsWith('Video/Poses/'))
+      .toSorted((left, right) => left.mtimeMs - right.mtimeMs);
+    expect(poses[2]?.relPath).toBe('Video/Poses/pose_session_04_seated.mp4');
+  });
+
   it('has frame 7’s video at 1920×1080, 30 fps and 3:15', () => {
     expect(plan.find((file) => file.relPath.endsWith('pose_session_04_seated.mp4'))).toMatchObject({
       width: 1920,

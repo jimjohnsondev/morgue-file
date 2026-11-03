@@ -20,7 +20,10 @@ const POSES = [
 const HUES = [28, 35, 210, 18, 45, 195, 8, 32, 220, 40] as const;
 
 /** The image formats the generator writes, by file extension. */
-export type ImageFormat = 'jpg' | 'png' | 'webp' | 'gif';
+export const IMAGE_FORMATS = ['jpg', 'png', 'webp', 'gif'] as const;
+
+/** One of the image formats the generator writes. */
+export type ImageFormat = (typeof IMAGE_FORMATS)[number];
 
 /** A picture to draw: its pixel size and the generator that picks its colors and pose. */
 export type Picture = { readonly width: number; readonly height: number; readonly random: Random };

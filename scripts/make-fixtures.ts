@@ -6,6 +6,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { availableParallelism } from 'node:os';
 import path from 'node:path';
 
+import { canClearOutputDir } from './fixtures/output-dir.ts';
 import { planFixtures } from './fixtures/plan.ts';
 import { hashTree, runWithLimit, writeFixtureFile } from './fixtures/write.ts';
 
@@ -18,6 +19,11 @@ const VIDEO_LIMIT = 2;
 
 /** Writes every planned file, then the manifest. */
 async function makeFixtures(outputDir: string): Promise<void> {
+  if (!canClearOutputDir(outputDir)) {
+    throw new Error(
+      `Refusing to clear ${outputDir}: use a folder under fixtures/ or the temp folder.`,
+    );
+  }
   const referenceDir = path.join(outputDir, 'Reference');
   await rm(referenceDir, { recursive: true, force: true });
   await mkdir(referenceDir, { recursive: true });
