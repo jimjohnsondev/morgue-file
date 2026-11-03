@@ -94,10 +94,8 @@ function addMediaTools(): void {
   }
   cpSync(ffmpeg, path.join(STAGE_DIR, 'bin', 'ffmpeg.exe'));
   cpSync(ffprobe, path.join(STAGE_DIR, 'bin', 'ffprobe.exe'));
-  cpSync(
-    path.join(path.dirname(ffmpeg), 'ffmpeg.LICENSE'),
-    path.join(STAGE_DIR, 'LICENSES', 'ffmpeg-and-ffprobe.txt'),
-  );
+  // ffmpeg-static saves the license beside the binary as <binary>.LICENSE (ffmpeg.exe.LICENSE).
+  cpSync(`${ffmpeg}.LICENSE`, path.join(STAGE_DIR, 'LICENSES', 'ffmpeg-and-ffprobe.txt'));
   writeFileSync(
     path.join(STAGE_DIR, 'LICENSES', 'ffprobe-source.txt'),
     "bin\\ffprobe.exe is the FFmpeg project's ffprobe (GPL-3.0, see ffmpeg-and-ffprobe.txt), " +
