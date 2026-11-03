@@ -11,7 +11,7 @@ export function joinWords(name: string, separator: '-' | '_'): string {
     .replaceAll(/(\p{Script=Latin})\p{M}+/gu, '$1')
     .normalize('NFC')
     .toLowerCase()
-    .match(/[\p{L}\p{N}]+/gu);
+    .match(/[\p{L}\p{M}\p{N}]+/gu);
   return (words ?? []).join(separator);
 }
 

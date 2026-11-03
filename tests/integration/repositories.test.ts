@@ -150,6 +150,8 @@ describe('names in any script', () => {
     expect(findModelBySlug(db, 'modele-deux')).toBeDefined();
     createModel(db, 'ガ');
     expect(findModelBySlug(db, 'ガ')).toBeDefined();
+    createModel(db, 'चित्र');
+    expect(findModelBySlug(db, 'चित्र')).toBeDefined();
   });
 
   it('refuses empty tag names', () => {
