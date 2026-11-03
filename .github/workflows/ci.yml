@@ -78,5 +78,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-playwright
+      # perf.db follows the schema, so it's made fresh here rather than cached with the archive.
+      - run: npm run fixtures:perf
       # Perf tests arrive with the query engine (PR 7); until then the job passes with none.
       - run: npx playwright test --project=perf --pass-with-no-tests

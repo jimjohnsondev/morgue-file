@@ -26,10 +26,10 @@ runs:
       uses: actions/cache@v4
       with:
         path: fixtures/generated
-        key: fixtures-${{ runner.os }}-${{ hashFiles('scripts/make-fixtures.ts', 'scripts/make-perf-db.ts', 'scripts/fixtures/**', 'fixtures/seed.json', 'package-lock.json') }}
+        key: fixtures-${{ runner.os }}-${{ hashFiles('scripts/make-fixtures.ts', 'scripts/fixtures/**', 'fixtures/seed.json', 'package-lock.json') }}
     - name: Make the fixture archive
       if: steps.fixtures.outputs.cache-hit != 'true'
-      run: npm run fixtures && npm run fixtures:perf
+      run: npm run fixtures
       shell: bash
     - run: npm run build
       shell: bash

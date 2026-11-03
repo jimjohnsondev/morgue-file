@@ -4,12 +4,10 @@ import path from 'node:path';
 
 import { Type } from '@sinclair/typebox';
 
+import { LIBRARY_FILE_NAME } from '#core/db/connection.js';
 import { AppError } from '#core/errors.js';
 
 import { readJsonFile, writeJsonFile } from './json-file.js';
-
-/** The database file. Its presence means the folder already holds a library. */
-export const LIBRARY_FILE_NAME = 'library.db';
 
 const SETTINGS_FILE_NAME = 'settings.json';
 const WRITE_TEST_FILE_NAME = '.morgue-file-write-test';
