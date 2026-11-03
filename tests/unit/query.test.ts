@@ -60,7 +60,9 @@ describe('compileQuery', () => {
     expect(compileQuery({ terms: [] })).toEqual({ where: '1 = 1', params: [] });
   });
 
-  it('refuses a rating outside 1 to 5', () => {
-    expect(() => compileQuery(parseQuery('rating:9'))).toThrow(/rating/);
+  it('searches for a rating outside 1 to 5 as a word instead of failing', () => {
+    const query = parseQuery('rating:9');
+    expect(query.terms).toEqual([{ kind: 'word', value: 'rating:9', isNegated: false }]);
+    expect(() => compileQuery(query)).not.toThrow();
   });
 });

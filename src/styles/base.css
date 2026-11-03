@@ -176,12 +176,12 @@ a:hover {
 }
 
 .counter {
-  padding: 1px var(--space-1);
+  padding: var(--box-padding) var(--space-1);
   font-family: var(--font-mono);
   font-size: var(--text-counter);
   font-weight: bold;
   color: var(--color-cyan-counter);
-  letter-spacing: 1px;
+  letter-spacing: var(--counter-spacing);
   background: var(--color-ink);
   border: 1px solid var(--color-text-quiet);
 }

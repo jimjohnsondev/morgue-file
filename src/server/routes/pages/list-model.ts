@@ -61,7 +61,7 @@ function toolbarFor(address: ListAddress, view: ListView): ToolbarModel {
 function filterPanelFor(db: Db, spec: ListSpec, view: ListView): FilterPanelModel {
   const { section, query } = spec;
   return {
-    baseQuery: queryToText(withoutPanelTerms(query)),
+    baseQuery: queryToText(withoutPanelTerms(query, section !== undefined)),
     fixedSection: section,
     resetHref: spec.address.q === undefined ? spec.address.path : '/search',
     hideHref: listHref(spec.address, view, { filters: 'hidden' }),

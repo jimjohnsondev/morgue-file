@@ -61,13 +61,15 @@ function modelFragment(value: string): Fragment {
   };
 }
 
+/** A collection by id when the value is a number (`/collections/12`), else by name. */
 function collectionFragment(value: string): Fragment {
-  const id = /^\d+$/.test(value) ? Number(value) : -1;
+  const isId = /^\d+$/.test(value);
   return {
     where: `items.id IN (SELECT collection_items.item_id FROM collection_items
-      JOIN collections ON collections.id = collection_items.collection_id
-      WHERE collections.id = ? OR collections.name = ? COLLATE NOCASE)`,
-    params: [id, value],
+      WHERE collection_items.collection_id IN (SELECT id FROM collections WHERE ${
+        isId ? 'id = ?' : 'name = ? COLLATE NOCASE'
+      }))`,
+    params: [isId ? Number(value) : value],
   };
 }
 

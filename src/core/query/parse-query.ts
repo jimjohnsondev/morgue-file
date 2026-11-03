@@ -102,8 +102,17 @@ function toTerm(token: Token): Term | undefined {
   return { kind: 'field', key, value, isNegated };
 }
 
-/** Makes a filter term. Sections, slugs and file types are lowercase, so they match any case. */
+/** `rating:4` or `rating:3+`; anything else after `rating:` is searched for as a word. */
+const RATING_VALUE = /^[1-5]\+?$/;
+
+/**
+ * Makes a filter term. Sections, slugs and file types are lowercase, so they match any case. A
+ * rating that isn't 1 to 5 becomes a word, so no typed query can fail.
+ */
 export function filterTerm(key: FilterKey, value: string, isNegated = false): Term {
+  if (key === 'rating' && !RATING_VALUE.test(value)) {
+    return { kind: 'word', value: `rating:${value}`, isNegated };
+  }
   const isCaseless = key === 'in' || key === 'sub' || key === 'type';
   return { kind: 'filter', key, value: isCaseless ? value.toLowerCase() : value, isNegated };
 }

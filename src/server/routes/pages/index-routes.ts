@@ -31,11 +31,13 @@ const SECTIONS: readonly Section[] = ['photos', 'video', 'library'];
 
 const HOME_CRUMB = { label: 'Home', href: '/' } as const;
 
-const SectionParam = Type.Union([
-  Type.Literal('photos'),
-  Type.Literal('video'),
-  Type.Literal('library'),
-]);
+/** Any first path segment: pages not built yet (/item/5) must answer 404, not a 400. */
+const SectionParam = Type.String({ minLength: 1 });
+
+/** Says whether a path segment names a section. */
+function isSection(segment: string): segment is Section {
+  return (SECTIONS as readonly string[]).includes(segment);
+}
 
 /** One Index route: its URL, the schema of its path parameters, and how it builds its page. */
 type IndexRoute<Params> = {
@@ -121,8 +123,10 @@ function subcategorySpec(subcategory: Subcategory): ListSpec {
 }
 
 /** The subcategory at /<section>/<slug>; the slug arrives percent-decoded. */
-function requireSubcategory(db: Db, params: { section: Section; slug: string }): Subcategory {
-  const subcategory = findSubcategoryBySlug(db, params.section, params.slug);
+function requireSubcategory(db: Db, params: { section: string; slug: string }): Subcategory {
+  const subcategory = isSection(params.section)
+    ? findSubcategoryBySlug(db, params.section, params.slug)
+    : undefined;
   if (subcategory === undefined) {
     throw new AppError('not-found', `No subcategory "${params.slug}" in ${params.section}.`);
   }
@@ -130,7 +134,7 @@ function requireSubcategory(db: Db, params: { section: Section; slug: string }):
 }
 
 /** A subcategory's page: its grouped values if it groups by a field (Magazines), else its items. */
-function subcategoryModel(db: Db, params: { section: Section; slug: string }, view: ListView) {
+function subcategoryModel(db: Db, params: { section: string; slug: string }, view: ListView) {
   const subcategory = requireSubcategory(db, params);
   const groupSpec = groupSpecFor(db, subcategory);
   return groupSpec === undefined
@@ -139,7 +143,7 @@ function subcategoryModel(db: Db, params: { section: Section; slug: string }, vi
 }
 
 /** One grouped value's page: /library/magazines/life-drawing-quarterly (frame 3). */
-function groupPageModel(db: Db, params: { section: Section; slug: string; group: string }) {
+function groupPageModel(db: Db, params: { section: string; slug: string; group: string }) {
   const subcategory = requireSubcategory(db, params);
   const spec = groupSpecFor(db, subcategory);
   if (spec === undefined) {

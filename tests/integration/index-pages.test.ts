@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { findFieldByKey } from '#core/db/repositories/fields.js';
@@ -11,6 +13,7 @@ import {
 } from '#core/db/repositories/subcategories.js';
 import { tagItems } from '#core/db/repositories/tags.js';
 import { setFieldValue, setPicklistChoices } from '#core/fields/fields.js';
+import { DEFAULT_SQUARE, saveThumbnail, thumbnailPath } from '#core/jobs/thumbnail-files.js';
 import { createModel } from '#core/models/models.js';
 import { buildApp } from '#server/app.js';
 import { findAppDir, LOOPBACK_HOST } from '#server/config.js';
@@ -92,7 +95,11 @@ beforeAll(async () => {
   const runtime: LibraryRuntime = {
     open: () => ({
       db: library.db,
-      thumbnails: { db: library.db, thumbsDir: `${library.dataDir}/thumbs`, mediaTools: undefined },
+      thumbnails: {
+        db: library.db,
+        thumbsDir: path.join(library.dataDir, 'thumbs'),
+        mediaTools: undefined,
+      },
       wakeQueue: () => undefined,
     }),
     start: () => undefined,
@@ -180,6 +187,41 @@ describe('search and the filter panel', () => {
   });
 });
 
+describe('the filter panel keeps what it has no control for', () => {
+  /** The panel's hidden `base` field on a page. */
+  async function baseOf(url: string): Promise<string> {
+    const body = (await get(url)).body;
+    const field = /<input type="hidden" name="base"( value="([^"]*)")?/.exec(body);
+    return field === null ? 'no base field' : (field[2] ?? '');
+  }
+
+  it('keeps unsorted on the Unsorted page, whose panel has no subcategory choice', async () => {
+    expect(await baseOf('/unsorted')).toBe('unsorted');
+  });
+
+  it('keeps sub: and type: on the search page', async () => {
+    expect(await baseOf('/search?q=sub%3Afigure+type%3Ajpg+tag%3Ahands')).toBe(
+      'sub:figure type:jpg',
+    );
+  });
+
+  it('sends nothing the subcategory page’s controls already set', async () => {
+    expect(await baseOf('/photos/figure')).toBe('');
+  });
+});
+
+describe('typed queries never fail', () => {
+  it('searches for a malformed rating as a word', async () => {
+    const response = await get('/search?q=rating%3A9');
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('0 results');
+  });
+
+  it('answers 404 for a page that is not a section', async () => {
+    expect((await get('/item/5')).statusCode).toBe(404);
+  });
+});
+
 describe('R13: group-by on Index pages', () => {
   it('lists one entry per magazine title', async () => {
     const body = (await get('/library/magazines')).body;
@@ -205,6 +247,18 @@ describe('thumbnails by id', () => {
     expect(response.headers['cache-control']).toBe('no-store');
     const job = library.db.prepare('SELECT priority FROM jobs WHERE item_id = ?').get(id);
     expect(job).toEqual({ priority: 0 });
+  });
+
+  it('serves the default size when a larger one can’t be made, and leaves its job alone', async () => {
+    const id = findItemIdsByPath(library.db, REFERENCE_ROOT_ID).get('Figure/figure_0002.jpg')!;
+    const thumbsDir = path.join(library.dataDir, 'thumbs');
+    await saveThumbnail(thumbnailPath(thumbsDir, id, DEFAULT_SQUARE), Buffer.from('default'));
+    library.db.prepare(`UPDATE items SET thumb_state = 'ready' WHERE id = ?`).run(id);
+    // The Reference folder isn't there, so the Large square can't be made from the original.
+    const response = await get(`/media/thumb/${String(id)}/480`);
+    expect(response.headers['content-type']).toBe('image/webp');
+    expect(response.body).toBe('default');
+    expect(library.db.prepare('SELECT 1 FROM jobs WHERE item_id = ?').get(id)).toBeUndefined();
   });
 
   it('refuses a size that does not fit the item, and unknown ids', async () => {

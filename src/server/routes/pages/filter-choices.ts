@@ -53,12 +53,24 @@ export function chosenValues(query: Query, key: FilterKey): string[] {
     .map((term) => term.value.toLowerCase());
 }
 
+/** The filters a panel has controls for: every filter on a section's page, fewer elsewhere. */
+function panelKeys(hasSection: boolean): ReadonlySet<FilterKey> {
+  const shared: FilterKey[] = ['in', 'tag', 'model', 'rating', 'collection'];
+  return new Set(hasSection ? [...shared, 'sub', 'unsorted', 'type'] : shared);
+}
+
 /**
- * The query without the terms the panel sets, which is every filter it isn't negating: what the
- * panel sends along as `base`, so fields, words and negated filters are kept.
+ * The query without the terms the panel sets: what the panel sends along as `base`. Fields,
+ * words, negated filters and filters the panel has no control for (a `sub:` on the search
+ * page) ride along, so Apply never drops them.
  */
-export function withoutPanelTerms(query: Query): Query {
-  return { terms: query.terms.filter((term) => term.kind !== 'filter' || term.isNegated) };
+export function withoutPanelTerms(query: Query, hasSection: boolean): Query {
+  const keys = panelKeys(hasSection);
+  return {
+    terms: query.terms.filter(
+      (term) => term.kind !== 'filter' || term.isNegated || !keys.has(term.key),
+    ),
+  };
 }
 
 /** Choices from value and label pairs, chosen where the query has the value. */

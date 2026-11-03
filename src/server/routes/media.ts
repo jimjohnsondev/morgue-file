@@ -45,6 +45,11 @@ function sendPlaceholder(reply: FastifyReply): FastifyReply {
   return reply.type('image/svg+xml').header('cache-control', 'no-store').send(PLACEHOLDER);
 }
 
+/** Says whether a size is the one the queue makes for the item. */
+function isDefaultSize(item: Item, size: ThumbnailSize): boolean {
+  return sizeToLabel(size) === sizeToLabel(defaultThumbnailSize(item.kind));
+}
+
 /** Moves the item's default thumbnail to the front of the queue. */
 function hurryDefaultThumbnail(library: OpenLibrary, item: Item): void {
   queueThumbnail(library.db, {
@@ -65,17 +70,16 @@ async function findOrMakeThumbnail(
   item: Item,
   size: ThumbnailSize,
 ): Promise<Buffer | undefined> {
-  const file = thumbnailPath(library.thumbnails.thumbsDir, item.id, size);
-  const cached = await readThumbnail(file);
-  const isDefault = sizeToLabel(size) === sizeToLabel(defaultThumbnailSize(item.kind));
-  if (cached !== undefined || isDefault || item.thumbState !== 'ready') {
+  const { thumbsDir } = library.thumbnails;
+  const cached = await readThumbnail(thumbnailPath(thumbsDir, item.id, size));
+  if (cached !== undefined || isDefaultSize(item, size) || item.thumbState !== 'ready') {
     return cached;
   }
   try {
     return await readThumbnail(await makeThumbnailAtSize(library.thumbnails, item.id, size));
   } catch {
-    // The original may be offline or unreadable; the placeholder stands in until it is back.
-    return undefined;
+    // The original may be offline or unreadable; the default size stands in until it is back.
+    return readThumbnail(thumbnailPath(thumbsDir, item.id, defaultThumbnailSize(item.kind)));
   }
 }
 
@@ -92,7 +96,11 @@ export function registerMediaRoutes(app: FastifyInstance, library: LibraryRuntim
       }
       const thumbnail = await findOrMakeThumbnail(open, item, size);
       if (thumbnail === undefined) {
-        if (item.thumbState !== 'failed') {
+        // Only the default size comes from the queue, and a ready or failed one stays as it is.
+        if (
+          item.thumbState === 'pending' ||
+          (item.thumbState === 'ready' && isDefaultSize(item, size))
+        ) {
           hurryDefaultThumbnail(open, item);
         }
         return sendPlaceholder(reply);

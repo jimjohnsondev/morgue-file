@@ -5,7 +5,7 @@ import { findFieldGroups, findItemsInFieldGroup } from '#core/db/repositories/fi
 import { findFieldsByEntity } from '#core/db/repositories/fields.js';
 import { AppError } from '#core/errors.js';
 import { queryToText } from '#core/query/canonical-query.js';
-import { parseQuery } from '#core/query/parse-query.js';
+import { filterTerm } from '#core/query/parse-query.js';
 import { slugify } from '#core/slug.js';
 
 import { countLabel } from '../../views/templates/index-template.js';
@@ -17,6 +17,7 @@ import { thumbnailSrc, toThumbCards } from './thumb-cards.js';
 import type { Db } from '#core/db/connection.js';
 import type { DatedItem, FieldGroup, GroupSpec } from '#core/db/repositories/field-groups.js';
 import type { Subcategory } from '#core/db/repositories/subcategories.js';
+import type { Query, Term } from '#core/query/query-types.js';
 import type { Crumb } from '../../views/parts/breadcrumb.js';
 import type { CardGroup, IndexModel } from '../../views/templates/index-template.js';
 
@@ -74,6 +75,16 @@ function subcategoryCrumbs(subcategory: Subcategory): Crumb[] {
   ];
 }
 
+/** A subcategory's address; slugs may hold letters of any script, so it is percent-encoded. */
+function subcategoryPath(subcategory: Subcategory): string {
+  return `/${subcategory.section}/${encodeURIComponent(subcategory.slug)}`;
+}
+
+/** The terms for everything in a subcategory. */
+function subcategoryTerms(subcategory: Subcategory): Term[] {
+  return [filterTerm('in', subcategory.section), filterTerm('sub', subcategory.slug)];
+}
+
 /** The common frame of both grouped pages. */
 function groupedModel(
   parts: Pick<IndexModel, 'title' | 'breadcrumb' | 'caption' | 'panelTitle' | 'groups'> & {
@@ -96,7 +107,7 @@ function groupedModel(
 /** The page listing a grouped subcategory's values: one cover per magazine title. */
 export function buildGroupListModel(db: Db, subcategory: Subcategory, spec: GroupSpec): IndexModel {
   const groups = findFieldGroups(db, spec);
-  const path = `/${subcategory.section}/${subcategory.slug}`;
+  const path = subcategoryPath(subcategory);
   let itemCount = 0;
   for (const group of groups) {
     itemCount += group.itemCount;
@@ -119,7 +130,7 @@ export function buildGroupListModel(db: Db, subcategory: Subcategory, spec: Grou
     panelTitle: `Titles · ${String(groups.length)}`,
     toolbarNote: 'Group by: Title · Order: A to Z',
     groups: [{ cards }],
-    showFiltersHref: searchHref(parseQuery(`in:${subcategory.section} sub:${subcategory.slug}`)),
+    showFiltersHref: searchHref({ terms: subcategoryTerms(subcategory) }),
   });
 }
 
@@ -173,14 +184,17 @@ export function buildGroupPageModel(
     throw new AppError('not-found', `No "${page.groupSlug}" in ${subcategory.name}.`);
   }
   const items = findItemsInFieldGroup(db, page.spec, group.value);
-  const query = parseQuery(
-    `in:${subcategory.section} sub:${subcategory.slug} ${page.spec.groupFieldKey}:"${group.value}"`,
-  );
+  const query: Query = {
+    terms: [
+      ...subcategoryTerms(subcategory),
+      { kind: 'field', key: page.spec.groupFieldKey, value: group.value, isNegated: false },
+    ],
+  };
   return groupedModel({
     title: group.value,
     breadcrumb: [
       ...subcategoryCrumbs(subcategory),
-      { label: subcategory.name, href: `/${subcategory.section}/${subcategory.slug}` },
+      { label: subcategory.name, href: subcategoryPath(subcategory) },
       { label: group.value },
     ],
     caption: `${countLabel(items.length, 'issue')}${seasonSpan(items)}`,

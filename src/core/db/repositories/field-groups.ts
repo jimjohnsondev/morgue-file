@@ -28,7 +28,7 @@ export type GroupSpec = {
 /** SQL for an item's text value of the field whose key is the next parameter. */
 const ITEM_VALUE = `SELECT field_values.value_text FROM field_values
   WHERE field_values.entity = 'item' AND field_values.entity_id = items.id
-    AND field_values.field_id = (SELECT id FROM fields WHERE entity = 'item' AND key = ?)`;
+    AND field_values.field_id = (SELECT id FROM fields WHERE entity = 'item' AND key = ? AND removed_at IS NULL)`;
 
 /** The groups of a subcategory's items, alphabetically by value. Items with no value are left out. */
 export function findFieldGroups(db: Db, spec: GroupSpec): FieldGroup[] {

@@ -82,7 +82,10 @@ test('frame 11: frame 1 at 1280×800 has fewer columns and nothing broken', asyn
 test('thumbnails are served by id once made', async ({ page }) => {
   await page.goto('/photos/figure');
   const src = await page.locator('.thumb__image').first().getAttribute('src');
-  const response = await page.request.get(src ?? '');
-  expect(response.status()).toBe(200);
-  expect(['image/webp', 'image/svg+xml']).toContain(response.headers()['content-type']);
+  // The first request moves the thumbnail to the front of the queue; it is made moments later.
+  await expect
+    .poll(async () => (await page.request.get(src ?? '')).headers()['content-type'], {
+      timeout: 60_000,
+    })
+    .toBe('image/webp');
 });

@@ -1,5 +1,6 @@
 // Where thumbnails live in the data folder and how big the default ones are
 // (docs/ARCHITECTURE.md, Thumbnails and media).
+import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -70,7 +71,8 @@ export function thumbnailPath(thumbsDir: string, itemId: number, size: Thumbnail
  */
 export async function saveThumbnail(file: string, webp: Buffer): Promise<void> {
   await mkdir(path.dirname(file), { recursive: true });
-  const partial = `${file}.${String(process.pid)}.partial`;
+  // Unique per call: a page can ask for a size while another request is making it.
+  const partial = `${file}.${String(process.pid)}-${randomUUID()}.partial`;
   await writeFile(partial, webp);
   await rename(partial, file);
 }
