@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.1.0...v1.2.0) (2026-11-03)
+
+
+### Features
+
+* one-shot scanner, classification, page folders and thumbnail queue ([#23](https://github.com/jimjohnsondev/morgue-file/issues/23)) ([643940f](https://github.com/jimjohnsondev/morgue-file/commit/643940ff63143c4d70e5e7c8d4dd7bdb1cdfb4bb))
+
 ## [1.1.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.0.1...v1.1.0) (2026-11-03)
 
 
