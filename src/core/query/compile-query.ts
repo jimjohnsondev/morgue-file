@@ -9,9 +9,11 @@ import type { Query, Term } from './query-types.js';
 export type CompiledQuery = {
   readonly where: string;
   readonly params: readonly (string | number)[];
+  /** True when the query keeps to one section (`in:photos`), so lists need not sort by section. */
+  readonly isOneSection: boolean;
 };
 
-type Fragment = CompiledQuery;
+type Fragment = Omit<CompiledQuery, 'isOneSection'>;
 
 /** The item kinds `type:` accepts by name; anything else is taken as a file extension. */
 const KIND_NAMES: ReadonlySet<string> = new Set(['image', 'video', 'pdf', 'cbz', 'pagefolder']);
@@ -126,8 +128,11 @@ function termFragment(term: Term): Fragment {
 
 /** Compiles a query into one condition: its terms ANDed, each negated where it says so. */
 export function compileQuery(query: Query): CompiledQuery {
+  const isOneSection = query.terms.some(
+    (term) => term.kind === 'filter' && term.key === 'in' && !term.isNegated,
+  );
   if (query.terms.length === 0) {
-    return { where: '1 = 1', params: [] };
+    return { where: '1 = 1', params: [], isOneSection };
   }
   const fragments = query.terms.map((term) => {
     const fragment = termFragment(term);
@@ -136,5 +141,6 @@ export function compileQuery(query: Query): CompiledQuery {
   return {
     where: fragments.map((fragment) => `(${fragment.where})`).join(' AND '),
     params: fragments.flatMap((fragment) => fragment.params),
+    isOneSection,
   };
 }

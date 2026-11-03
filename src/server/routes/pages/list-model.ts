@@ -1,6 +1,10 @@
 // Reads one page of a list from the library and lays it out for the Index template: the cards,
 // the counts in the caption, the pager, the toolbar and the filter panel.
-import { countItemsByQuery, findItemsByQuery } from '#core/db/repositories/item-lists.js';
+import {
+  countItemsByQuery,
+  countItemsBySectionByQuery,
+  findItemsByQuery,
+} from '#core/db/repositories/item-lists.js';
 import { queryToText } from '#core/query/canonical-query.js';
 import { compileQuery } from '#core/query/compile-query.js';
 
@@ -19,6 +23,7 @@ import { toThumbCards } from './thumb-cards.js';
 
 import type { Db } from '#core/db/connection.js';
 import type { Section } from '#core/db/repositories/items.js';
+import type { CompiledQuery } from '#core/query/compile-query.js';
 import type { Query } from '#core/query/query-types.js';
 import type { ListAddress, ListView } from './list-view.js';
 import type { Crumb } from '../../views/parts/breadcrumb.js';
@@ -84,20 +89,64 @@ function listCaption(total: number, page: number, view: ListView): string {
   return `${countLabel(total, 'item')} · showing ${first.toLocaleString('en-US')}–${last.toLocaleString('en-US')} · page ${String(page)} of ${String(lastPage)}`;
 }
 
+/** Adds up the counts in a map. */
+function sumOf(counts: ReadonlyMap<unknown, number>): number {
+  let sum = 0;
+  for (const count of counts.values()) {
+    sum += count;
+  }
+  return sum;
+}
+
+/** The list's counts and the lines that show them: the caption and the grid panel's title. */
+type ListCounts = {
+  readonly total: number;
+  readonly page: number;
+  readonly lastPage: number;
+  readonly caption: string;
+  readonly panelTitle: string;
+};
+
+/**
+ * Counts what the query matches. Search pages count per section for their caption ("34 in
+ * Photos, 4 in Library"), and their total is the sum, so the items are counted once.
+ */
+function countList(
+  db: Db,
+  list: { readonly spec: ListSpec; readonly compiled: CompiledQuery; readonly view: ListView },
+): ListCounts {
+  const { spec, compiled, view } = list;
+  if (!spec.isSearch) {
+    const total = countItemsByQuery(db, compiled);
+    const lastPage = Math.max(1, Math.ceil(total / view.perPage));
+    const page = Math.min(view.page, lastPage);
+    const caption = listCaption(total, page, view);
+    return { total, page, lastPage, caption, panelTitle: `Browse · ${countLabel(total, 'item')}` };
+  }
+  const bySection = countItemsBySectionByQuery(db, compiled);
+  const total = sumOf(bySection);
+  const lastPage = Math.max(1, Math.ceil(total / view.perPage));
+  const page = Math.min(view.page, lastPage);
+  return {
+    total,
+    page,
+    lastPage,
+    caption: searchCaption({ bySection, total, page, lastPage }),
+    panelTitle: `Results · ${total.toLocaleString('en-US')}`,
+  };
+}
+
 /** Reads the page of the list the view asks for and builds everything the template shows. */
 export function buildListModel(db: Db, spec: ListSpec, view: ListView): IndexModel {
   const compiled = compileQuery(spec.query);
-  const total = countItemsByQuery(db, compiled);
-  const lastPage = Math.max(1, Math.ceil(total / view.perPage));
-  const page = Math.min(view.page, lastPage);
+  const { page, lastPage, caption, panelTitle } = countList(db, { spec, compiled, view });
   const items = findItemsByQuery(db, compiled, {
     limit: view.perPage,
     offset: (page - 1) * view.perPage,
   });
-  const fromQuery = queryToText(spec.query);
   const cards = toThumbCards(items, {
     size: view.size,
-    fromQuery,
+    fromQuery: queryToText(spec.query),
     caption: spec.isSearch ? 'where' : 'details',
   });
   const isPanelOpen = view.filters === undefined ? !spec.isShelf : view.filters === 'shown';
@@ -105,12 +154,8 @@ export function buildListModel(db: Db, spec: ListSpec, view: ListView): IndexMod
     title: spec.title,
     ...(spec.echo !== undefined && { echo: spec.echo }),
     breadcrumb: spec.breadcrumb,
-    caption: spec.isSearch
-      ? searchCaption(db, spec.query, { total, page, lastPage })
-      : listCaption(total, page, view),
-    panelTitle: spec.isSearch
-      ? `Results · ${total.toLocaleString('en-US')}`
-      : `Browse · ${countLabel(total, 'item')}`,
+    caption,
+    panelTitle,
     size: view.size,
     groups: [{ cards }],
     emptyText: spec.emptyText,

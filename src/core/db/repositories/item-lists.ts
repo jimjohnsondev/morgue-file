@@ -31,10 +31,16 @@ export type PageWindow = {
 
 /**
  * The order of every list: Photos, then Video, then Library, so mixed search results read by
- * section; within a section, oldest first by date added, the order the folders hold them.
+ * section; within a section, oldest first by date added, the order the folders hold them. A
+ * list within one section leaves out the section rank, so the items_in_list_order index gives
+ * the order and a deep page needn't sort the whole section (R18).
  */
-const LIST_ORDER = `CASE items.section WHEN 'photos' THEN 1 WHEN 'video' THEN 2 ELSE 3 END,
-  items.added_at, items.id`;
+function listOrder(query: CompiledQuery): string {
+  const withinSection = 'items.added_at, items.id';
+  return query.isOneSection
+    ? withinSection
+    : `CASE items.section WHEN 'photos' THEN 1 WHEN 'video' THEN 2 ELSE 3 END, ${withinSection}`;
+}
 
 type ListedItemRow = {
   id: number;
@@ -50,17 +56,23 @@ type ListedItemRow = {
   mtime: number;
 };
 
-/** One page of the items a query matches, in list order. */
+/**
+ * One page of the items a query matches, in list order. The page's ids are found first, from
+ * the index alone, and only those rows are joined for display.
+ */
 export function findItemsByQuery(db: Db, query: CompiledQuery, window: PageWindow): ListedItem[] {
+  const order = listOrder(query);
   const rows = db
     .prepare(
-      `SELECT items.id, items.rel_path, items.kind, items.section, items.width, items.height,
+      `WITH page AS (
+         SELECT items.id FROM items WHERE ${query.where} ORDER BY ${order} LIMIT ? OFFSET ?
+       )
+       SELECT items.id, items.rel_path, items.kind, items.section, items.width, items.height,
          items.duration_ms, items.page_count, items.thumb_state, items.mtime,
          subcategories.name AS subcategory_name
-       FROM items LEFT JOIN subcategories ON subcategories.id = items.subcategory_id
-       WHERE ${query.where}
-       ORDER BY ${LIST_ORDER}
-       LIMIT ? OFFSET ?`,
+       FROM page JOIN items ON items.id = page.id
+       LEFT JOIN subcategories ON subcategories.id = items.subcategory_id
+       ORDER BY ${order}`,
     )
     .all(...query.params, window.limit, window.offset) as ListedItemRow[];
   return rows.map(toListedItem);

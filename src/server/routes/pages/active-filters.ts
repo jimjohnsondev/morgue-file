@@ -1,9 +1,7 @@
 // The search page's echo of its query: the caption with counts per section, and one removable
 // chip per term, whose [x] link is the query without that term (frame 4, E2).
 import { findModelNames } from '#core/db/repositories/archive-counts.js';
-import { countItemsBySectionByQuery } from '#core/db/repositories/item-lists.js';
 import { queryToText, withoutTerm } from '#core/query/canonical-query.js';
-import { compileQuery } from '#core/query/compile-query.js';
 
 import { formatCount } from '../../views/format.js';
 import { countLabel } from '../../views/templates/index-template.js';
@@ -63,12 +61,13 @@ export function activeFilters(
 }
 
 /** "38 results · 34 in Photos, 4 in Library · page 1 of 1". */
-export function searchCaption(
-  db: Db,
-  query: Query,
-  counts: { readonly total: number; readonly page: number; readonly lastPage: number },
-): string {
-  const bySection = countItemsBySectionByQuery(db, compileQuery(query));
+export function searchCaption(counts: {
+  readonly bySection: ReadonlyMap<Section, number>;
+  readonly total: number;
+  readonly page: number;
+  readonly lastPage: number;
+}): string {
+  const { bySection } = counts;
   const sections = (Object.keys(SECTION_LABELS) as Section[])
     .filter((section) => (bySection.get(section) ?? 0) > 0)
     .map((section) => `${formatCount(bySection.get(section) ?? 0)} in ${SECTION_LABELS[section]}`);

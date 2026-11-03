@@ -57,7 +57,11 @@ describe('compileQuery', () => {
   });
 
   it('matches everything with no terms', () => {
-    expect(compileQuery({ terms: [] })).toEqual({ where: '1 = 1', params: [] });
+    expect(compileQuery({ terms: [] })).toEqual({
+      where: '1 = 1',
+      params: [],
+      isOneSection: false,
+    });
   });
 
   it('searches for a rating outside 1 to 5 as a word instead of failing', () => {

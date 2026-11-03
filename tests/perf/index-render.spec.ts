@@ -93,6 +93,8 @@ test('R18: any Index page of a 50,000-item archive renders in under 300 ms', asy
   }
   test.info().annotations.push({ type: 'p95 ms per page', description: JSON.stringify(slowest) });
   for (const [url, time] of Object.entries(slowest)) {
-    expect(time, url).toBeLessThan(PAGE_BUDGET_MS);
+    expect(time, `${url} (p95 of every page: ${JSON.stringify(slowest)})`).toBeLessThan(
+      PAGE_BUDGET_MS,
+    );
   }
 });
