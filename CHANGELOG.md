@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.4.0...v1.5.0) (2026-11-04)
+
+
+### Features
+
+* Model profile template and Home strips ([#30](https://github.com/jimjohnsondev/morgue-file/issues/30)) ([4b59809](https://github.com/jimjohnsondev/morgue-file/commit/4b59809efd8c635469d429a4e5ff151592ebafea))
+
+
+### Bug Fixes
+
+* a thumbnail card keeps its details line before the details are known ([#32](https://github.com/jimjohnsondev/morgue-file/issues/32)) ([b038169](https://github.com/jimjohnsondev/morgue-file/commit/b038169c5a1b260a38675f822d28d268e918e683))
+
 ## [1.4.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.3.0...v1.4.0) (2026-11-04)
 
 
