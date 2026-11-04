@@ -29,17 +29,24 @@ export type PageWindow = {
   readonly offset: number;
 };
 
+/** Photos, then Video, then Library, so mixed search results read by section. */
+const SECTION_RANK = `CASE items.section WHEN 'photos' THEN 1 WHEN 'video' THEN 2 ELSE 3 END`;
+
 /**
- * The order of every list: Photos, then Video, then Library, so mixed search results read by
- * section; within a section, oldest first by date added, the order the folders hold them. A
- * list within one section leaves out the section rank, so the items_in_list_order index gives
- * the order and a deep page needn't sort the whole section (R18).
+ * The columns of every list's order: by section, then oldest first by date added, the order the
+ * folders hold them. A list within one section leaves out the section rank, so the
+ * items_in_list_order index gives the order and a deep page needn't sort the whole section (R18).
  */
-function listOrder(query: CompiledQuery): string {
-  const withinSection = 'items.added_at, items.id';
-  return query.isOneSection
-    ? withinSection
-    : `CASE items.section WHEN 'photos' THEN 1 WHEN 'video' THEN 2 ELSE 3 END, ${withinSection}`;
+function listColumns(query: CompiledQuery): string[] {
+  const withinSection = ['items.added_at', 'items.id'];
+  return query.isOneSection ? withinSection : [SECTION_RANK, ...withinSection];
+}
+
+/** The ORDER BY of a list, oldest first, or newest first to look backwards from an item. */
+function listOrder(query: CompiledQuery, direction: 'ASC' | 'DESC' = 'ASC'): string {
+  return listColumns(query)
+    .map((column) => `${column} ${direction}`)
+    .join(', ');
 }
 
 type ListedItemRow = {
@@ -95,6 +102,64 @@ export function countItemsBySectionByQuery(db: Db, query: CompiledQuery): Map<Se
     )
     .all(...query.params) as { section: Section; total: number }[];
   return new Map(rows.map((row) => [row.section, row.total]));
+}
+
+/** Where one item sits in a list: how many come before it, and the items either side. */
+export type ListPlace = {
+  /** 1 for the first item. */
+  readonly position: number;
+  readonly previousId: number | undefined;
+  readonly nextId: number | undefined;
+};
+
+/**
+ * A condition comparing each item's place in the list with one item's, as row values, so
+ * neighbours and positions are keyset lookups on the list's index.
+ */
+function comparedWithItem(query: CompiledQuery, comparison: '<' | '>'): string {
+  const columns = listColumns(query).join(', ');
+  return `(${columns}) ${comparison} (SELECT ${columns} FROM items WHERE items.id = ?)`;
+}
+
+/** The id of the item next to the one given, before or after it in list order. */
+function findNeighbourId(
+  db: Db,
+  query: CompiledQuery,
+  place: { readonly itemId: number; readonly direction: 'before' | 'after' },
+): number | undefined {
+  const isBefore = place.direction === 'before';
+  const row = db
+    .prepare(
+      `SELECT items.id FROM items
+       WHERE (${query.where}) AND ${comparedWithItem(query, isBefore ? '<' : '>')}
+       ORDER BY ${listOrder(query, isBefore ? 'DESC' : 'ASC')} LIMIT 1`,
+    )
+    .get(...query.params, place.itemId) as { id: number } | undefined;
+  return row?.id;
+}
+
+/**
+ * Where an item sits in a query's list (R19): its position for "3 of 1,236", and the items
+ * before and after it for Prev and Next. Undefined if the query doesn't list the item.
+ */
+export function findListPlace(db: Db, query: CompiledQuery, itemId: number): ListPlace | undefined {
+  const isListed = db
+    .prepare(`SELECT 1 FROM items WHERE (${query.where}) AND items.id = ?`)
+    .get(...query.params, itemId);
+  if (isListed === undefined) {
+    return undefined;
+  }
+  const row = db
+    .prepare(
+      `SELECT count(*) AS before FROM items
+       WHERE (${query.where}) AND ${comparedWithItem(query, '<')}`,
+    )
+    .get(...query.params, itemId) as { before: number };
+  return {
+    position: row.before + 1,
+    previousId: findNeighbourId(db, query, { itemId, direction: 'before' }),
+    nextId: findNeighbourId(db, query, { itemId, direction: 'after' }),
+  };
 }
 
 function toListedItem(row: ListedItemRow): ListedItem {

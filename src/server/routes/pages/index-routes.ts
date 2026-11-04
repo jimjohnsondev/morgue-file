@@ -31,7 +31,7 @@ const SECTIONS: readonly Section[] = ['photos', 'video', 'library'];
 
 const HOME_CRUMB = { label: 'Home', href: '/' } as const;
 
-/** Any first path segment: pages not built yet (/item/5) must answer 404, not a 400. */
+/** Any first path segment: pages not built yet (/models/elena-varga) must answer 404, not 400. */
 const SectionParam = Type.String({ minLength: 1 });
 
 /** Says whether a path segment names a section. */

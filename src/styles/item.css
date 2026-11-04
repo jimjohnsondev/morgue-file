@@ -1,0 +1,445 @@
+/* The Item template: the viewer slot beside the details panel, and viewing mode (frames 5-9). */
+.item-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.item-page__heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.list-nav {
+  padding: var(--box-padding) var(--space-3);
+  background: var(--color-white);
+  border: 1px solid var(--color-hairline);
+  box-shadow: 1px 1px 0 var(--color-shadow);
+}
+
+.item-page__body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  align-items: stretch;
+}
+
+.item-page__body--folded {
+  flex-wrap: nowrap;
+  gap: 0;
+}
+
+.item-page__body > .panel {
+  margin: 0;
+}
+
+.link-button {
+  padding: 0;
+  font: inherit;
+  color: var(--color-link);
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.link-button:hover {
+  color: var(--color-link-hover);
+  text-decoration: underline;
+}
+
+.link-button:disabled {
+  color: var(--color-link);
+  text-decoration: none;
+  cursor: default;
+}
+
+.link-button[aria-pressed='true'] {
+  font-weight: bold;
+  color: var(--color-text);
+  text-decoration: none;
+  cursor: default;
+}
+
+/* The viewer slot */
+.viewer-panel {
+  display: flex;
+  flex: 999 1 var(--grid-min-width);
+  flex-direction: column;
+  min-width: 0;
+}
+
+.viewer-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-table);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.viewer-toolbar__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.viewer-stage {
+  display: flex;
+  height: var(--viewer-height);
+  overflow: hidden;
+  background: var(--color-viewer);
+  box-shadow: inset 0 0 0 1px var(--color-bevel-dark);
+}
+
+/* Fit: the picture fills the viewer, enlarged or shrunk, keeping its shape. */
+.viewer-stage__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: auto;
+  object-fit: contain;
+}
+
+.viewer-stage--zoomed {
+  overflow: auto;
+  cursor: grab;
+}
+
+/* Zoomed: the client sets the width; the picture keeps its shape and the viewer scrolls. */
+.viewer-stage--zoomed .viewer-stage__image {
+  height: auto;
+}
+
+/* The video player */
+.viewer-stage--video {
+  height: var(--video-height);
+}
+
+.viewer-stage__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.video-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.video-controls__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-table);
+}
+
+.video-controls__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.timecode {
+  padding: var(--box-padding) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  font-weight: bold;
+  color: var(--color-cyan-counter);
+  background: var(--color-ink);
+  border: 1px solid var(--color-text-quiet);
+}
+
+.scrub {
+  position: relative;
+  height: var(--scrub-height);
+  background: var(--color-white);
+  border: 2px inset var(--color-page);
+  box-sizing: content-box;
+}
+
+.scrub__loop {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--color-loop-fill);
+  border-right: 2px solid var(--color-magenta);
+  border-left: 2px solid var(--color-magenta);
+}
+
+.scrub__loop[hidden] {
+  display: none;
+}
+
+.scrub__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+}
+
+.scrub__input::-webkit-slider-thumb {
+  width: var(--scrub-thumb-width);
+  height: var(--scrub-thumb-height);
+  appearance: none;
+  background: linear-gradient(var(--color-button-top), var(--color-button-bottom));
+  border: 1px solid;
+  border-color: var(--color-white) var(--color-bevel-dark) var(--color-bevel-dark)
+    var(--color-white);
+  box-shadow: 0 0 0 1px var(--color-ground);
+}
+
+/* The page reader */
+.reader-stage {
+  gap: var(--spread-gap);
+  align-items: center;
+  justify-content: center;
+  height: var(--reader-height);
+  padding: var(--space-4);
+}
+
+.reader-page {
+  display: block;
+  max-width: 49%;
+  max-height: 100%;
+  background: var(--color-white);
+}
+
+/* A PDF page is a canvas the client draws; until then it holds a page-shaped space. */
+canvas.reader-page {
+  height: 100%;
+  aspect-ratio: 2 / 3;
+}
+
+.reader-nav {
+  font-size: var(--text-base);
+}
+
+.reader-jump {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-left: var(--space-3);
+}
+
+.reader-jump__field {
+  width: var(--jump-field-width);
+}
+
+.page-strip {
+  position: relative;
+  padding: var(--space-3);
+  overflow-x: auto;
+  border-top: 1px solid var(--color-border);
+}
+
+.page-strip__list {
+  display: flex;
+  gap: var(--space-2);
+  width: max-content;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.page-strip__link,
+.page-strip__link:visited {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: center;
+  color: var(--color-text-quiet);
+  text-decoration: none;
+}
+
+.page-strip__page {
+  display: block;
+  width: var(--page-strip-width);
+  height: var(--page-strip-height);
+  object-fit: cover;
+  background: var(--color-white);
+  border: 1px solid var(--color-bevel-dark);
+  box-shadow: 1px 1px 0 var(--color-shadow);
+}
+
+.page-strip__link[aria-current='page'] .page-strip__page {
+  border: var(--page-current-border) solid var(--color-magenta);
+}
+
+.page-strip__number {
+  font-size: var(--text-caption);
+}
+
+.page-strip__link[aria-current='page'] .page-strip__number {
+  font-weight: bold;
+  color: var(--color-text);
+}
+
+/* The details panel and its folded edge */
+.details-panel {
+  flex: 0 0 var(--details-panel-width);
+}
+
+.details-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.details-table {
+  width: 100%;
+  font-size: var(--text-table);
+  border-collapse: collapse;
+}
+
+.details-table th,
+.details-table td {
+  padding: var(--space-1) var(--space-2);
+  text-align: left;
+  vertical-align: top;
+  background: var(--color-white);
+  border: 1px solid var(--color-hairline);
+}
+
+.details-table th {
+  width: var(--details-label-width);
+  background: linear-gradient(var(--color-white), var(--color-heading-bottom));
+}
+
+.details-group__title {
+  margin: 0 0 var(--space-2);
+  padding-bottom: var(--space-1);
+  font-size: var(--text-table);
+  border-bottom: 1px dotted var(--color-hairline);
+}
+
+.details-group__chips {
+  font-size: var(--text-table);
+}
+
+.details-group__chips .chip {
+  margin: 0 var(--space-2) var(--space-2) 0;
+}
+
+.details-add {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.details-add__field {
+  flex: 1;
+  min-width: 0;
+}
+
+.details-field__text {
+  width: 100%;
+  resize: vertical;
+}
+
+/* Editing arrives with the editing PRs; until then its fields look as the frames draw them. */
+.details-panel .field:disabled {
+  color: var(--color-text);
+  background: var(--color-white);
+}
+
+.rating {
+  color: var(--color-rating);
+  letter-spacing: var(--rating-spacing);
+}
+
+.details-edge {
+  display: flex;
+  flex: 0 0 var(--details-panel-folded);
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) 0;
+  background: linear-gradient(to right, var(--color-title-bar-top), var(--color-title-bar-bottom));
+  border: 1px solid var(--color-border);
+  border-left: 0;
+  box-shadow: inset 1px 1px 0 var(--color-title-bar-highlight);
+}
+
+.details-edge__link,
+.details-edge__link:visited {
+  font-weight: bold;
+  color: var(--color-cyan-link-on-dark);
+}
+
+.details-edge__label {
+  font-size: var(--text-panel-title);
+  font-weight: bold;
+  color: var(--color-white);
+  text-transform: uppercase;
+  letter-spacing: var(--tagline-spacing);
+  writing-mode: vertical-rl;
+}
+
+.details-edge__square {
+  width: var(--title-square);
+  height: var(--title-square);
+  background: var(--color-cyan);
+}
+
+/* Viewing mode (frame 9): the viewer fills the screen; V or Esc brings the page back. */
+.viewing-hint {
+  display: none;
+}
+
+.viewing-mode {
+  background: var(--color-viewer);
+}
+
+.viewing-mode .banner,
+.viewing-mode .trim,
+.viewing-mode .tab-bar,
+.viewing-mode .footer,
+.viewing-mode .item-page__heading,
+.viewing-mode .details-panel,
+.viewing-mode .details-edge,
+.viewing-mode .viewer-panel > :not(.viewer-stage) {
+  display: none;
+}
+
+.viewing-mode .page {
+  padding: 0;
+}
+
+.viewing-mode .viewer-panel {
+  border: 0;
+  box-shadow: none;
+}
+
+.viewing-mode .viewer-stage {
+  height: 100vh;
+  box-shadow: none;
+}
+
+.viewing-mode .viewing-hint {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  display: block;
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-table);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  box-shadow: inset 0 0 0 1px var(--color-white);
+}

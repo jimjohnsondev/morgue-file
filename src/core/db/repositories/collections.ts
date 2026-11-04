@@ -58,3 +58,14 @@ export function findItemIdsByCollection(db: Db, collectionId: number): number[] 
     .all(collectionId) as { item_id: number }[];
   return rows.map((row) => row.item_id);
 }
+
+/** The collections an item sits in, by name, for the chips on its Item page. */
+export function findCollectionsByItem(db: Db, itemId: number): { id: number; name: string }[] {
+  return db
+    .prepare(
+      `SELECT collections.id, collections.name FROM collection_items
+       JOIN collections ON collections.id = collection_items.collection_id
+       WHERE collection_items.item_id = ? ORDER BY collections.name COLLATE NOCASE`,
+    )
+    .all(itemId) as { id: number; name: string }[];
+}

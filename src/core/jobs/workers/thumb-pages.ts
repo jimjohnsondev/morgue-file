@@ -1,6 +1,6 @@
 // Covers for CBZ files and page folders: the first page, in reading order.
-import { listFolder, openOriginal, readOriginal } from '#core/archive/originals.js';
-import { isPageFileName, sortPageNames } from '#core/archive/pagefolder.js';
+import { openOriginal, readOriginal } from '#core/archive/originals.js';
+import { listFolderPages } from '#core/archive/publication-pages.js';
 import { AppError } from '#core/errors.js';
 
 import { cropToThumbnail } from './crop.js';
@@ -32,12 +32,7 @@ export async function makePageFolderThumbnail(
   original: OriginalRef,
   size: ThumbnailSize,
 ): Promise<ThumbnailResult> {
-  const entries = await listFolder(original.rootPath, original.relPath);
-  const pages = sortPageNames(
-    entries
-      .filter((entry) => !entry.isFolder && isPageFileName(entry.name))
-      .map((entry) => entry.name),
-  );
+  const pages = await listFolderPages(original.rootPath, original.relPath);
   const firstPage = pages[0];
   if (firstPage === undefined) {
     throw new AppError('media-unreadable', 'The page folder holds no pages.');

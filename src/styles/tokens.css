@@ -69,6 +69,11 @@
   --color-trim-bottom: #3a1048;
   --color-heading-bottom: #d5d9e0;
 
+  /* Shades the approved canvas uses in the Item frames: the rating stars of frames 5, 7 and 8
+     (#C2187F) and the loop range's fill on frame 7's scrub bar (#FFD3EE), inside its magenta edges. */
+  --color-rating: #c2187f;
+  --color-loop-fill: #ffd3ee;
+
   /* Links */
   --color-link: #03c;
   --color-link-visited: #639;
@@ -96,6 +101,21 @@
   --chip-padding: 2px;
   --box-padding: 1px;
   --counter-spacing: 1px;
+
+  /* The Item page (frames 5-9): viewer heights at 2560x1440, the page strip, the scrub bar. */
+  --viewer-height: 960px;
+  --video-height: 860px;
+  --reader-height: 820px;
+  --page-strip-width: 46px;
+  --page-strip-height: 60px;
+  --page-current-border: 3px;
+  --scrub-height: 16px;
+  --scrub-thumb-width: 12px;
+  --scrub-thumb-height: 22px;
+  --jump-field-width: 64px;
+  --details-label-width: 120px;
+  --rating-spacing: 2px;
+  --spread-gap: 2px;
 
   /* Spacing: multiples of 4 px */
   --space-1: 4px;
