@@ -101,6 +101,8 @@ function seedLibrary(db: TempLibrary['db']): void {
     setFieldValue(db, { ...owner, key: 'magazine_title' }, 'LDQ');
     setFieldValue(db, { ...owner, key: 'issue_date' }, `202${String(issue)}-12-01`);
   }
+  // The thumbnail job would count the pages; the reader tests need a long issue.
+  db.prepare('UPDATE items SET page_count = 72 WHERE kind = ?').run('pdf');
   const third = ids.get('Figure/figure_0003.jpg')!;
   tagItems(db, [third], 'hands');
   setFieldValue(db, { entity: 'item', entityId: third, key: 'rating' }, 4);
@@ -255,7 +257,6 @@ describe('the details panel', () => {
 
 describe('R21: the page reader', () => {
   it('shows a spread, links through the spreads and lists every page in the strip', async () => {
-    library.db.prepare('UPDATE items SET page_count = 72 WHERE kind = ?').run('pdf');
     const body = (await get(`${itemUrl('Magazines/LDQ/LDQ No. 3.pdf')}?page=13`)).body;
     expect(body).toContain('<b>Pages 12–13</b> of 72');
     expect(body).toContain('data-pdf-page="12"');

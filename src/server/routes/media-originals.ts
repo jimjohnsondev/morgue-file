@@ -45,26 +45,28 @@ async function sendOriginal(
   file: ItemOnDisk & { readonly rangeHeader: string | undefined },
 ): Promise<FastifyReply> {
   const { item, rootPath } = file;
-  const info = await statOriginal(rootPath, item.relPath);
-  const request = parseRangeHeader(file.rangeHeader, info.size);
+  const fileStats = await statOriginal(rootPath, item.relPath);
+  const request = parseRangeHeader(file.rangeHeader, fileStats.size);
   reply
     .type(mediaTypeOf(item.relPath))
     .header('accept-ranges', 'bytes')
     .header('cache-control', ORIGINAL_CACHING)
-    .header('last-modified', new Date(info.mtimeMs).toUTCString());
+    .header('last-modified', new Date(fileStats.mtimeMs).toUTCString());
   if (request.kind === 'unsatisfiable') {
     return reply
       .code(416)
-      .header('content-range', `bytes */${String(info.size)}`)
+      .header('content-range', `bytes */${String(fileStats.size)}`)
       .send();
   }
   if (request.kind === 'whole') {
-    return reply.header('content-length', info.size).send(streamOriginal(rootPath, item.relPath));
+    return reply
+      .header('content-length', fileStats.size)
+      .send(streamOriginal(rootPath, item.relPath));
   }
   const { start, end } = request.range;
   return reply
     .code(206)
-    .header('content-range', `bytes ${String(start)}-${String(end)}/${String(info.size)}`)
+    .header('content-range', `bytes ${String(start)}-${String(end)}/${String(fileStats.size)}`)
     .header('content-length', end - start + 1)
     .send(streamOriginal(rootPath, item.relPath, request.range));
 }

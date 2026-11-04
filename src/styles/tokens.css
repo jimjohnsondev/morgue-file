@@ -69,7 +69,8 @@
   --color-trim-bottom: #3a1048;
   --color-heading-bottom: #d5d9e0;
 
-  /* Shades the Item frames (5-9) add: rating stars and the loop range on the scrub bar. */
+  /* Shades the approved canvas uses in the Item frames: the rating stars of frames 5, 7 and 8
+     (#C2187F) and the loop range's fill on frame 7's scrub bar (#FFD3EE), inside its magenta edges. */
   --color-rating: #c2187f;
   --color-loop-fill: #ffd3ee;
 

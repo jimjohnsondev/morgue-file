@@ -34,7 +34,10 @@ function toRange(first: string, last: string, size: number): RangeRequest {
  * whole file, which RFC 9110 allows and every browser handles.
  */
 export function parseRangeHeader(header: string | undefined, size: number): RangeRequest {
-  const match = header === undefined ? null : SINGLE_RANGE.exec(header.trim());
+  if (header === undefined) {
+    return { kind: 'whole' };
+  }
+  const match = SINGLE_RANGE.exec(header.trim());
   if (match === null) {
     return { kind: 'whole' };
   }

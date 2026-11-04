@@ -124,7 +124,9 @@ function FieldValue(props: { readonly row: FieldRow }) {
   if (row.text === undefined) {
     return <span class="caption">none</span>;
   }
-  return row.type === 'link' ? <a href={row.text}>{formatLinkText(row.text)}</a> : <>{row.text}</>;
+  // Links are checked when saved, but only web addresses are ever made clickable.
+  const isWebLink = row.type === 'link' && /^https?:\/\//i.test(row.text);
+  return isWebLink ? <a href={row.text}>{formatLinkText(row.text)}</a> : <>{row.text}</>;
 }
 
 /** The fields table: short values first, then long text boxes such as notes. */

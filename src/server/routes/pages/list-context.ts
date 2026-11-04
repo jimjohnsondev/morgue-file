@@ -72,22 +72,35 @@ function nameSectionList(db: Db, terms: readonly Term[]): ListName | undefined {
     : { label: subcategory.name, href: subcategoryPath(subcategory) };
 }
 
-/** An Unsorted, tag or collection page's name. */
-function nameCrossSectionList(db: Db, terms: readonly Term[]): ListName | undefined {
-  if (hasExactly(terms, ['unsorted'])) {
-    return { label: 'Unsorted', href: '/unsorted' };
+/** A tag page's name: "tag hands". */
+function nameTagList(terms: readonly Term[]): ListName | undefined {
+  const tag = filterValue(terms, 'tag');
+  if (tag === undefined || !hasExactly(terms, ['tag'])) {
+    return undefined;
   }
-  const tag = hasExactly(terms, ['tag']) ? filterValue(terms, 'tag') : undefined;
-  if (tag !== undefined) {
-    return { label: `tag ${tag}`, href: `/tags/${encodeURIComponent(tag)}` };
+  return { label: `tag ${tag}`, href: `/tags/${encodeURIComponent(tag)}` };
+}
+
+/** A collection page's name, for a list of one collection by id. */
+function nameCollectionList(db: Db, terms: readonly Term[]): ListName | undefined {
+  const collectionId = filterValue(terms, 'collection');
+  if (collectionId === undefined || !hasExactly(terms, ['collection'])) {
+    return undefined;
   }
-  const collectionId = hasExactly(terms, ['collection']) ? filterValue(terms, 'collection') : '';
   const collection = findCollectionSummaries(db).find(
     (summary) => String(summary.id) === collectionId,
   );
   return collection === undefined
     ? undefined
     : { label: collection.name, href: `/collections/${String(collection.id)}` };
+}
+
+/** An Unsorted, tag or collection page's name. */
+function nameCrossSectionList(db: Db, terms: readonly Term[]): ListName | undefined {
+  if (hasExactly(terms, ['unsorted'])) {
+    return { label: 'Unsorted', href: '/unsorted' };
+  }
+  return nameTagList(terms) ?? nameCollectionList(db, terms);
 }
 
 /** A list page's name and address; any list without a page of its own is a search. */
@@ -105,14 +118,24 @@ type GroupedValue = {
   readonly value: string;
 };
 
-/** The parts of a query shaped like a grouped value's page: `in:x sub:y key:value`. */
-function groupShapeOf(terms: readonly Term[]) {
+/** The parts of a grouped value's page query: `in:x sub:y key:value`. */
+type GroupShape = {
+  readonly section: Section;
+  readonly slug: string;
+  readonly fieldTerm: Extract<Term, { kind: 'field' }>;
+};
+
+/** Reads a query shaped like a grouped value's page into its parts, if it is one. */
+function groupShapeOf(terms: readonly Term[]): GroupShape | undefined {
   const [, , fieldTerm] = terms;
   const section = sectionOf(terms);
-  const isShaped = terms.length === 3 && hasExactly(terms.slice(0, 2), ['in', 'sub']);
-  return section === undefined || !isShaped || fieldTerm?.kind !== 'field' || fieldTerm.isNegated
-    ? undefined
-    : { section, slug: filterValue(terms, 'sub') ?? '', fieldTerm };
+  if (terms.length !== 3 || !hasExactly(terms.slice(0, 2), ['in', 'sub'])) {
+    return undefined;
+  }
+  if (section === undefined || fieldTerm?.kind !== 'field' || fieldTerm.isNegated) {
+    return undefined;
+  }
+  return { section, slug: filterValue(terms, 'sub') ?? '', fieldTerm };
 }
 
 /**
