@@ -1,5 +1,6 @@
 // How numbers, dates and media details read on the page: "1,236", "31 Oct 2026", "3:15".
 import type { ListedItem } from '#core/db/repositories/item-lists.js';
+import type { FieldWithValue } from '#core/fields/fields.js';
 
 const COUNT = new Intl.NumberFormat('en-US');
 
@@ -103,4 +104,12 @@ export function formatLinkText(url: string): string {
 /** A page range for chips and the reader: "page 12", "pages 12–19". */
 export function formatPages(first: number, last: number): string {
   return first === last ? `page ${String(first)}` : `pages ${String(first)}–${String(last)}`;
+}
+
+/** A field's value as text: dates as days, numbers as numbers, undefined when it has none. */
+export function fieldValueText(entry: FieldWithValue): string | undefined {
+  if (entry.value === undefined) {
+    return undefined;
+  }
+  return entry.field.type === 'date' ? formatDay(String(entry.value)) : String(entry.value);
 }

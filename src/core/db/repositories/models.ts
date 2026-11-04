@@ -138,3 +138,27 @@ export function findModelLinksByItem(db: Db, itemId: number): ItemModelLink[] {
       row.page_from === null || row.page_to === null ? undefined : [row.page_from, row.page_to],
   }));
 }
+
+/** The page ranges a model is linked to, by item; items linked whole are left out (R16, R17). */
+export function findPageRangesByModel(db: Db, modelId: number): Map<number, PageRange[]> {
+  const rows = db
+    .prepare(
+      `SELECT item_id, page_from, page_to FROM item_models
+       WHERE model_id = ? AND page_from IS NOT NULL AND page_to IS NOT NULL
+       ORDER BY item_id, page_from`,
+    )
+    .all(modelId) as { item_id: number; page_from: number; page_to: number }[];
+  const ranges = new Map<number, PageRange[]>();
+  for (const row of rows) {
+    const itemRanges = ranges.get(row.item_id) ?? [];
+    itemRanges.push([row.page_from, row.page_to]);
+    ranges.set(row.item_id, itemRanges);
+  }
+  return ranges;
+}
+
+/** How many model profiles there are, for Home's archive counts. */
+export function countModels(db: Db): number {
+  const row = db.prepare('SELECT count(*) AS total FROM models').get() as { total: number };
+  return row.total;
+}

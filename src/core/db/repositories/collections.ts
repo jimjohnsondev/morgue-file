@@ -69,3 +69,15 @@ export function findCollectionsByItem(db: Db, itemId: number): { id: number; nam
     )
     .all(itemId) as { id: number; name: string }[];
 }
+
+/** The first item of each collection that has any, by collection id, to stand as its cover. */
+export function findCollectionCoverIds(db: Db): Map<number, number> {
+  const rows = db
+    .prepare(
+      `SELECT collection_id, item_id FROM collection_items AS entry
+       WHERE position = (SELECT min(position) FROM collection_items
+         WHERE collection_id = entry.collection_id)`,
+    )
+    .all() as { collection_id: number; item_id: number }[];
+  return new Map(rows.map((row) => [row.collection_id, row.item_id]));
+}

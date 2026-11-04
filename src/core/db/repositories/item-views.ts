@@ -11,6 +11,16 @@ export type ItemView = {
   readonly position?: number;
 };
 
+type ItemViewRow = { item_id: number; viewed_at: string; position: number | null };
+
+function toItemView(row: ItemViewRow): ItemView {
+  return {
+    itemId: row.item_id,
+    viewedAt: row.viewed_at,
+    ...(row.position === null ? {} : { position: row.position }),
+  };
+}
+
 /** Records a view and drops any beyond the newest 200. */
 export function recordItemView(db: Db, view: ItemView): void {
   db.transaction(() => {
@@ -33,10 +43,19 @@ export function findRecentItemViews(db: Db, limit: number): ItemView[] {
       `SELECT item_id, viewed_at, position FROM item_views
        ORDER BY viewed_at DESC, id DESC LIMIT ?`,
     )
-    .all(limit) as { item_id: number; viewed_at: string; position: number | null }[];
-  return rows.map((row) => ({
-    itemId: row.item_id,
-    viewedAt: row.viewed_at,
-    ...(row.position === null ? {} : { position: row.position }),
-  }));
+    .all(limit) as ItemViewRow[];
+  return rows.map(toItemView);
+}
+
+/** The items viewed last, each once at its latest view, newest first (Home's first strip). */
+export function findRecentlyViewedItems(db: Db, limit: number): ItemView[] {
+  const rows = db
+    .prepare(
+      `SELECT item_id, viewed_at, position FROM item_views AS view
+       WHERE id = (SELECT id FROM item_views WHERE item_id = view.item_id
+         ORDER BY viewed_at DESC, id DESC LIMIT 1)
+       ORDER BY viewed_at DESC, id DESC LIMIT ?`,
+    )
+    .all(limit) as ItemViewRow[];
+  return rows.map(toItemView);
 }
