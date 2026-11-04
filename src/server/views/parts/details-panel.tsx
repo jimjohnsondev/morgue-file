@@ -124,7 +124,7 @@ function FieldValue(props: { readonly row: FieldRow }) {
   if (row.text === undefined) {
     return <span class="caption">none</span>;
   }
-  // Links are checked when saved, but only web addresses are ever made clickable.
+  // Only web addresses become links, so a stored value can never run script when clicked.
   const isWebLink = row.type === 'link' && /^https?:\/\//i.test(row.text);
   return isWebLink ? <a href={row.text}>{formatLinkText(row.text)}</a> : <>{row.text}</>;
 }
