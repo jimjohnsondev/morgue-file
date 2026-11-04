@@ -206,24 +206,36 @@ export function findNewestItems(db: Db, limit: number): ListedItem[] {
   return rows.map(toListedItem);
 }
 
+/** The prime the shuffle works modulo; ids and multipliers stay below it. */
+const SHUFFLE_PRIME = 4294967291;
+
+/**
+ * The multiplier a seed shuffles by. The seed changes the multiplier rather than adding an
+ * offset, because an offset would only rotate the order and most seeds would pick the same items.
+ */
+function shuffleMultiplier(seed: number): number {
+  return (2654435761 + seed * 2246822519) % SHUFFLE_PRIME || 1;
+}
+
 /**
  * A shuffled handful of items for Home's From the archive strip (R34). The same seed always
  * picks the same items, so "shuffle" is a link and a page can be screenshot; the order comes
- * from multiplying each id by a large odd number modulo a prime, which scatters neighbours.
+ * from multiplying each id by a large number modulo a prime, which scatters neighbours.
  */
 export function findPickedItems(
   db: Db,
   pick: { readonly seed: number; readonly limit: number },
 ): ListedItem[] {
+  const multiplier = shuffleMultiplier(pick.seed);
   const rows = db
     .prepare(
       `WITH picked AS (
-         SELECT id FROM items ORDER BY (id * 2654435761 + ? * 40503) % 4294967291, id LIMIT ?
+         SELECT id, (id * ?) % ? AS shuffled FROM items ORDER BY shuffled, id LIMIT ?
        )
        SELECT ${LISTED_COLUMNS} FROM picked JOIN items ON items.id = picked.id
        LEFT JOIN subcategories ON subcategories.id = items.subcategory_id
-       ORDER BY (items.id * 2654435761 + ? * 40503) % 4294967291, items.id`,
+       ORDER BY picked.shuffled, items.id`,
     )
-    .all(pick.seed, pick.limit, pick.seed) as ListedItemRow[];
+    .all(multiplier, SHUFFLE_PRIME, pick.limit) as ListedItemRow[];
   return rows.map(toListedItem);
 }

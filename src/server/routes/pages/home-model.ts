@@ -1,7 +1,7 @@
 // Reads Home's preview strips and archive counts from the library (frame 12, R34). A strip with
 // nothing to show is left out.
 import { findCollectionSummaries } from '#core/db/repositories/collections.js';
-import { findItemsByQuery, findPickedItems } from '#core/db/repositories/item-lists.js';
+import { findItemsByQuery } from '#core/db/repositories/item-lists.js';
 import { countModels } from '#core/db/repositories/models.js';
 import { queryToText } from '#core/query/canonical-query.js';
 import { compileQuery } from '#core/query/compile-query.js';
@@ -9,7 +9,13 @@ import { filterTerm } from '#core/query/parse-query.js';
 
 import { formatCount } from '../../views/format.js';
 
-import { collectionCards, newestCards, recentlyViewedCards } from './card-lists.js';
+import {
+  collectionCards,
+  newestCards,
+  pickedCards,
+  recentlyViewedCards,
+  SHUFFLE_SEEDS,
+} from './card-lists.js';
 import { STRIP_LENGTH } from './model-profile-model.js';
 import { toThumbCards } from './thumb-cards.js';
 
@@ -17,9 +23,6 @@ import type { Db } from '#core/db/connection.js';
 import type { ArchiveCounts } from '#core/db/repositories/archive-counts.js';
 import type { PreviewStripModel } from '../../views/parts/preview-strip.js';
 import type { ArchiveCountRow, HomeModel } from '../../views/templates/home-template.js';
-
-/** Shuffle seeds run from 0 up to this, then start again. */
-export const SHUFFLE_SEEDS = 1_000_000;
 
 /** A strip that has cards, else nothing, so empty strips are hidden (R34). */
 function stripIfAny(strip: PreviewStripModel): PreviewStripModel[] {
@@ -79,17 +82,12 @@ function collectionsStrip(db: Db, collections: number): PreviewStripModel[] {
 
 /** From the archive: a shuffled handful; "shuffle" moves to the next seed. */
 function archiveStrip(db: Db, seed: number): PreviewStripModel[] {
-  const shuffleHref = `/?shuffle=${String((seed + 1) % SHUFFLE_SEEDS)}`;
   return stripIfAny({
     title: 'From the archive',
     name: 'From the archive',
-    titleLink: { text: 'shuffle »', href: shuffleHref },
-    moreLink: { text: 'Shuffle »', href: shuffleHref },
-    cards: toThumbCards(findPickedItems(db, { seed, limit: STRIP_LENGTH }), {
-      size: 'medium',
-      fromQuery: undefined,
-      caption: 'where',
-    }),
+    titleLink: { text: 'shuffle »', href: `/?shuffle=${String((seed + 1) % SHUFFLE_SEEDS)}` },
+    moreLink: { text: 'More from the archive »', href: `/archive?shuffle=${String(seed)}` },
+    cards: pickedCards(db, { seed, limit: STRIP_LENGTH }),
   });
 }
 

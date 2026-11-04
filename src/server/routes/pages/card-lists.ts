@@ -1,12 +1,18 @@
-// The lists that aren't a query: models, collections, recently viewed and recently added. Each
-// is one fixed page shown by the Index template, so they look like every other list, and each is
-// the full list behind one of Home's strips (R34).
+// The lists that aren't a query: models, collections, recently viewed, recently added and picks
+// from the archive. Each is one fixed page shown by the Index template, so they look like every
+// other list, and each is the full list behind one of Home's strips (R34).
+import { Type } from '@sinclair/typebox';
+
 import { findModelNames } from '#core/db/repositories/archive-counts.js';
 import {
   findCollectionCoverIds,
   findCollectionSummaries,
 } from '#core/db/repositories/collections.js';
-import { findListedItemsByIds, findNewestItems } from '#core/db/repositories/item-lists.js';
+import {
+  findListedItemsByIds,
+  findNewestItems,
+  findPickedItems,
+} from '#core/db/repositories/item-lists.js';
 import { findRecentlyViewedItems, KEPT_VIEWS } from '#core/db/repositories/item-views.js';
 import { findModelBySlug, findModelTagNames } from '#core/db/repositories/models.js';
 
@@ -24,10 +30,26 @@ import type { Crumb } from '../../views/parts/breadcrumb.js';
 import type { ThumbCard } from '../../views/parts/thumb-grid.js';
 import type { IndexModel } from '../../views/templates/index-template.js';
 import type { PageContext } from '../page-context.js';
+import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance } from 'fastify';
 
-/** How many of the newest items Recently added lists. */
-const RECENT_LENGTH = 96;
+/** How many items Recently added and From the archive list. */
+const FIXED_LIST_LENGTH = 96;
+
+/** Shuffle seeds run from 0 up to this, then start again. */
+export const SHUFFLE_SEEDS = 1_000_000;
+
+/** `shuffle` picks another handful from the archive; without it the picks change daily. */
+export const ShuffleQuerystring = Type.Object({
+  shuffle: Type.Optional(Type.Integer({ minimum: 0, maximum: SHUFFLE_SEEDS - 1 })),
+});
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The seed a page asked for, else today's, so the picks change daily. */
+export function shuffleSeed(asked: number | undefined): number {
+  return asked ?? Math.floor(Date.now() / DAY_MS) % SHUFFLE_SEEDS;
+}
 
 /** What a fixed list says about itself; the template's other parts stay empty. */
 type FixedList = {
@@ -136,6 +158,15 @@ export function newestCards(db: Db, limit: number): ThumbCard[] {
   });
 }
 
+/** Cards for a shuffled handful from the whole archive, captioned with where each is filed. */
+export function pickedCards(db: Db, pick: { readonly seed: number; readonly limit: number }) {
+  return toThumbCards(findPickedItems(db, pick), {
+    size: 'medium',
+    fromQuery: undefined,
+    caption: 'where',
+  });
+}
+
 /** The fixed lists by URL, and the tab each sits under. */
 const FIXED_LISTS: readonly {
   readonly url: string;
@@ -181,14 +212,25 @@ const FIXED_LISTS: readonly {
     listFor: (db) => ({
       title: 'Recently added',
       crumbs: [{ label: 'Recently added' }],
-      cards: newestCards(db, RECENT_LENGTH),
+      cards: newestCards(db, FIXED_LIST_LENGTH),
       noun: 'item',
       emptyText: 'Nothing added yet.',
     }),
   },
 ];
 
-/** Registers /models, /collections, /history and /recent. */
+/** From the archive's full list: 96 picks for the seed, the strip's six first. */
+function archiveList(db: Db, seed: number): FixedList {
+  return {
+    title: 'From the archive',
+    crumbs: [{ label: 'From the archive' }],
+    cards: pickedCards(db, { seed, limit: FIXED_LIST_LENGTH }),
+    noun: 'item',
+    emptyText: 'Nothing in the archive yet.',
+  };
+}
+
+/** Registers /models, /collections, /history, /recent and /archive. */
 export function registerCardListRoutes(app: FastifyInstance, context: PageContext): void {
   for (const list of FIXED_LISTS) {
     app.get(list.url, async (_request, reply) => {
@@ -197,4 +239,11 @@ export function registerCardListRoutes(app: FastifyInstance, context: PageContex
       return sendIndexPage(reply, { context, db, model, frame: { currentTab: list.tab } });
     });
   }
+  app
+    .withTypeProvider<TypeBoxTypeProvider>()
+    .get('/archive', { schema: { querystring: ShuffleQuerystring } }, async (request, reply) => {
+      const { db } = requireLibrary(context.library);
+      const model = fixedListModel(archiveList(db, shuffleSeed(request.query.shuffle)));
+      return sendIndexPage(reply, { context, db, model, frame: { currentTab: '/' } });
+    });
 }

@@ -146,6 +146,11 @@ function hrefsIn(html: string): string[] {
   );
 }
 
+/** The links to Item pages in a piece of HTML, in order. */
+function itemLinksIn(html: string): string[] {
+  return hrefsIn(html).filter((href) => href.startsWith('/item/'));
+}
+
 const PHOTOS_OF_ELENA = '/search?q=in%3Aphotos+model%3A%22Elena+Varga%22';
 const LIBRARY_OF_ELENA = '/search?q=in%3Alibrary+model%3A%22Elena+Varga%22';
 
@@ -205,7 +210,7 @@ describe('R34: Home is built from preview strips', () => {
     { name: 'Recently added', list: '/recent' },
     { name: 'Waiting in Unsorted', list: '/unsorted' },
     { name: 'Collections', list: '/collections' },
-    { name: 'From the archive', list: undefined },
+    { name: 'From the archive', list: '/archive?shuffle=3' },
   ];
 
   it('R34: shows the five strips in order, each linking to its full list', async () => {
@@ -216,10 +221,8 @@ describe('R34: Home is built from preview strips', () => {
     for (const strip of STRIPS) {
       const html = stripHtml(body, strip.name) ?? '';
       expect(html).toContain('class="thumb-card ');
-      if (strip.list !== undefined) {
-        expect(hrefsIn(html)).toContain(strip.list);
-        expect((await get(full, strip.list)).statusCode).toBe(200);
-      }
+      expect(hrefsIn(html)).toContain(strip.list);
+      expect((await get(full, strip.list)).statusCode).toBe(200);
     }
   });
 
@@ -235,11 +238,20 @@ describe('R34: Home is built from preview strips', () => {
     expect(html).toContain('Video › Unsorted · at 0:42');
   });
 
-  it('R34: shuffles From the archive by seed: the same seed picks the same items', async () => {
-    const first = stripHtml((await get(full, '/?shuffle=3')).body, 'From the archive');
-    const again = stripHtml((await get(full, '/?shuffle=3')).body, 'From the archive');
+  it('R34: shuffles From the archive by seed: one seed picks the same items, the next others', async () => {
+    const first = stripHtml((await get(full, '/?shuffle=3')).body, 'From the archive') ?? '';
+    const again = stripHtml((await get(full, '/?shuffle=3')).body, 'From the archive') ?? '';
+    const next = stripHtml((await get(full, '/?shuffle=4')).body, 'From the archive') ?? '';
     expect(first).toBe(again);
-    expect(hrefsIn(first ?? '')).toContain('/?shuffle=4');
+    expect(hrefsIn(first)).toContain('/?shuffle=4');
+    expect(itemLinksIn(next)).not.toEqual(itemLinksIn(first));
+  });
+
+  it("R34: From the archive's full list starts with the strip's picks", async () => {
+    const strip = stripHtml((await get(full, '/?shuffle=3')).body, 'From the archive') ?? '';
+    const list = (await get(full, '/archive?shuffle=3')).body;
+    expect(itemLinksIn(list)[0]).toBe(itemLinksIn(strip)[0]);
+    expect(list).toContain('18 items');
   });
 
   it('R34: shows the archive counts beside the strips', async () => {

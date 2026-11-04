@@ -57,7 +57,12 @@ test('frame 12: Home with five strips and the archive counts', async ({ page }) 
 
 test('R34: every Home strip links to its full list', async ({ page }) => {
   await page.goto('/');
-  for (const name of ['All recently viewed »', 'View all recent »', 'All 38 collections »']) {
+  for (const name of [
+    'All recently viewed »',
+    'View all recent »',
+    'All 38 collections »',
+    'More from the archive »',
+  ]) {
     await page.getByRole('link', { name }).click();
     await expect(page.locator('.grid-panel .thumb-card').first()).toBeVisible();
     await page.goBack();
