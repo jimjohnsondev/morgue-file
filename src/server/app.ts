@@ -8,9 +8,11 @@ import { registerErrorHandler } from './error-handler.js';
 import { registerSetupApi } from './routes/api/setup.js';
 import { registerAssetRoute } from './routes/assets.js';
 import { registerHealthRoute } from './routes/healthz.js';
+import { registerOriginalRoutes } from './routes/media-originals.js';
 import { registerMediaRoutes } from './routes/media.js';
 import { registerHomeRoute } from './routes/pages/home.js';
 import { registerIndexRoutes } from './routes/pages/index-routes.js';
+import { registerItemRoute } from './routes/pages/item-route.js';
 import { registerSearchRoute } from './routes/pages/search-route.js';
 import { registerSetupPage } from './routes/pages/setup.js';
 import { registerSetupGate } from './routes/setup-gate.js';
@@ -51,7 +53,9 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerHomeRoute(app, pageContext);
   registerIndexRoutes(app, pageContext);
   registerSearchRoute(app, pageContext);
+  registerItemRoute(app, pageContext);
   registerMediaRoutes(app, library);
+  registerOriginalRoutes(app, library);
 
   return app;
 }

@@ -60,7 +60,7 @@ function seasonOf(date: string): string {
 }
 
 /** An issue's caption: its name without the title it shares ("No. 12"), then its season. */
-function issueLabel(item: DatedItem, title: string): string {
+export function issueLabel(item: Pick<DatedItem, 'relPath' | 'date'>, title: string): string {
   const name = (item.relPath.split('/').at(-1) ?? '').replace(/\.(pdf|cbz)$/i, '');
   const short = name.startsWith(title) ? name.slice(title.length).trim() : name;
   return item.date === undefined ? short : `${short} · ${seasonOf(item.date)}`;
@@ -76,13 +76,28 @@ function subcategoryCrumbs(subcategory: Subcategory): Crumb[] {
 }
 
 /** A subcategory's address; slugs may hold letters of any script, so it is percent-encoded. */
-function subcategoryPath(subcategory: Subcategory): string {
+export function subcategoryPath(subcategory: Subcategory): string {
   return `/${subcategory.section}/${encodeURIComponent(subcategory.slug)}`;
 }
 
 /** The terms for everything in a subcategory. */
-function subcategoryTerms(subcategory: Subcategory): Term[] {
+export function subcategoryTerms(subcategory: Subcategory): Term[] {
   return [filterTerm('in', subcategory.section), filterTerm('sub', subcategory.slug)];
+}
+
+/** The address of one grouped value's page: /library/magazines/life-drawing-quarterly. */
+export function groupValuePath(subcategory: Subcategory, value: string): string {
+  return `${subcategoryPath(subcategory)}/${encodeURIComponent(slugify(value))}`;
+}
+
+/** The query one grouped value's page lists, which its cards pass on to the Item page. */
+export function groupValueQuery(subcategory: Subcategory, spec: GroupSpec, value: string): Query {
+  return {
+    terms: [
+      ...subcategoryTerms(subcategory),
+      { kind: 'field', key: spec.groupFieldKey, value, isNegated: false },
+    ],
+  };
 }
 
 /** The common frame of both grouped pages. */
@@ -107,14 +122,13 @@ function groupedModel(
 /** The page listing a grouped subcategory's values: one cover per magazine title. */
 export function buildGroupListModel(db: Db, subcategory: Subcategory, spec: GroupSpec): IndexModel {
   const groups = findFieldGroups(db, spec);
-  const path = subcategoryPath(subcategory);
   let itemCount = 0;
   for (const group of groups) {
     itemCount += group.itemCount;
   }
   const cards = groups.map((group: FieldGroup) => ({
     key: group.value,
-    href: `${path}/${encodeURIComponent(slugify(group.value))}`,
+    href: groupValuePath(subcategory, group.value),
     imageSrc: thumbnailSrc(
       { id: group.coverItemId, kind: 'pdf', mtimeMs: group.coverMtimeMs },
       'medium',
@@ -184,12 +198,7 @@ export function buildGroupPageModel(
     throw new AppError('not-found', `No "${page.groupSlug}" in ${subcategory.name}.`);
   }
   const items = findItemsInFieldGroup(db, page.spec, group.value);
-  const query: Query = {
-    terms: [
-      ...subcategoryTerms(subcategory),
-      { kind: 'field', key: page.spec.groupFieldKey, value: group.value, isNegated: false },
-    ],
-  };
+  const query = groupValueQuery(subcategory, page.spec, group.value);
   return groupedModel({
     title: group.value,
     breadcrumb: [

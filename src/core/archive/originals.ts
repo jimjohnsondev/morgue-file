@@ -1,9 +1,12 @@
 // The only module that touches files under a Reference root: it reads, and creates the Inbox.
-import { existsSync } from 'node:fs';
+import { createReadStream, existsSync } from 'node:fs';
 import { mkdir, open, opendir, readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { AppError, systemErrorCode } from '#core/errors.js';
+
+import type { Stats } from 'node:fs';
+import type { Readable } from 'node:stream';
 
 /** The folder inside the Reference folder where dropped and pasted files are saved (R2). */
 export const INBOX_FOLDER_NAME = 'Inbox';
@@ -139,4 +142,39 @@ export async function readOriginal(rootPath: string, relPath: string): Promise<B
 export async function openOriginal(rootPath: string, relPath: string): Promise<OpenOriginal> {
   const handle = await open(resolveOriginalPath(rootPath, relPath), 'r');
   return { fd: handle.fd, close: async () => handle.close() };
+}
+
+/** A file's size and time, for serving it with Range support. */
+export type OriginalFileInfo = {
+  readonly size: number;
+  readonly mtimeMs: number;
+};
+
+/** Bytes start to end of a file, both inclusive, as HTTP ranges count them. */
+export type ByteRange = {
+  readonly start: number;
+  readonly end: number;
+};
+
+/**
+ * Reads the size and time of a file under a root. A file that is gone, or on a drive that is
+ * offline, is refused as not found, so the viewer can say it can't be opened right now.
+ */
+export async function statOriginal(rootPath: string, relPath: string): Promise<OriginalFileInfo> {
+  const file = resolveOriginalPath(rootPath, relPath);
+  let details: Stats;
+  try {
+    details = await stat(file);
+  } catch {
+    throw new AppError('not-found', `${relPath} can't be opened right now.`);
+  }
+  if (!details.isFile()) {
+    throw new AppError('not-found', `${relPath} is not a file.`);
+  }
+  return { size: details.size, mtimeMs: Math.trunc(details.mtimeMs) };
+}
+
+/** Streams a file under a root, or part of it, read-only, for the viewers (R19). */
+export function streamOriginal(rootPath: string, relPath: string, range?: ByteRange): Readable {
+  return createReadStream(resolveOriginalPath(rootPath, relPath), { flags: 'r', ...range });
 }

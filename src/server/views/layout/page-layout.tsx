@@ -28,6 +28,8 @@ export type PageLayoutProps = {
   readonly counts?: ArchiveCounts | undefined;
   /** The query to show in the banner's search box, on search pages. */
   readonly searchText?: string | undefined;
+  /** Item pages open in viewing mode, with all chrome hidden, when their URL says so (frame 9). */
+  readonly isViewing?: boolean;
   readonly children: ComponentChildren;
 };
 
@@ -128,7 +130,7 @@ export function PageLayout(props: PageLayoutProps) {
           <script key={src} type="module" src={src} />
         ))}
       </head>
-      <body>
+      <body class={props.isViewing === true ? 'viewing-mode' : undefined}>
         <Banner searchText={props.searchText} />
         <div class="trim" />
         <TabBar currentPath={props.currentPath} unsorted={props.counts?.unsorted} />

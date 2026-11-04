@@ -74,6 +74,13 @@ export function findSubcategoryBySlug(
   return row === undefined ? undefined : toSubcategory(row);
 }
 
+/** Returns a subcategory by id, or undefined if there is none. */
+export function findSubcategoryById(db: Db, id: number): Subcategory | undefined {
+  const row = db.prepare('SELECT * FROM subcategories WHERE id = ?').get(id) as
+    SubcategoryRow | undefined;
+  return row === undefined ? undefined : toSubcategory(row);
+}
+
 /**
  * Maps a folder under a root to a subcategory, so new files in it file themselves. The prefix is
  * a relative folder path with forward slashes and no trailing slash.

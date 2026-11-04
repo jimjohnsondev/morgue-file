@@ -36,13 +36,17 @@ export async function loadPageAssets(clientDir: string): Promise<PageAssets> {
   return { styles, scripts: [`/${entry.file}`] };
 }
 
-/** Matches the only file names the asset route will serve: Vite's hashed output. */
-const ASSET_NAME = /^[\w-]+\.(css|js|svg)$/;
+/**
+ * Matches the only file names the asset route will serve: Vite's hashed output, which may hold
+ * dots (pdf.js's worker is pdf.worker.min-<hash>.mjs) but never a slash.
+ */
+const ASSET_NAME = /^[\w-][\w.-]*\.(css|js|mjs|svg)$/;
 
 /** The content type of each kind of built file. */
 const ASSET_TYPES = {
   css: 'text/css; charset=utf-8',
   js: 'text/javascript; charset=utf-8',
+  mjs: 'text/javascript; charset=utf-8',
   svg: 'image/svg+xml',
 } as const;
 

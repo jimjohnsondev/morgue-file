@@ -218,7 +218,7 @@ describe('typed queries never fail', () => {
   });
 
   it('answers 404 for a page that is not a section', async () => {
-    expect((await get('/item/5')).statusCode).toBe(404);
+    expect((await get('/nowhere/5')).statusCode).toBe(404);
   });
 });
 

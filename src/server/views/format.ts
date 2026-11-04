@@ -67,3 +67,40 @@ export function itemDetails(item: ListedItem): string {
   const pages = item.pageCount === undefined ? undefined : `${String(item.pageCount)} pages`;
   return [pages, PUBLICATION_FORMAT[item.kind]].filter((part) => part !== undefined).join(' · ');
 }
+
+/** How each file type is named on the page, by extension or Library kind. */
+const FORMAT_NAMES: Readonly<Record<string, string>> = {
+  jpg: 'JPG',
+  jpeg: 'JPG',
+  png: 'PNG',
+  webp: 'WebP',
+  gif: 'GIF',
+  mp4: 'MP4',
+  mov: 'MOV',
+  pdf: 'PDF',
+  cbz: 'CBZ',
+  pagefolder: 'Page folder',
+};
+
+/** The format line of an item's details: JPG, MP4, PDF, Page folder. */
+export function formatName(item: Pick<ListedItem, 'relPath' | 'kind'>): string {
+  const extension =
+    item.kind === 'pagefolder' ? 'pagefolder' : (item.relPath.split('.').at(-1) ?? '');
+  return FORMAT_NAMES[extension.toLowerCase()] ?? extension.toUpperCase();
+}
+
+/** A rating out of 5 as stars: ★★★★☆. */
+export function formatStars(rating: number): string {
+  const filled = Math.max(0, Math.min(5, Math.round(rating)));
+  return '★'.repeat(filled) + '☆'.repeat(5 - filled);
+}
+
+/** A link as the details panel shows it: without the scheme or a trailing slash. */
+export function formatLinkText(url: string): string {
+  return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+}
+
+/** A page range for chips and the reader: "page 12", "pages 12–19". */
+export function formatPages(first: number, last: number): string {
+  return first === last ? `page ${String(first)}` : `pages ${String(first)}–${String(last)}`;
+}

@@ -18,11 +18,8 @@ function isPageEntry(fileName: string): boolean {
   return !fileName.endsWith('/') && !fileName.startsWith('__MACOSX/') && isImageFileName(fileName);
 }
 
-/**
- * Counts a CBZ's pages and reads the first in name order. The caller owns the file descriptor
- * and closes it.
- */
-export async function readZipPages(fd: number): Promise<ZipPages> {
+/** A CBZ's page entries in reading order, read from a file opened read-only. */
+async function listZipPages(fd: number) {
   // No zip.close(): it closes the descriptor, which belongs to the caller.
   const zip = await yauzl.fromFdPromise(fd, { lazyEntries: true, autoClose: false });
   const entries = new Map<string, yauzl.Entry>();
@@ -31,11 +28,33 @@ export async function readZipPages(fd: number): Promise<ZipPages> {
       entries.set(entry.fileName, entry);
     }
   }
-  const firstName = sortPageNames([...entries.keys()])[0];
-  const first = firstName === undefined ? undefined : entries.get(firstName);
+  const pages = sortPageNames([...entries.keys()]).map((name) => entries.get(name));
+  return { zip, pages: pages.filter((entry) => entry !== undefined) };
+}
+
+/** Reads page n of a CBZ, counting from 1, with its name inside the zip. */
+export async function readZipPage(
+  fd: number,
+  pageNumber: number,
+): Promise<{ fileName: string; bytes: Buffer }> {
+  const { zip, pages } = await listZipPages(fd);
+  const page = pages[pageNumber - 1];
+  if (page === undefined) {
+    throw new AppError('not-found', `The CBZ has no page ${String(pageNumber)}.`);
+  }
+  return { fileName: page.fileName, bytes: await buffer(await zip.openReadStreamPromise(page)) };
+}
+
+/**
+ * Counts a CBZ's pages and reads the first in name order. The caller owns the file descriptor
+ * and closes it.
+ */
+export async function readZipPages(fd: number): Promise<ZipPages> {
+  const { zip, pages } = await listZipPages(fd);
+  const [first] = pages;
   if (first === undefined) {
     throw new AppError('media-unreadable', 'The CBZ holds no page images.');
   }
   const firstPage = await buffer(await zip.openReadStreamPromise(first));
-  return { pageCount: entries.size, firstPage };
+  return { pageCount: pages.length, firstPage };
 }

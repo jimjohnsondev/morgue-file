@@ -103,3 +103,38 @@ export function findItemIdsByModel(db: Db, modelId: number): number[] {
     .all(modelId) as { item_id: number }[];
   return rows.map((row) => row.item_id);
 }
+
+/** A model linked to an item, for the chips on the Item page, with the pages they appear on. */
+export type ItemModelLink = {
+  readonly slug: string;
+  readonly name: string;
+  /** Undefined when the model appears in the whole item. */
+  readonly pages: PageRange | undefined;
+};
+
+/** The models an item is linked to, by name, each link once (R15, R17). */
+export function findModelLinksByItem(db: Db, itemId: number): ItemModelLink[] {
+  const rows = db
+    .prepare(
+      `SELECT models.slug, field_values.value_text AS name, item_models.page_from,
+         item_models.page_to
+       FROM item_models
+       JOIN models ON models.id = item_models.model_id
+       JOIN field_values ON field_values.entity = 'model' AND field_values.entity_id = models.id
+       WHERE item_models.item_id = ?
+         AND field_values.field_id = (SELECT id FROM fields WHERE entity = 'model' AND key = 'name')
+       ORDER BY field_values.value_text COLLATE NOCASE, item_models.page_from`,
+    )
+    .all(itemId) as {
+    slug: string;
+    name: string;
+    page_from: number | null;
+    page_to: number | null;
+  }[];
+  return rows.map((row) => ({
+    slug: row.slug,
+    name: row.name,
+    pages:
+      row.page_from === null || row.page_to === null ? undefined : [row.page_from, row.page_to],
+  }));
+}
