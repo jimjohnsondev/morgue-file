@@ -5,7 +5,8 @@ import type { SquareSizeName } from '#core/jobs/thumbnail-files.js';
 export type ThumbCard = {
   readonly key: string;
   readonly href: string;
-  readonly imageSrc: string;
+  /** Undefined draws an empty mat, for a model with no portrait or an empty collection. */
+  readonly imageSrc: string | undefined;
   /** Photos and videos are squares; Library items are tall covers. */
   readonly shape: 'square' | 'cover';
   readonly label: string;
@@ -25,7 +26,11 @@ export function ThumbGrid(props: ThumbGridProps) {
       {props.cards.map((card) => (
         <li key={card.key} class={`thumb-card thumb-card--${card.shape}`}>
           <a href={card.href} class="thumb" aria-label={card.label}>
-            <img class="thumb__image" src={card.imageSrc} alt="" data-thumb />
+            {card.imageSrc === undefined ? (
+              <span class="thumb__image" />
+            ) : (
+              <img class="thumb__image" src={card.imageSrc} alt="" data-thumb />
+            )}
           </a>
           <a href={card.href} class="thumb-card__label">
             {card.label}

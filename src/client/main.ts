@@ -4,6 +4,7 @@ import '../styles/base.css';
 import '../styles/parts.css';
 import '../styles/templates.css';
 import '../styles/item.css';
+import '../styles/strips.css';
 import './setup-form.js';
 import './thumb-retry.js';
 import './keyboard.js';

@@ -5,7 +5,7 @@ import { findModelLinksByItem } from '#core/db/repositories/models.js';
 import { findTagNamesByItem } from '#core/db/repositories/tags.js';
 
 import {
-  formatDay,
+  fieldValueText,
   formatDuration,
   formatName,
   formatPages,
@@ -112,14 +112,6 @@ function factRows(source: DetailsSource): FactRow[] {
   ];
 }
 
-/** A field's value as text: dates as days, numbers as numbers. */
-function fieldText(entry: FieldWithValue): string | undefined {
-  if (entry.value === undefined) {
-    return undefined;
-  }
-  return entry.field.type === 'date' ? formatDay(String(entry.value)) : String(entry.value);
-}
-
 /** The fields table: every field but the rating and any shown as Title and Issue. */
 function fieldRows(source: DetailsSource): FieldRow[] {
   const shownAbove = new Set([RATING_KEY, ...(source.issueOf?.fieldKeys ?? [])]);
@@ -129,7 +121,7 @@ function fieldRows(source: DetailsSource): FieldRow[] {
       key: entry.field.key,
       label: entry.field.label,
       type: entry.field.type,
-      text: fieldText(entry),
+      text: fieldValueText(entry),
     }));
 }
 

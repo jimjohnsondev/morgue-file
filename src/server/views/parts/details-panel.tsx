@@ -1,7 +1,8 @@
 // The Item page's details panel (frames 5, 7, 8): the item's facts, its tags, models and
 // collections as chips, then its other fields. It folds to a thin edge (frame 6). The editing
 // controls are drawn as the frames show them and come alive with the editing PRs (13, 14, 17, 18).
-import { formatLinkText } from '../format.js';
+import { FieldText } from './field-text.js';
+import { PendingAction } from './pending-action.js';
 
 import type { FieldType } from '#core/db/repositories/fields.js';
 import type { ComponentChildren } from 'preact';
@@ -43,15 +44,6 @@ export type DetailsModel = {
   readonly fields: readonly FieldRow[];
   readonly hideHref: string;
 };
-
-/** A link-styled button for an edit action that isn't built yet, so it does nothing. */
-function PendingAction(props: { readonly label: string; readonly name?: string }) {
-  return (
-    <button type="button" class="link-button" disabled aria-label={props.name}>
-      {props.label}
-    </button>
-  );
-}
 
 /** The value cell of a fact: text or a link, stars, and the edit action in brackets. */
 function FactValue(props: { readonly row: FactRow }) {
@@ -111,7 +103,7 @@ function ChipGroup(props: {
   );
 }
 
-/** A field's value as its type reads: links link, empty values say "none". */
+/** A field's value as its type reads; long text is a box, as notes are edited in place. */
 function FieldValue(props: { readonly row: FieldRow }) {
   const { row } = props;
   if (row.type === 'longtext') {
@@ -121,12 +113,7 @@ function FieldValue(props: { readonly row: FieldRow }) {
       </textarea>
     );
   }
-  if (row.text === undefined) {
-    return <span class="caption">none</span>;
-  }
-  // Only web addresses become links, so a stored value can never run script when clicked.
-  const isWebLink = row.type === 'link' && /^https?:\/\//i.test(row.text);
-  return isWebLink ? <a href={row.text}>{formatLinkText(row.text)}</a> : <>{row.text}</>;
+  return <FieldText type={row.type} text={row.text} />;
 }
 
 /** The fields table: short values first, then long text boxes such as notes. */
