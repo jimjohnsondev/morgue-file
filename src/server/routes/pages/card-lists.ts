@@ -159,7 +159,10 @@ export function newestCards(db: Db, limit: number): ThumbCard[] {
 }
 
 /** Cards for a shuffled handful from the whole archive, captioned with where each is filed. */
-export function pickedCards(db: Db, pick: { readonly seed: number; readonly limit: number }) {
+export function pickedCards(
+  db: Db,
+  pick: { readonly seed: number; readonly limit: number },
+): ThumbCard[] {
   return toThumbCards(findPickedItems(db, pick), {
     size: 'medium',
     fromQuery: undefined,

@@ -214,6 +214,7 @@ const SHUFFLE_PRIME = 4294967291;
  * offset, because an offset would only rotate the order and most seeds would pick the same items.
  */
 function shuffleMultiplier(seed: number): number {
+  // A zero multiplier would give every id the same key, so it falls back to 1.
   return (2654435761 + seed * 2246822519) % SHUFFLE_PRIME || 1;
 }
 
