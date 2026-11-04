@@ -374,7 +374,9 @@ As built in PR 2:
 - `dependabot.yml` ignores major versions; `dependabot-automerge.yml` turns on auto-merge for Dependabot's minor and patch PRs. It uses `pull_request_target` but never checks out the PR's code, so the write token never meets untrusted code. See ADR 0001.
 - `scripts/setup-repo.ts` runs with plain `node` (Node strips the types itself), so it needs no extra dependency. It also creates the `baseline-approved` label and reports whether `RELEASE_TOKEN` is still missing.
 
-**Why this differs from the PRD.** The PRD has build.yml trigger on `v*` tags. But tags and PRs created with the default `GITHUB_TOKEN` don't start other workflows, so release.yml calls build.yml directly. The release PR is opened with `RELEASE_TOKEN`, a fine-grained token with contents and pull-request write access to this repo. Using that token means CI runs on the release PR, so it can auto-merge. To reach 1.0.0, merge a commit with the footer `Release-As: 1.0.0`.
+**Why this differs from the PRD.** The PRD has build.yml trigger on `v*` tags. But tags and PRs created with the default `GITHUB_TOKEN` don't start other workflows, so release.yml calls build.yml directly. The release PR is opened with `RELEASE_TOKEN`, a fine-grained token with contents and pull-request write access to this repo. Using that token means CI runs on the release PR, so it can auto-merge.
+
+**Version numbers.** release-please numbered the first release 1.0.0 (PR 3), and versions have counted up from there with every `feat:` merge. Jim chose to keep that numbering (4 Nov 2026). So "1.0" in the PRD and this doc names a milestone, not a version: the release in which every P0 and P1 row passes, whatever number release-please gives it. Never use a `Release-As` footer to force a version.
 
 **One-time repo setup.** `scripts/setup-repo.ts` applies these through `gh api`. Jim runs it once with admin rights and creates the token by hand.
 
@@ -551,7 +553,7 @@ The work ships as 25 PRs in this order. There's one addition to the PRD roadmap:
 | 22  | Frame-exact video frame-step and loop range with requestVideoFrameCallback (PR 8 drew both, a few frames loose)                                                             | 3          | R20                | Frame-step works on MP4 and MOV                                                                                         |
 | 23  | Compare board                                                                                                                                                               | 3          | R22                | The layout survives a restart                                                                                           |
 | 24  | Backup and restore                                                                                                                                                          | 3          | R26                | A restore on a fresh install brings everything back                                                                     |
-| 25  | 1.0 release                                                                                                                                                                 | 3          | All P0 and P1      | release-please cuts 1.0.0                                                                                               |
+| 25  | 1.0 milestone: final P0 and P1 checks, README and release notes                                                                                                             | 3          | All P0 and P1      | Every P0 and P1 acceptance test passes on main and release-please cuts the release that contains them                   |
 
 A PR is done when its row tests pass, CI is green, no screenshot changed (or the change was approved), and `docs/ARCHITECTURE.md` matches what was built.
 

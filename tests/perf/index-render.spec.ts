@@ -37,11 +37,14 @@ const PAGES = [
 let server: ChildProcess | undefined;
 let homeDir = '';
 
-/** Waits until the server answers its health check. */
+/**
+ * Waits until the server answers a library page. /healthz answers as soon as the server listens,
+ * before the library is open, and library pages answer 503 until then.
+ */
 async function waitForServer(): Promise<void> {
   for (let attempt = 0; attempt < 300; attempt++) {
     try {
-      if ((await fetch(`${BASE_URL}/healthz`)).ok) {
+      if ((await fetch(`${BASE_URL}/photos`)).status !== 503) {
         return;
       }
     } catch {
