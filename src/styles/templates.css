@@ -234,3 +234,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Details not known yet still take their line, so every card in a row is the same height. */
+.thumb-card .caption:empty::before {
+  content: '\00a0';
+}
