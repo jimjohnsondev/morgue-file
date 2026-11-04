@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.3.0...v1.4.0) (2026-11-04)
+
+
+### Features
+
+* Item template with image, video and page reader viewers, and viewing mode ([#27](https://github.com/jimjohnsondev/morgue-file/issues/27)) ([556a0a9](https://github.com/jimjohnsondev/morgue-file/commit/556a0a9a76b7148fd4c4cdb49046d879bcf21dad))
+
+
+### Bug Fixes
+
+* perf test waits for the library; 1.0 is a milestone, not a version ([#29](https://github.com/jimjohnsondev/morgue-file/issues/29)) ([f06a9e3](https://github.com/jimjohnsondev/morgue-file/commit/f06a9e33bc3838babd8351e31ffac1250a827be9))
+
 ## [1.3.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.2.0...v1.3.0) (2026-11-03)
 
 
