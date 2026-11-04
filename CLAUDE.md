@@ -5,6 +5,9 @@ Morgue File is a personal reference archive for a figurative painter: a Node.js 
 magazines on one Windows PC. You build it end to end, one pull request at a time. The owner, Jim,
 checks in only at the design gate, when you are stuck, and when 1.0 ships.
 
+"1.0" is a milestone, not a version number: the release in which every P0 and P1 row passes
+(Build plan row 25). Versions already count up from 1.0.0; never force one with `Release-As`.
+
 ## Read these first
 
 | Doc                    | Decides                                                           |
