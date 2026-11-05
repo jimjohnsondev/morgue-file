@@ -17,15 +17,30 @@ async function openPdf(url: string): Promise<PDFDocumentProxy> {
   return pdfjs.getDocument({ url, disableAutoFetch: true, disableStream: true }).promise;
 }
 
-/** Draws one PDF page onto its canvas, as tall as the canvas is laid out, sharp on any screen. */
+/**
+ * The height a page is drawn for: the reader stage's inner height for the pages on show (CSS then
+ * shrinks the page evenly if half the stage's width is tighter), or the strip page's own height.
+ */
+function targetHeight(canvas: HTMLCanvasElement): number {
+  const stage = canvas.closest<HTMLElement>('.reader-stage');
+  if (stage === null) {
+    return canvas.getBoundingClientRect().height;
+  }
+  const style = getComputedStyle(stage);
+  return stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+}
+
+/**
+ * Draws one PDF page onto its canvas, sharp on any screen. The canvas takes the page's own shape
+ * from its drawing size, so the page is never stretched or squashed.
+ */
 async function drawPage(pdf: PDFDocumentProxy, canvas: HTMLCanvasElement): Promise<void> {
   const page = await pdf.getPage(Number(canvas.dataset.pdfPage));
   const natural = page.getViewport({ scale: 1 });
-  const height = canvas.getBoundingClientRect().height || natural.height;
+  const height = targetHeight(canvas) || natural.height;
   const viewport = page.getViewport({ scale: (height / natural.height) * window.devicePixelRatio });
   canvas.width = Math.round(viewport.width);
   canvas.height = Math.round(viewport.height);
-  canvas.style.aspectRatio = `${String(viewport.width)} / ${String(viewport.height)}`;
   await page.render({ canvas, viewport }).promise;
   canvas.dataset.drawn = 'true';
 }

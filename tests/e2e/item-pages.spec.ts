@@ -116,6 +116,26 @@ test('R21: frame 8, a magazine issue as a two-page spread', async ({ page }) => 
   await expect(page.locator('.reader-nav')).toContainText('Page 14 of 72');
 });
 
+test('R21: PDF pages keep their shape when half the viewer is narrower than a page', async ({
+  page,
+}) => {
+  // A narrow window makes half the stage's width, not its height, the tighter limit. A page drawn
+  // to fill the height and then clamped in width used to come out squashed sideways.
+  await page.setViewportSize({ width: 1100, height: 1000 });
+  await openFromIndex(page, '/library/magazines/life-drawing-quarterly', 'No. 12 · Winter 2023');
+  await reloadUntil(page, page.locator('.reader-nav'), 'of 72');
+  await expect(page.locator('[data-reader]')).toHaveAttribute('data-drawn', 'true');
+  const pages = page.locator('.reader-stage canvas.reader-page');
+  await expect(pages).toHaveCount(2);
+  for (const canvas of await pages.all()) {
+    const shape = await canvas.evaluate((element: HTMLCanvasElement) => {
+      const box = element.getBoundingClientRect();
+      return { shown: box.width / box.height, drawn: element.width / element.height };
+    });
+    expect(shape.shown).toBeCloseTo(shape.drawn, 2);
+  }
+});
+
 test('R21: a book of page scans shows its pages as pictures', async ({ page }) => {
   await page.goto('/search?q=type%3Acbz');
   await page.locator('.thumb-card a').first().click();
