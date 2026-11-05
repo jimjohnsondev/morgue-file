@@ -11,8 +11,13 @@ import path from 'node:path';
 import { openLibrary } from '#core/db/library.js';
 import { refileItemsByMappings } from '#core/db/repositories/items.js';
 import { REFERENCE_ROOT_ID, setReferenceRoot, setRootStatus } from '#core/db/repositories/roots.js';
-import { insertFolderMapping, insertSubcategory } from '#core/db/repositories/subcategories.js';
+import {
+  findSubcategoryBySlug,
+  insertFolderMapping,
+  insertSubcategory,
+} from '#core/db/repositories/subcategories.js';
 import { scanRoot } from '#core/indexer/scanner.js';
+import { slugify } from '#core/slug.js';
 import { buildApp } from '#server/app.js';
 import { findAppDir, LOOPBACK_HOST } from '#server/config.js';
 import { loadInstallState } from '#server/install/install-state.js';
@@ -79,7 +84,10 @@ function copyFixtureSubset(referenceDir: string): void {
 async function indexSubset(db: Db, referenceDir: string): Promise<void> {
   await scanRoot({ db, rootId: REFERENCE_ROOT_ID, rootPath: referenceDir });
   for (const { folder, section } of COPIED_FOLDERS) {
-    const subcategoryId = insertSubcategory(db, section, folder);
+    // Library starts with a Books subcategory (migration 001); Photos starts with none.
+    const subcategoryId =
+      findSubcategoryBySlug(db, section, slugify(folder))?.id ??
+      insertSubcategory(db, section, folder);
     insertFolderMapping(db, { rootId: REFERENCE_ROOT_ID, relPrefix: folder, subcategoryId });
   }
   refileItemsByMappings(db, REFERENCE_ROOT_ID);

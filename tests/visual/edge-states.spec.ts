@@ -31,11 +31,26 @@ test.beforeEach(async ({ page }) => {
   await freezeClock(page);
 });
 
-/** Waits until a server answers its health check; state servers listen only once ready. */
-async function waitForServer(url: string): Promise<void> {
-  await expect(async () => {
-    expect((await fetch(`${url}/healthz`)).ok).toBe(true);
-  }).toPass({ timeout: STATE_SERVER_WAIT_MS, intervals: [500] });
+/**
+ * Waits until a server answers its health check; state servers listen only once ready. Stops
+ * waiting at once if the server has exited, whose error is then on the test's output.
+ */
+async function waitForServer(child: ChildProcess, url: string): Promise<void> {
+  const deadline = Date.now() + STATE_SERVER_WAIT_MS;
+  while (Date.now() < deadline) {
+    if (child.exitCode !== null) {
+      throw new Error(`The state server at ${url} exited with code ${String(child.exitCode)}.`);
+    }
+    try {
+      if ((await fetch(`${url}/healthz`)).ok) {
+        return;
+      }
+    } catch {
+      // Not listening yet: it listens only once its thumbnails are made.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`The state server at ${url} didn't start.`);
 }
 
 /** Starts a state server and waits for it. */
@@ -43,10 +58,10 @@ async function startStateServer(state: State): Promise<StateServer> {
   const port = STATE_PORTS[state];
   const child = spawn(process.execPath, ['tests/support/start-state-server.ts'], {
     env: { ...process.env, MORGUE_STATE: state, MORGUE_PORT: String(port) },
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'inherit'],
   });
   const url = `http://127.0.0.1:${String(port)}`;
-  await waitForServer(url);
+  await waitForServer(child, url);
   return { process: child, url };
 }
 
