@@ -84,13 +84,19 @@ function drawShownPages(pdf: PDFDocumentProxy, stage: HTMLElement): Promise<void
     }
     state.isDrawing = true;
     stage.dataset.drawn = 'false';
-    do {
-      state.hasChanged = false;
-      state.drawnFor = stageInnerHeight(stage);
-      await Promise.all(shown.map((canvas) => drawPage(pdf, canvas)));
-    } while (hasChanged());
-    state.isDrawing = false;
-    stage.dataset.drawn = 'true';
+    try {
+      do {
+        state.hasChanged = false;
+        state.drawnFor = stageInnerHeight(stage);
+        await Promise.all(shown.map((canvas) => drawPage(pdf, canvas)));
+      } while (hasChanged());
+      stage.dataset.drawn = 'true';
+    } catch (error: unknown) {
+      stage.dataset.drawn = 'failed';
+      console.error('The PDF pages could not be drawn.', error);
+    } finally {
+      state.isDrawing = false;
+    }
   }
 
   new ResizeObserver(() => {

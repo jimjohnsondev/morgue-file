@@ -21,6 +21,14 @@ async function reloadUntil(page: Page, locator: Locator, text: string): Promise<
   }).toPass({ timeout: 120_000 });
 }
 
+/** The height inside the reader stage's padding, measured in the page: the tallest a page can be. */
+async function stageInnerHeight(page: Page): Promise<number> {
+  return page.locator('.reader-stage').evaluate((stage: HTMLElement) => {
+    const style = getComputedStyle(stage);
+    return stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+  });
+}
+
 test('R19: arrow keys move between items in the order of the Index you came from', async ({
   page,
 }) => {
@@ -127,50 +135,38 @@ test('R21: PDF pages keep their shape when half the viewer is narrower than a pa
   await expect(page.locator('[data-reader]')).toHaveAttribute('data-drawn', 'true');
   const pages = page.locator('.reader-stage canvas.reader-page');
   await expect(pages).toHaveCount(2);
+  const inner = await stageInnerHeight(page);
   for (const canvas of await pages.all()) {
     const shape = await canvas.evaluate((element: HTMLCanvasElement) => {
       const box = element.getBoundingClientRect();
-      const stage = element.closest<HTMLElement>('.reader-stage');
-      const style = stage === null ? undefined : getComputedStyle(stage);
-      const stageHeight =
-        stage === null || style === undefined
-          ? 0
-          : stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
       return {
         shown: box.width / box.height,
         drawn: element.width / element.height,
         height: box.height,
-        stageHeight,
       };
     });
     // The half-width limit really is the tighter one here, so the bug would show.
-    expect(shape.height).toBeLessThan(shape.stageHeight - 10);
+    expect(shape.height).toBeLessThan(inner - 10);
     expect(shape.shown).toBeCloseTo(shape.drawn, 2);
   }
 });
 
-test('frame 9: in viewing mode a PDF spread grows to fill the taller viewer', async ({ page }) => {
+test('R21: in viewing mode a PDF spread grows to fill the taller viewer', async ({ page }) => {
+  // At the gate's screen size the spread is limited by height, from 788 px to about 1,400 px.
+  await page.setViewportSize({ width: 2560, height: 1440 });
   await openFromIndex(page, '/library/magazines/life-drawing-quarterly', 'No. 12 · Winter 2023');
   await reloadUntil(page, page.locator('.reader-nav'), 'of 72');
   const reader = page.locator('[data-reader]');
   await expect(reader).toHaveAttribute('data-drawn', 'true');
-  const pageHeight = page.locator('.reader-stage canvas.reader-page').first();
-  const before = await pageHeight.evaluate((element) => element.getBoundingClientRect().height);
+  const firstPage = page.locator('.reader-stage canvas.reader-page').first();
+  const before = await firstPage.evaluate((element) => element.getBoundingClientRect().height);
 
   await page.keyboard.press('v');
   await expect(async () => {
     await expect(reader).toHaveAttribute('data-drawn', 'true', { timeout: 1000 });
-    const sizes = await pageHeight.evaluate((element: HTMLCanvasElement) => {
-      const stage = element.closest<HTMLElement>('.reader-stage');
-      const style = stage === null ? undefined : getComputedStyle(stage);
-      const inner =
-        stage === null || style === undefined
-          ? 0
-          : stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
-      return { shown: element.getBoundingClientRect().height, inner };
-    });
-    expect(sizes.shown).toBeGreaterThan(before + 100);
-    expect(Math.abs(sizes.shown - sizes.inner)).toBeLessThan(2);
+    const shown = await firstPage.evaluate((element) => element.getBoundingClientRect().height);
+    expect(shown).toBeGreaterThan(before + 300);
+    expect(Math.abs(shown - (await stageInnerHeight(page)))).toBeLessThan(2);
   }).toPass({ timeout: 15_000 });
 });
 
