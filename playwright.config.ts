@@ -30,6 +30,8 @@ export default defineConfig({
     {
       name: 'visual',
       testMatch: 'visual/**/*.spec.ts',
+      // One folder for every baseline, with no platform suffix: only the Windows runner makes them.
+      snapshotPathTemplate: '{testDir}/visual/__screenshots__/{testFileName}/{arg}{ext}',
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 2560, height: 1440 },
