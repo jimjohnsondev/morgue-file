@@ -109,10 +109,6 @@
   gap: var(--space-3);
 }
 
-.grid-panel__empty {
-  margin: 0;
-}
-
 .grid-panel__footer {
   display: flex;
   justify-content: center;

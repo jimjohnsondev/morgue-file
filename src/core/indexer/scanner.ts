@@ -35,6 +35,8 @@ export type ScanOptions = {
   readonly signal?: AbortSignal;
   /** Called after each batch is written, so thumbnails start before a long scan ends. */
   readonly onBatchWritten?: () => void;
+  /** Called as each folder is listed, with how many files it held, for the progress bar (E5). */
+  readonly onFilesFound?: (fileCount: number) => void;
 };
 
 /** What a scan did, for the scan log. An offline root is left exactly as it was. */
@@ -99,6 +101,7 @@ type ScanRun = {
   readonly now: Date;
   readonly signal?: AbortSignal | undefined;
   readonly onBatchWritten?: (() => void) | undefined;
+  readonly onFilesFound?: ((fileCount: number) => void) | undefined;
 };
 
 /** Writes one batch of changes in one transaction, queuing a thumbnail for each. */
@@ -187,7 +190,7 @@ async function walkAndWrite(
     foundAgain = [];
     scan.onBatchWritten?.();
   }
-  for await (const entry of walkRoot(scan.rootPath)) {
+  for await (const entry of walkRoot(scan.rootPath, scan.onFilesFound)) {
     scan.signal?.throwIfAborted();
     const outcome = recordEntry(tally, known, entry);
     if (outcome.change !== undefined) {

@@ -103,6 +103,7 @@ beforeAll(async () => {
       wakeQueue: () => undefined,
     }),
     start: () => undefined,
+    indexing: () => undefined,
     whenIndexed: () => Promise.resolve(),
     stop: () => Promise.resolve(),
   };

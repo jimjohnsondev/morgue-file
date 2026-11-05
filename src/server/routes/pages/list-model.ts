@@ -10,7 +10,7 @@ import { compileQuery } from '#core/query/compile-query.js';
 
 import { countLabel } from '../../views/templates/index-template.js';
 
-import { activeFilters, searchCaption } from './active-filters.js';
+import { activeFilters, noResultsHelp, searchCaption } from './active-filters.js';
 import {
   sectionChoices,
   sharedChoices,
@@ -28,7 +28,7 @@ import type { Query } from '#core/query/query-types.js';
 import type { ListAddress, ListView } from './list-view.js';
 import type { Crumb } from '../../views/parts/breadcrumb.js';
 import type { FilterPanelModel } from '../../views/parts/filter-panel.js';
-import type { IndexModel, ToolbarModel } from '../../views/templates/index-template.js';
+import type { EmptyHelp, IndexModel, ToolbarModel } from '../../views/templates/index-template.js';
 
 /** What a route says about its list; the rest is read from the library. */
 export type ListSpec = {
@@ -44,6 +44,7 @@ export type ListSpec = {
   /** Library shelves of covers open with the filter panel folded (frame 2). */
   readonly isShelf: boolean;
   readonly emptyText: string;
+  readonly emptyHelp?: EmptyHelp;
 };
 
 /** The size and per-page links, each keeping the rest of the view. */
@@ -159,6 +160,7 @@ export function buildListModel(db: Db, spec: ListSpec, view: ListView): IndexMod
     size: view.size,
     groups: [{ cards }],
     emptyText: spec.emptyText,
+    emptyHelp: spec.isSearch ? noResultsHelp(spec.query) : spec.emptyHelp,
     toolbar: toolbarFor(spec.address, view),
     paging: { page, lastPage, hrefFor: (target) => listHref(spec.address, view, { page: target }) },
     filterPanel: isPanelOpen ? filterPanelFor(db, spec, view) : undefined,

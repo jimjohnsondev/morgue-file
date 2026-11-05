@@ -1,8 +1,16 @@
 // The frame every page shares: banner with the search box, tab bar, content and footer.
 import { formatCount, formatDay } from '../format.js';
+import {
+  DropOutline,
+  IndexingBar,
+  IndexingFooterLines,
+  OfflineBand,
+  SavedNoticePanel,
+} from '../parts/status-notices.js';
 
 import type { ArchiveCounts } from '#core/db/repositories/archive-counts.js';
 import type { PageAssets } from '../../assets.js';
+import type { IndexingNotice, PageStatus } from '../parts/status-notices.js';
 import type { ComponentChildren } from 'preact';
 
 /** The main nav tabs, in the order the design brief lists them. Settings sits at the right end. */
@@ -30,6 +38,8 @@ export type PageLayoutProps = {
   readonly searchText?: string | undefined;
   /** Item pages open in viewing mode, with all chrome hidden, when their URL says so (frame 9). */
   readonly isViewing?: boolean;
+  /** The offline drive, the running index and the notice after a drop (E3, E5, E6). */
+  readonly status?: PageStatus | undefined;
   readonly children: ComponentChildren;
 };
 
@@ -94,13 +104,17 @@ function TabBar(props: { readonly currentPath: string; readonly unsorted: number
 }
 
 /** The footer counter and the "site last updated" line of a personal site. */
-function Footer(props: { readonly counts: ArchiveCounts | undefined }) {
-  const { counts } = props;
+function Footer(props: {
+  readonly counts: ArchiveCounts | undefined;
+  readonly indexing: IndexingNotice | undefined;
+}) {
+  const { counts, indexing } = props;
   if (counts === undefined) {
     return <footer class="footer">Morgue File</footer>;
   }
   return (
     <footer class="footer">
+      {indexing && <IndexingFooterLines indexing={indexing} />}
       <p class="footer__line">
         <span class="counter">{formatCount(counts.images)}</span> images ·{' '}
         <span class="counter">{formatCount(counts.videos)}</span> videos ·{' '}
@@ -116,6 +130,7 @@ function Footer(props: { readonly counts: ArchiveCounts | undefined }) {
 
 /** Renders the full HTML document around a page's content. */
 export function PageLayout(props: PageLayoutProps) {
+  const { status } = props;
   return (
     <html lang="en">
       <head>
@@ -134,9 +149,15 @@ export function PageLayout(props: PageLayoutProps) {
         <Banner searchText={props.searchText} />
         <div class="trim" />
         <TabBar currentPath={props.currentPath} unsorted={props.counts?.unsorted} />
-        <main class="page">{props.children}</main>
+        {status?.offline && <OfflineBand offline={status.offline} />}
+        {status?.indexing && <IndexingBar indexing={status.indexing} />}
+        <main class="page">
+          {status?.saved && <SavedNoticePanel saved={status.saved} />}
+          {props.children}
+        </main>
         <div class="trim" />
-        <Footer counts={props.counts} />
+        <Footer counts={props.counts} indexing={status?.indexing} />
+        <DropOutline />
       </body>
     </html>
   );

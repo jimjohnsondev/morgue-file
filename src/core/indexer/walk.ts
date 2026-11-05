@@ -88,8 +88,13 @@ async function listFolderIfReadable(
 /**
  * Yields every file and page folder under a root, one folder at a time, so a large archive is
  * never held in memory at once. Folders are walked in name order, so scans are repeatable.
+ * `onFilesListed` hears how many files each folder held, page folders' pages included, so
+ * progress counts the same files as countFiles() in originals.ts (E5).
  */
-export async function* walkRoot(rootPath: string): AsyncGenerator<FoundEntry> {
+export async function* walkRoot(
+  rootPath: string,
+  onFilesListed?: (fileCount: number) => void,
+): AsyncGenerator<FoundEntry> {
   // A stack of folders still to read, so the walk goes depth first.
   const folders = [''];
   for (let relDir = folders.pop(); relDir !== undefined; relDir = folders.pop()) {
@@ -99,6 +104,7 @@ export async function* walkRoot(rootPath: string): AsyncGenerator<FoundEntry> {
       continue;
     }
     entries.sort((left, right) => left.name.localeCompare(right.name));
+    onFilesListed?.(entries.filter((entry) => !entry.isFolder).length);
     const { found, subfolders } = readFolderEntries(relDir, entries);
     yield* found;
     folders.push(...subfolders.reverse());

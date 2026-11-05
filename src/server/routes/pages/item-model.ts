@@ -1,6 +1,7 @@
 // Reads one item from the library and lays out its Item page (R19): breadcrumb, the list it
 // steps through, the viewer that suits its kind, and the details panel.
 import { findItemById } from '#core/db/repositories/items.js';
+import { findRootById } from '#core/db/repositories/roots.js';
 import { findSubcategoryById } from '#core/db/repositories/subcategories.js';
 import { AppError } from '#core/errors.js';
 import { readFieldValues } from '#core/fields/fields.js';
@@ -92,14 +93,19 @@ function readFiledItem(db: Db, itemId: number): FiledItem {
   return { item, subcategory, fields, issueOf: findIssueOf(db, { item, subcategory, fields }) };
 }
 
+/** The subcategory an item is filed under, or Unsorted, as a link. */
+function filedUnderLink(filed: FiledItem): { label: string; href: string } {
+  const { subcategory } = filed;
+  return subcategory === undefined
+    ? { label: 'Unsorted', href: '/unsorted' }
+    : { label: subcategory.name, href: subcategoryPath(subcategory) };
+}
+
 /** Home › Photos › Figure › seated_backlit_017.jpg, with the magazine title before an issue. */
 function itemCrumbs(filed: FiledItem): Crumb[] {
-  const { item, subcategory, issueOf } = filed;
+  const { item, issueOf } = filed;
   const section = { label: SECTION_LABELS[item.section], href: `/${item.section}` };
-  const filedUnder =
-    subcategory === undefined
-      ? { label: 'Unsorted', href: '/unsorted' }
-      : { label: subcategory.name, href: subcategoryPath(subcategory) };
+  const filedUnder = filedUnderLink(filed);
   const title = issueOf === undefined ? [] : [{ label: issueOf.title, href: issueOf.titleHref }];
   const name = issueOf?.issue ?? itemLabel(item);
   return [{ label: 'Home', href: '/' }, section, filedUnder, ...title, { label: name }];
@@ -145,7 +151,15 @@ export function buildItemPage(db: Db, itemId: number, view: ItemView): ItemPage 
   const filed = readFiledItem(db, itemId);
   const { item } = filed;
   const query = view.from === undefined ? homeListOf(filed) : parseQuery(view.from);
-  const viewer = buildViewerModel({ item, label: itemLabel(item), view });
+  const viewer = buildViewerModel({
+    item,
+    label: itemLabel(item),
+    view,
+    root: findRootById(db, item.rootId),
+    back: filed.issueOf
+      ? { label: filed.issueOf.title, href: filed.issueOf.titleHref }
+      : filedUnderLink(filed),
+  });
   const shownPages = viewer.kind === 'reader' ? viewer.shownPages : undefined;
   return {
     title: itemLabel(item),

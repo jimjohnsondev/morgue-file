@@ -1,0 +1,188 @@
+/* The edge states (design brief, Edge states): empty lists (E1, E2), the bands under the tabs
+   for an offline drive and a running index (E3, E5), a missing original (E4), and the drop
+   outline and its notice (E6). */
+
+/* E1, E2: what an empty list shows in place of its grid. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6);
+}
+
+.empty-state--centered {
+  align-items: center;
+  text-align: center;
+}
+
+.empty-state p {
+  margin: 0;
+}
+
+.empty-state__title {
+  font-size: var(--text-empty-title);
+  font-weight: bold;
+}
+
+.empty-state__line {
+  max-width: var(--empty-line-width);
+  line-height: 1.5;
+}
+
+.empty-state__links {
+  font-size: var(--text-table);
+}
+
+.empty-state__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.empty-state__chips code {
+  font-family: var(--font-mono);
+}
+
+/* E3, E5: a band across the page under the tab bar. */
+.status-band {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-2) var(--space-6);
+  font-size: var(--text-table-large);
+}
+
+.status-band--offline {
+  justify-content: space-between;
+  background: linear-gradient(var(--color-notice-magenta), var(--color-notice-magenta-deep));
+  border-top: 1px solid var(--color-white);
+  border-bottom: 2px solid var(--color-magenta-hover);
+}
+
+.status-band--indexing {
+  background: var(--color-panel);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: inset 0 1px 0 var(--color-white);
+}
+
+.status-band__mark {
+  display: inline-block;
+  width: var(--status-mark-size);
+  height: var(--status-mark-size);
+  margin-right: var(--space-2);
+  font-weight: bold;
+  line-height: var(--status-mark-size);
+  color: var(--color-white);
+  text-align: center;
+  background: var(--color-magenta);
+  border: 1px solid var(--color-trim-bottom);
+}
+
+.status-band__links {
+  font-size: var(--text-table);
+}
+
+/* The index meter: an inset box filling with magenta, cut by thin cyan lines. */
+.indexing-meter {
+  width: var(--meter-width);
+  height: var(--meter-height);
+  appearance: none;
+  background: var(--color-white);
+  border: 2px inset var(--color-page);
+}
+
+.indexing-meter::-webkit-progress-bar {
+  background: var(--color-white);
+}
+
+.indexing-meter::-webkit-progress-value {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-magenta) 0 var(--meter-stripe),
+    var(--color-cyan) var(--meter-stripe) calc(var(--meter-stripe) + var(--meter-stripe-gap))
+  );
+}
+
+/* E4: the cached thumbnail, enlarged, beside the note about the original. */
+.unavailable-viewer {
+  gap: var(--space-6);
+  align-items: center;
+  justify-content: center;
+}
+
+.unavailable-viewer__thumb {
+  display: block;
+  padding: var(--thumb-mat);
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--color-bevel-dark);
+}
+
+.unavailable-viewer__thumb--square {
+  width: var(--thumb-enlarged);
+  height: var(--thumb-enlarged);
+}
+
+.unavailable-viewer__thumb--cover {
+  width: var(--cover-enlarged-width);
+}
+
+.unavailable-viewer__note {
+  max-width: var(--unavailable-note-width);
+  margin: 0;
+}
+
+.unavailable-viewer__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-table-large);
+  line-height: 1.5;
+}
+
+.unavailable-viewer__links {
+  font-size: var(--text-table);
+}
+
+/* E6: the notice after a drop, and the outline while dragging. */
+.saved-notice__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-table-large);
+  background: linear-gradient(var(--color-notice-cyan), var(--color-notice-cyan-deep));
+}
+
+.saved-notice__links {
+  font-size: var(--text-table);
+}
+
+.drop-outline {
+  position: fixed;
+  inset: var(--space-3);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: var(--color-drop-veil);
+  border: var(--drop-outline-width) dashed var(--color-magenta);
+}
+
+.drop-outline[hidden] {
+  display: none;
+}
+
+.drop-outline__title {
+  font-size: var(--text-page-title);
+}
+
+.drop-outline__line {
+  max-width: var(--empty-line-width);
+  font-size: var(--text-table-large);
+  color: var(--color-ground);
+  text-align: center;
+}

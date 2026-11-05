@@ -1,21 +1,37 @@
-// Builds the viewer slot of an Item page: the image viewer, video player or page reader, by kind.
+// Builds the viewer slot of an Item page: the image viewer, video player or page reader, by kind,
+// or the cached thumbnail when the original can't be opened (E4).
+import path from 'node:path';
+
+import {
+  defaultThumbnailSize,
+  hasSquareThumbnail,
+  sizeToLabel,
+} from '#core/jobs/thumbnail-files.js';
+
 import { itemPageHref, viewParams } from './item-view.js';
 import { pagesOnShow, readerTargets } from './reader-pages.js';
 
 import type { Item } from '#core/db/repositories/items.js';
+import type { Root } from '#core/db/repositories/roots.js';
 import type { ItemView } from './item-view.js';
 import type { PageReaderModel, ReaderLink } from '../../views/parts/page-reader.js';
+import type { UnavailableViewerModel } from '../../views/parts/unavailable-viewer.js';
 import type { ViewerFrame } from '../../views/parts/viewers.js';
 import type { ViewerModel } from '../../views/templates/item-template.js';
 
 /** The frame rate frame-step uses when ffprobe hasn't measured the video yet. */
 const DEFAULT_FPS = 30;
 
-/** What the viewer is built from: the item, the name it shows, and how the page is viewed. */
+/**
+ * What the viewer is built from: the item, the name it shows, how the page is viewed, its root
+ * (for whether the drive is online), and the list "Back to" leads to if the original is gone.
+ */
 type ViewerSource = {
   readonly item: Item;
   readonly label: string;
   readonly view: ItemView;
+  readonly root: Root | undefined;
+  readonly back: { readonly label: string; readonly href: string };
 };
 
 /** A link of the reader's toolbar to a page of this item, or plain text if there's no page. */
@@ -60,9 +76,44 @@ function readerModel(source: ViewerSource, frame: ViewerFrame): PageReaderModel 
   };
 }
 
-/** The viewer that suits the item's kind. */
+/** Why the original can't be opened, or undefined if it can: an offline drive, or a lost file. */
+function unavailableReason(source: ViewerSource): UnavailableViewerModel['reason'] | undefined {
+  if (source.root === undefined || source.root.status === 'offline') {
+    return 'offline';
+  }
+  return source.item.missingSince === undefined ? undefined : 'missing';
+}
+
+/** The cached thumbnail in the viewer slot, enlarged, with a note about the original (E4). */
+function unavailableModel(
+  source: ViewerSource,
+  reason: UnavailableViewerModel['reason'],
+): UnavailableViewerModel {
+  const { item, label, view } = source;
+  // The default size is the one always in the cache; the other sizes need the original.
+  const size = sizeToLabel(defaultThumbnailSize(item.kind));
+  const note = reason === 'offline' ? 'zoom unavailable while offline' : 'original missing';
+  return {
+    kind: 'unavailable',
+    title: `Viewer · ${label} · ${note}`,
+    viewingHref: itemPageHref(item.id, view, { isViewing: true }),
+    reason,
+    thumbSrc: `/media/thumb/${String(item.id)}/${size}?v=${String(item.mtimeMs)}`,
+    shape: hasSquareThumbnail(item.kind) ? 'square' : 'cover',
+    alt: label,
+    filePath: path.join(source.root?.path ?? '', ...item.relPath.split('/')),
+    tryAgainHref: itemPageHref(item.id, view, {}),
+    back: source.back,
+  };
+}
+
+/** The viewer that suits the item's kind, or its thumbnail if the original can't be opened. */
 export function buildViewerModel(source: ViewerSource): ViewerModel {
   const { item, label, view } = source;
+  const reason = unavailableReason(source);
+  if (reason !== undefined) {
+    return unavailableModel(source, reason);
+  }
   const viewingHref = itemPageHref(item.id, view, { isViewing: true });
   const original = `/media/original/${String(item.id)}`;
   switch (item.kind) {

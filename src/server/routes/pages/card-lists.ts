@@ -18,6 +18,7 @@ import { findModelBySlug, findModelTagNames } from '#core/db/repositories/models
 
 import { formatDuration } from '../../views/format.js';
 import { countLabel } from '../../views/templates/index-template.js';
+import { SavedQuerystring } from '../page-status.js';
 import { requireLibrary } from '../require-library.js';
 
 import { sendIndexPage } from './render-index.js';
@@ -236,17 +237,35 @@ function archiveList(db: Db, seed: number): FixedList {
 /** Registers /models, /collections, /history, /recent and /archive. */
 export function registerCardListRoutes(app: FastifyInstance, context: PageContext): void {
   for (const list of FIXED_LISTS) {
-    app.get(list.url, async (_request, reply) => {
-      const { db } = requireLibrary(context.library);
-      const model = fixedListModel(list.listFor(db));
-      return sendIndexPage(reply, { context, db, model, frame: { currentTab: list.tab } });
-    });
+    app
+      .withTypeProvider<TypeBoxTypeProvider>()
+      .get(list.url, { schema: { querystring: SavedQuerystring } }, async (request, reply) => {
+        const { db } = requireLibrary(context.library);
+        const model = fixedListModel(list.listFor(db));
+        const pageRequest = { url: request.url, savedId: request.query.saved };
+        return sendIndexPage(reply, {
+          context,
+          db,
+          model,
+          frame: { currentTab: list.tab, request: pageRequest },
+        });
+      });
   }
   app
     .withTypeProvider<TypeBoxTypeProvider>()
-    .get('/archive', { schema: { querystring: ShuffleQuerystring } }, async (request, reply) => {
-      const { db } = requireLibrary(context.library);
-      const model = fixedListModel(archiveList(db, shuffleSeed(request.query.shuffle)));
-      return sendIndexPage(reply, { context, db, model, frame: { currentTab: '/' } });
-    });
+    .get(
+      '/archive',
+      { schema: { querystring: Type.Composite([ShuffleQuerystring, SavedQuerystring]) } },
+      async (request, reply) => {
+        const { db } = requireLibrary(context.library);
+        const model = fixedListModel(archiveList(db, shuffleSeed(request.query.shuffle)));
+        const pageRequest = { url: request.url, savedId: request.query.saved };
+        return sendIndexPage(reply, {
+          context,
+          db,
+          model,
+          frame: { currentTab: '/', request: pageRequest },
+        });
+      },
+    );
 }

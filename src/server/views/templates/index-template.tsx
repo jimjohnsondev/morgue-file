@@ -27,6 +27,23 @@ export type ActiveFilter = {
   readonly removeHref: string;
 };
 
+/** A plain link: its words and where it goes. */
+export type TextLink = {
+  readonly label: string;
+  readonly href: string;
+};
+
+/**
+ * What an empty list says after its one line, in the site's voice: how to add things (E1), or
+ * the search again without each of its terms in turn (E2), then a few links on.
+ */
+export type EmptyHelp = {
+  readonly line?: string;
+  /** One link per term: the query without it, labelled with the term's own text. */
+  readonly without?: readonly { readonly term: string; readonly href: string }[];
+  readonly links: readonly TextLink[];
+};
+
 /** The toolbar's links: thumbnail sizes and per-page counts, each with its href. */
 export type ToolbarModel = {
   readonly sizes: readonly { label: string; href: string; isCurrent: boolean }[] | undefined;
@@ -46,6 +63,7 @@ export type IndexModel = {
   readonly size: SquareSizeName;
   readonly groups: readonly CardGroup[];
   readonly emptyText: string;
+  readonly emptyHelp?: EmptyHelp | undefined;
   readonly toolbar: ToolbarModel;
   /** The pager, for lists longer than one page; grouped lists show everything. */
   readonly paging:
@@ -110,6 +128,45 @@ function ActiveFilters(props: { readonly active: NonNullable<IndexModel['activeF
   );
 }
 
+/** The links of an empty list's help, separated by middle dots. */
+function DottedLinks(props: { readonly links: readonly TextLink[] }) {
+  return (
+    <p class="empty-state__links">
+      {props.links.map((link, index) => (
+        <Fragment key={link.href}>
+          {index > 0 && ' · '}
+          <a href={link.href}>{link.label}</a>
+        </Fragment>
+      ))}
+    </p>
+  );
+}
+
+/** What an empty list shows in place of the grid (E1, E2). */
+function EmptyState(props: { readonly text: string; readonly help: EmptyHelp | undefined }) {
+  const { help } = props;
+  const without = help?.without ?? [];
+  return (
+    <div class={without.length > 0 ? 'empty-state' : 'empty-state empty-state--centered'}>
+      <p class="empty-state__title">{props.text}</p>
+      {help?.line !== undefined && <p class="empty-state__line">{help.line}</p>}
+      {without.length > 0 && (
+        <>
+          <p class="empty-state__line">Try the search without one of its parts:</p>
+          <div class="empty-state__chips">
+            {without.map((link) => (
+              <a key={link.href} class="chip" href={link.href}>
+                without <code>{link.term}</code>
+              </a>
+            ))}
+          </div>
+        </>
+      )}
+      {help && help.links.length > 0 && <DottedLinks links={help.links} />}
+    </div>
+  );
+}
+
 /** The grid panel: its title bar, the toolbar, the groups of thumbnails and the lower pager. */
 function GridPanel(props: { readonly model: IndexModel }) {
   const { model } = props;
@@ -130,7 +187,7 @@ function GridPanel(props: { readonly model: IndexModel }) {
       </h2>
       <div class="panel__body grid-panel__body">
         <Toolbar model={model} />
-        {!hasCards && <p class="grid-panel__empty">{model.emptyText}</p>}
+        {!hasCards && <EmptyState text={model.emptyText} help={model.emptyHelp} />}
         {model.groups.map((group) => (
           <section key={group.heading ?? 'all'} class="card-group" aria-label={group.heading}>
             {group.heading !== undefined && (

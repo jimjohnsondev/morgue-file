@@ -74,6 +74,12 @@
   --color-rating: #c2187f;
   --color-loop-fill: #ffd3ee;
 
+  /* Shades the approved canvas uses in the edge states (E3-E6): the deep ends of the notice
+     gradients, and the veil behind the drop outline, which lets the page show through. */
+  --color-notice-magenta-deep: #ffc8e8;
+  --color-notice-cyan-deep: #d2f6fc;
+  --color-drop-veil: #dcf9ffcc;
+
   /* Links */
   --color-link: #03c;
   --color-link-visited: #639;
@@ -118,6 +124,20 @@
   --details-label-width: 120px;
   --rating-spacing: 2px;
   --spread-gap: 2px;
+
+  /* The edge states (E1-E6): the empty-list title, the index meter, the offline mark, the
+     enlarged thumbnail of a missing original, and the drop outline. */
+  --text-empty-title: 20px;
+  --empty-line-width: 720px;
+  --meter-width: 320px;
+  --meter-height: 14px;
+  --meter-stripe: 10px;
+  --meter-stripe-gap: 2px;
+  --status-mark-size: 18px;
+  --thumb-enlarged: 480px;
+  --cover-enlarged-width: 400px;
+  --unavailable-note-width: 480px;
+  --drop-outline-width: 3px;
 
   /* Spacing: multiples of 4 px */
   --space-1: 4px;

@@ -7,6 +7,7 @@ import { findSubcategoryBySlug } from '#core/db/repositories/subcategories.js';
 import { AppError } from '#core/errors.js';
 import { filterTerm } from '#core/query/parse-query.js';
 
+import { SavedQuerystring } from '../page-status.js';
 import { requireLibrary } from '../require-library.js';
 
 import { SECTION_LABELS } from './filter-choices.js';
@@ -19,7 +20,7 @@ import type { Db } from '#core/db/connection.js';
 import type { Section } from '#core/db/repositories/items.js';
 import type { Subcategory } from '#core/db/repositories/subcategories.js';
 import type { Term } from '#core/query/query-types.js';
-import type { IndexModel } from '../../views/templates/index-template.js';
+import type { EmptyHelp, IndexModel } from '../../views/templates/index-template.js';
 import type { PageContext } from '../page-context.js';
 import type { ListSpec } from './list-model.js';
 import type { ListView } from './list-view.js';
@@ -52,19 +53,28 @@ function registerIndexPage<Params>(
   context: PageContext,
   route: IndexRoute<Params>,
 ): void {
-  app
-    .withTypeProvider<TypeBoxTypeProvider>()
-    .get(
-      route.url,
-      { schema: { querystring: ListViewQuerystring, params: route.params } },
-      async (request, reply) => {
-        const { db } = requireLibrary(context.library);
-        // Fastify has checked the parameters against route.params, which describes Params.
-        const model = route.modelFor(db, request.params as Params, toListView(request.query));
-        const currentTab = `/${request.url.split(/[/?]/)[1] ?? ''}`;
-        return sendIndexPage(reply, { context, db, model, frame: { currentTab } });
+  app.withTypeProvider<TypeBoxTypeProvider>().get(
+    route.url,
+    {
+      schema: {
+        querystring: Type.Composite([ListViewQuerystring, SavedQuerystring]),
+        params: route.params,
       },
-    );
+    },
+    async (request, reply) => {
+      const { db } = requireLibrary(context.library);
+      // Fastify has checked the parameters against route.params, which describes Params.
+      const model = route.modelFor(db, request.params as Params, toListView(request.query));
+      const currentTab = `/${request.url.split(/[/?]/)[1] ?? ''}`;
+      const pageRequest = { url: request.url, savedId: request.query.saved };
+      return sendIndexPage(reply, {
+        context,
+        db,
+        model,
+        frame: { currentTab, request: pageRequest },
+      });
+    },
+  );
 }
 
 /** A list that isn't confined to one section, such as Unsorted or a tag. */
@@ -75,6 +85,7 @@ function crossSectionSpec(
     readonly title: string;
     readonly crumbs: ListSpec['breadcrumb'];
     readonly emptyText: string;
+    readonly emptyHelp?: EmptyHelp;
   },
 ): ListSpec {
   return {
@@ -86,6 +97,7 @@ function crossSectionSpec(
     isSearch: false,
     isShelf: false,
     emptyText: page.emptyText,
+    ...(page.emptyHelp && { emptyHelp: page.emptyHelp }),
   };
 }
 
@@ -167,6 +179,21 @@ function collectionModel(db: Db, params: { id: number }, view: ListView): IndexM
   return buildListModel(db, spec, view);
 }
 
+/**
+ * How things reach Unsorted, for when it's empty (E1). Pasting comes with ingest (PR 12), and
+ * this line names it then, as Home's keys do.
+ */
+const UNSORTED_HELP: EmptyHelp = {
+  line:
+    'To add references, drag files or browser images onto any page, or drop files into the ' +
+    'Inbox folder inside your Reference folder. New items wait here until they have a ' +
+    'subcategory.',
+  links: [
+    { label: 'Browse Photos', href: '/photos' },
+    { label: 'Browse Library', href: '/library' },
+  ],
+};
+
 /** Unsorted: everything with no subcategory, from every section. */
 function unsortedModel(db: Db, _params: unknown, view: ListView): IndexModel {
   const spec = crossSectionSpec('/unsorted', {
@@ -174,6 +201,7 @@ function unsortedModel(db: Db, _params: unknown, view: ListView): IndexModel {
     title: 'Unsorted',
     crumbs: [{ label: 'Unsorted' }],
     emptyText: 'Nothing waiting to be filed.',
+    emptyHelp: UNSORTED_HELP,
   });
   return buildListModel(db, spec, view);
 }
