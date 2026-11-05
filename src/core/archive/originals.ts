@@ -1,6 +1,8 @@
-// The only module that touches files under a Reference root: it reads, and creates the Inbox.
-import { createReadStream, existsSync } from 'node:fs';
-import { mkdir, open, opendir, readdir, readFile, stat } from 'node:fs/promises';
+// The only module that touches files under a Reference root: it reads, watches, and creates the
+// Inbox.
+import { createHash } from 'node:crypto';
+import { createReadStream, existsSync, watch } from 'node:fs';
+import { lstat, mkdir, open, opendir, readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { AppError, systemErrorCode } from '#core/errors.js';
@@ -209,4 +211,86 @@ export async function statOriginal(rootPath: string, relPath: string): Promise<O
 /** Streams a file under a root, or part of it, read-only, for the viewers (R19). */
 export function streamOriginal(rootPath: string, relPath: string, range?: ByteRange): Readable {
   return createReadStream(resolveOriginalPath(rootPath, relPath), { flags: 'r', ...range });
+}
+
+/** How much of each of a file's start, middle and end its partial hash reads. */
+const PARTIAL_HASH_CHUNK_BYTES = 64 * 1024;
+
+/** Where the three chunks of a partial hash start; they overlap, or repeat, in a small file. */
+function partialHashOffsets(size: number): number[] {
+  const middle = Math.floor(size / 2) - PARTIAL_HASH_CHUNK_BYTES / 2;
+  return [0, Math.max(0, middle), Math.max(0, size - PARTIAL_HASH_CHUNK_BYTES)];
+}
+
+/**
+ * Hashes a file's size and its first, middle and last 64 KiB with SHA-256: enough to tell a moved
+ * file from a different one of the same size without reading all of it (docs/ARCHITECTURE.md,
+ * Moves).
+ */
+export async function readPartialHash(rootPath: string, relPath: string): Promise<string> {
+  const handle = await open(resolveOriginalPath(rootPath, relPath), 'r');
+  try {
+    const { size } = await handle.stat();
+    const hash = createHash('sha256').update(`${String(size)}:`);
+    for (const offset of partialHashOffsets(size)) {
+      const chunk = Buffer.alloc(Math.min(PARTIAL_HASH_CHUNK_BYTES, size - offset));
+      const { bytesRead } = await handle.read(chunk, 0, chunk.length, offset);
+      hash.update(chunk.subarray(0, bytesRead));
+    }
+    return hash.digest('hex');
+  } finally {
+    await handle.close();
+  }
+}
+
+/** What is at a path under a root now. Links and devices count as nothing, as in listFolder. */
+export type EntryKind = 'file' | 'folder' | 'none';
+
+/** Says what is at a path under a root now, for the watcher to choose what to scan. */
+export async function findEntryKind(rootPath: string, relPath: string): Promise<EntryKind> {
+  try {
+    const details = await lstat(resolveOriginalPath(rootPath, relPath));
+    if (details.isFile()) {
+      return 'file';
+    }
+    return details.isDirectory() ? 'folder' : 'none';
+  } catch {
+    // Gone, or unreachable: either way there is nothing to read there now.
+    return 'none';
+  }
+}
+
+/** Who hears about changes under a watched root. */
+export type WatchListener = {
+  /**
+   * Told the path, relative to the root, of each file or folder that was added, changed,
+   * renamed or removed; undefined when the system lost count and anything may have changed.
+   */
+  readonly onChange: (relPath: string | undefined) => void;
+  readonly onError: (error: unknown) => void;
+};
+
+/** A running watch on a root. */
+export type OriginalsWatch = {
+  readonly close: () => void;
+};
+
+/**
+ * Watches a root and everything under it for changes (R1). On Windows this is one handle on the
+ * root, so folders inside it can still be renamed and moved while the app runs.
+ */
+export function watchOriginals(rootPath: string, listener: WatchListener): OriginalsWatch {
+  const watcher = watch(
+    resolveOriginalPath(rootPath, ''),
+    { recursive: true },
+    (_event, filename) => {
+      listener.onChange(filename === null ? undefined : filename.split(path.sep).join('/'));
+    },
+  );
+  watcher.on('error', listener.onError);
+  return {
+    close: () => {
+      watcher.close();
+    },
+  };
 }

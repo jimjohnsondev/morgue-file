@@ -9,6 +9,7 @@ import { readFieldValues } from '#core/fields/fields.js';
 import { itemLabel } from '../views/format.js';
 
 import type { Db } from '#core/db/connection.js';
+import type { LibraryRuntime } from '../library-runtime.js';
 import type { PageContext } from './page-context.js';
 import type { OfflineNotice, PageStatus, SavedNotice } from '../views/parts/status-notices.js';
 
@@ -64,15 +65,23 @@ function readSavedNotice(db: Db, page: PageRequest): SavedNotice | undefined {
   };
 }
 
+/**
+ * The notices that change while a page is open, the offline band (E3) and the indexing bar (E5),
+ * which /events sends on; nothing before the library is open.
+ */
+export function readLiveStatus(library: LibraryRuntime | undefined): PageStatus {
+  const db = library?.open()?.db;
+  if (db === undefined) {
+    return {};
+  }
+  return { offline: readOfflineNotice(db), indexing: library?.indexing() };
+}
+
 /** Everything the frame shows besides the page; nothing at all before the library is open. */
 export function readPageStatus(context: PageContext, page: PageRequest): PageStatus {
   const db = context.library?.open()?.db;
   if (db === undefined) {
     return {};
   }
-  return {
-    offline: readOfflineNotice(db),
-    indexing: context.library?.indexing(),
-    saved: readSavedNotice(db, page),
-  };
+  return { ...readLiveStatus(context.library), saved: readSavedNotice(db, page) };
 }

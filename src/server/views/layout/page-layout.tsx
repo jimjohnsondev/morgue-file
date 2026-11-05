@@ -2,15 +2,14 @@
 import { formatCount, formatDay } from '../format.js';
 import {
   DropOutline,
-  IndexingBar,
-  IndexingFooterLines,
-  OfflineBand,
   SavedNoticePanel,
+  StatusBands,
+  StatusFooterLines,
 } from '../parts/status-notices.js';
 
 import type { ArchiveCounts } from '#core/db/repositories/archive-counts.js';
 import type { PageAssets } from '../../assets.js';
-import type { IndexingNotice, PageStatus } from '../parts/status-notices.js';
+import type { PageStatus } from '../parts/status-notices.js';
 import type { ComponentChildren } from 'preact';
 
 /** The main nav tabs, in the order the design brief lists them. Settings sits at the right end. */
@@ -106,15 +105,17 @@ function TabBar(props: { readonly currentPath: string; readonly unsorted: number
 /** The footer counter and the "site last updated" line of a personal site. */
 function Footer(props: {
   readonly counts: ArchiveCounts | undefined;
-  readonly indexing: IndexingNotice | undefined;
+  readonly status: PageStatus | undefined;
 }) {
-  const { counts, indexing } = props;
+  const { counts, status } = props;
   if (counts === undefined) {
     return <footer class="footer">Morgue File</footer>;
   }
   return (
     <footer class="footer">
-      {indexing && <IndexingFooterLines indexing={indexing} />}
+      <div class="status-slot" data-status-slot="footer">
+        <StatusFooterLines status={status ?? {}} />
+      </div>
       <p class="footer__line">
         <span class="counter">{formatCount(counts.images)}</span> images ·{' '}
         <span class="counter">{formatCount(counts.videos)}</span> videos ·{' '}
@@ -149,14 +150,15 @@ export function PageLayout(props: PageLayoutProps) {
         <Banner searchText={props.searchText} />
         <div class="trim" />
         <TabBar currentPath={props.currentPath} unsorted={props.counts?.unsorted} />
-        {status?.offline && <OfflineBand offline={status.offline} />}
-        {status?.indexing && <IndexingBar indexing={status.indexing} />}
+        <div class="status-slot" data-status-slot="bands">
+          <StatusBands status={status ?? {}} />
+        </div>
         <main class="page">
           {status?.saved && <SavedNoticePanel saved={status.saved} />}
           {props.children}
         </main>
         <div class="trim" />
-        <Footer counts={props.counts} indexing={status?.indexing} />
+        <Footer counts={props.counts} status={status} />
         <DropOutline />
       </body>
     </html>

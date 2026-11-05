@@ -5,8 +5,10 @@ import Fastify from 'fastify';
 
 import { loadPageAssets } from './assets.js';
 import { registerErrorHandler } from './error-handler.js';
+import { registerIndexingApi } from './routes/api/indexing.js';
 import { registerSetupApi } from './routes/api/setup.js';
 import { registerAssetRoute } from './routes/assets.js';
+import { registerEventsRoute } from './routes/events.js';
 import { registerHealthRoute } from './routes/healthz.js';
 import { registerOriginalRoutes } from './routes/media-originals.js';
 import { registerMediaRoutes } from './routes/media.js';
@@ -39,7 +41,12 @@ export type BuildAppOptions = {
 /** Creates the app with every route registered, ready to listen or to inject requests into. */
 export async function buildApp(options: BuildAppOptions): Promise<FastifyInstance> {
   const { config, install, library } = options;
-  const app = Fastify({ logger: options.logger ?? false }).withTypeProvider<TypeBoxTypeProvider>();
+  // Closing ends every connection, including pages' open /events streams, which would otherwise
+  // keep the server from closing.
+  const app = Fastify({
+    logger: options.logger ?? false,
+    forceCloseConnections: true,
+  }).withTypeProvider<TypeBoxTypeProvider>();
   const token = options.token ?? createLaunchToken();
   const clientDir = path.join(config.appDir, 'dist', 'client');
   const assets = await loadPageAssets(clientDir);
@@ -60,6 +67,8 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerItemRoute(app, pageContext);
   registerMediaRoutes(app, library);
   registerOriginalRoutes(app, library);
+  registerEventsRoute(app, library);
+  registerIndexingApi(app, library);
 
   return app;
 }

@@ -1,34 +1,30 @@
-// Opens the library once the data folder is known, then indexes the Reference folder and makes
-// thumbnails in the background (docs/ARCHITECTURE.md, Indexing step 1). Pages are served while
-// this runs; nothing here blocks a request.
+// Opens the library once the data folder is known, then keeps the Reference folder indexed and
+// makes thumbnails in the background (docs/ARCHITECTURE.md, Indexing and file watching). Pages are
+// served while this runs; nothing here blocks a request.
 import path from 'node:path';
 
-import { countFiles } from '#core/archive/originals.js';
 import { openLibrary } from '#core/db/library.js';
 import { REFERENCE_ROOT_ID } from '#core/db/repositories/roots.js';
-import { scanRoot } from '#core/indexer/scanner.js';
+import { startRootIndexing } from '#core/indexer/roots.js';
 import { DEFAULT_LANES, startJobQueue } from '#core/jobs/queue.js';
 import { THUMBS_FOLDER_NAME } from '#core/jobs/thumbnail-files.js';
 import { markThumbnailFailed, runThumbnailJob } from '#core/jobs/thumbnails.js';
 import { findMediaTools } from '#core/jobs/workers/media-tools.js';
 
 import type { Db } from '#core/db/connection.js';
+import type { IndexingProgress, RootIndexing } from '#core/indexer/roots.js';
 import type { JobQueue } from '#core/jobs/queue.js';
 import type { ThumbnailContext } from '#core/jobs/thumbnails.js';
 import type { InstallState } from './install/install-state.js';
 import type { FastifyBaseLogger } from 'fastify';
 
+export type { IndexingProgress } from '#core/indexer/roots.js';
+
 /** A set-up install: the data folder and the Reference folder, if one was chosen. */
 export type ReadyInstall = Extract<InstallState, { kind: 'ready' }>;
 
-/**
- * How far a scan of the Reference folder has got (E5): files listed so far, and how many there
- * are in all once a quick count has finished.
- */
-export type IndexingProgress = {
-  readonly found: number;
-  readonly expected: number | undefined;
-};
+/** What a page can ask of indexing: pause or resume the scan, or look for an offline folder. */
+export type IndexingAction = 'pause' | 'resume' | 'check';
 
 /** An open library, as page and media routes use it. */
 export type OpenLibrary = {
@@ -47,9 +43,11 @@ export type LibraryRuntime = {
   readonly start: (install: ReadyInstall, log: FastifyBaseLogger) => void;
   /** The running scan's progress, or undefined when no scan is running. */
   readonly indexing: () => IndexingProgress | undefined;
-  /** Resolves once the scan has finished and no thumbnail job is left (tests wait on it). */
+  /** Pauses or resumes the scan (E5), or checks for an offline Reference folder now (E3). */
+  readonly controlIndexing: (action: IndexingAction) => Promise<void>;
+  /** Resolves once no scan is running, the watcher is ready and no thumbnail job is left. */
   readonly whenIndexed: () => Promise<void>;
-  /** Stops the scan and the queue, and closes the database. */
+  /** Stops indexing and the queue, and closes the database. */
   readonly stop: () => Promise<void>;
 };
 
@@ -57,6 +55,9 @@ export type LibraryRuntime = {
 export type LibraryRuntimeOptions = {
   readonly appDir: string;
   readonly appVersion: string;
+  /** Tests shorten the offline re-check and the wait for a new file to settle. */
+  readonly recheckMs?: number;
+  readonly settleMs?: number;
 };
 
 /** A library that has been started. */
@@ -64,77 +65,11 @@ type StartedLibrary = {
   readonly db: Db;
   readonly thumbnails: ThumbnailContext;
   readonly queue: JobQueue;
-  readonly scanning: Promise<void>;
-  readonly abortScan: AbortController;
-  /** Written as the scan goes; undefined once it has finished. */
-  readonly progress: { current: IndexingProgress | undefined };
+  /** Undefined when setup chose no Reference folder. */
+  readonly indexing: RootIndexing | undefined;
 };
 
-/**
- * Counts the Reference folder's files alongside the scan, so the progress bar can say how many
- * there are in all. Until the count is in, the bar shows only how many were found.
- */
-async function countExpectedFiles(
-  library: Omit<StartedLibrary, 'scanning'>,
-  count: { readonly referenceDir: string; readonly signal: AbortSignal },
-  log: FastifyBaseLogger,
-): Promise<void> {
-  try {
-    const expected = await countFiles(count.referenceDir, count.signal);
-    const { current } = library.progress;
-    if (current !== undefined) {
-      library.progress.current = { found: current.found, expected };
-    }
-  } catch (error) {
-    if (!count.signal.aborted) {
-      log.warn({ err: error }, 'Could not count the Reference folder’s files');
-    }
-  }
-}
-
-/** Adds a listed folder's files to the scan's progress. */
-function addFoundFiles(library: Omit<StartedLibrary, 'scanning'>, fileCount: number): void {
-  const { current } = library.progress;
-  if (current !== undefined) {
-    library.progress.current = { found: current.found + fileCount, expected: current.expected };
-  }
-}
-
-/** Scans the Reference folder once, then wakes the queue for the thumbnails it found. */
-async function scanReferenceFolder(
-  library: Omit<StartedLibrary, 'scanning'>,
-  referenceDir: string,
-  log: FastifyBaseLogger,
-): Promise<void> {
-  library.progress.current = { found: 0, expected: undefined };
-  // The count stops when the scan does, so a scan that finishes first isn't followed by a
-  // second walk of the whole folder.
-  const counting = new AbortController();
-  const signal = AbortSignal.any([library.abortScan.signal, counting.signal]);
-  void countExpectedFiles(library, { referenceDir, signal }, log);
-  try {
-    const summary = await scanRoot({
-      db: library.db,
-      rootId: REFERENCE_ROOT_ID,
-      rootPath: referenceDir,
-      signal: library.abortScan.signal,
-      onBatchWritten: library.queue.wake,
-      onFilesFound: (fileCount) => {
-        addFoundFiles(library, fileCount);
-      },
-    });
-    log.info({ scan: summary }, 'Scan of the Reference folder finished');
-  } catch (error) {
-    if (!library.abortScan.signal.aborted) {
-      log.error({ err: error }, 'Scan of the Reference folder failed');
-    }
-  }
-  counting.abort();
-  library.progress.current = undefined;
-  library.queue.wake();
-}
-
-/** Opens the library and starts its queue and first scan. */
+/** Opens the library and starts its queue and the Reference folder's indexing. */
 function startLibrary(
   options: LibraryRuntimeOptions,
   install: ReadyInstall,
@@ -162,13 +97,26 @@ function startLibrary(
       log.error({ err: error, jobId: job.id }, 'Could not record a job’s outcome');
     },
   });
-  const progress: StartedLibrary['progress'] = { current: undefined };
-  const started = { db, thumbnails: context, queue, abortScan: new AbortController(), progress };
-  const scanning =
+  const indexing =
     install.referenceDir === undefined
-      ? Promise.resolve()
-      : scanReferenceFolder(started, install.referenceDir, log);
-  return { ...started, scanning };
+      ? undefined
+      : startRootIndexing({
+          ...{ db, rootId: REFERENCE_ROOT_ID, log, wakeQueue: queue.wake },
+          ...(options.recheckMs === undefined ? {} : { recheckMs: options.recheckMs }),
+          ...(options.settleMs === undefined ? {} : { settleMs: options.settleMs }),
+        });
+  return { db, thumbnails: context, queue, indexing };
+}
+
+/** Runs a page's request to pause, resume or check on indexing. */
+async function runIndexingAction(indexing: RootIndexing, action: IndexingAction): Promise<void> {
+  if (action === 'pause') {
+    indexing.pause();
+  } else if (action === 'resume') {
+    indexing.resume();
+  } else {
+    await indexing.checkNow();
+  }
 }
 
 /** Creates the runtime, not yet started: setup may still have to choose the data folder. */
@@ -189,9 +137,14 @@ export function createLibraryRuntime(options: LibraryRuntimeOptions): LibraryRun
         log.error({ err: error }, 'Could not open the library');
       }
     },
-    indexing: () => library?.progress.current,
+    indexing: () => library?.indexing?.progress(),
+    controlIndexing: async (action) => {
+      if (library?.indexing !== undefined) {
+        await runIndexingAction(library.indexing, action);
+      }
+    },
     whenIndexed: async () => {
-      await library?.scanning;
+      await library?.indexing?.whenIdle();
       await library?.queue.whenIdle();
     },
     stop: async () => {
@@ -200,8 +153,7 @@ export function createLibraryRuntime(options: LibraryRuntimeOptions): LibraryRun
       }
       const stopping = library;
       library = undefined;
-      stopping.abortScan.abort();
-      await stopping.scanning;
+      await stopping.indexing?.stop();
       await stopping.queue.stop();
       stopping.db.close();
     },

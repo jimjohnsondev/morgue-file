@@ -27,8 +27,11 @@ import type { Db } from '#core/db/connection.js';
 import type { Section } from '#core/db/repositories/items.js';
 import type { LibraryRuntime } from '#server/library-runtime.js';
 
-/** The states a spec can ask for. Unsorted is empty in all three (E1). */
-const STATES = ['empty-unsorted', 'offline', 'indexing'] as const;
+/**
+ * The states a spec can ask for. Unsorted is empty in all of them (E1). `watching` is
+ * `empty-unsorted` in a home of its own, for the R1 spec, which adds files to it.
+ */
+const STATES = ['empty-unsorted', 'offline', 'indexing', 'watching'] as const;
 type State = (typeof STATES)[number];
 
 const REPO_DIR = path.resolve(import.meta.dirname, '..', '..');
@@ -38,7 +41,7 @@ const FIXTURE_DIR = path.join(REPO_DIR, 'fixtures', 'generated', 'Reference');
 const OFFLINE_FOLDER = 'E:\\Reference';
 
 /** The counters E5 is drawn with: a first index part-way through a large archive. */
-const HELD_PROGRESS = { found: 12_400, expected: 48_000 } as const;
+const HELD_PROGRESS = { found: 12_400, expected: 48_000, isPaused: false } as const;
 
 /** How many entries of each fixture folder the small copy takes, and where they are filed. */
 const COPIED_FOLDERS = [

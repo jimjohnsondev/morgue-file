@@ -67,18 +67,33 @@ function readFolderEntries(
 }
 
 /**
+ * Where a walk starts and how deep it goes. A full scan walks the whole root; the watcher walks
+ * one folder alone, or one folder and everything under it (docs/ARCHITECTURE.md, Watch).
+ */
+export type WalkOptions = {
+  /** The folder to start in, relative to the root; the root itself when left out. */
+  readonly startDir?: string;
+  /** Lists only the start folder, leaving its subfolders to their own walks. */
+  readonly isShallow?: boolean;
+  /** Hears how many files each listed folder held, for the progress bar (E5). */
+  readonly onFilesListed?: (fileCount: number) => void;
+};
+
+/**
  * Lists a folder, or returns undefined for a subfolder that can't be opened (no permission, or
- * removed since its parent was listed), so one bad folder doesn't stop the whole scan. The root
- * itself must be readable: a scan of an unreadable root fails rather than finding nothing.
+ * removed since its parent was listed), so one bad folder doesn't stop the whole walk. The folder
+ * a walk starts in must be readable: a walk of an unreadable start folder fails rather than
+ * finding nothing, so its caller can tell a folder that is gone from one that is empty.
  */
 async function listFolderIfReadable(
   rootPath: string,
   relDir: string,
+  startDir: string,
 ): Promise<FolderEntry[] | undefined> {
   try {
     return await listFolder(rootPath, relDir);
   } catch (error) {
-    if (relDir === '') {
+    if (relDir === startDir) {
       throw error;
     }
     return undefined;
@@ -88,25 +103,28 @@ async function listFolderIfReadable(
 /**
  * Yields every file and page folder under a root, one folder at a time, so a large archive is
  * never held in memory at once. Folders are walked in name order, so scans are repeatable.
- * `onFilesListed` hears how many files each folder held, page folders' pages included, so
+ * Each listed folder's file count, page folders' pages included, goes to `onFilesListed`, so
  * progress counts the same files as countFiles() in originals.ts (E5).
  */
 export async function* walkRoot(
   rootPath: string,
-  onFilesListed?: (fileCount: number) => void,
+  options: WalkOptions = {},
 ): AsyncGenerator<FoundEntry> {
+  const startDir = options.startDir ?? '';
   // A stack of folders still to read, so the walk goes depth first.
-  const folders = [''];
+  const folders = [startDir];
   for (let relDir = folders.pop(); relDir !== undefined; relDir = folders.pop()) {
-    const entries = await listFolderIfReadable(rootPath, relDir);
+    const entries = await listFolderIfReadable(rootPath, relDir, startDir);
     if (entries === undefined) {
       yield { relPath: relDir, kind: 'unreadable-folder', size: 0, mtimeMs: 0 };
       continue;
     }
     entries.sort((left, right) => left.name.localeCompare(right.name));
-    onFilesListed?.(entries.filter((entry) => !entry.isFolder).length);
+    options.onFilesListed?.(entries.filter((entry) => !entry.isFolder).length);
     const { found, subfolders } = readFolderEntries(relDir, entries);
     yield* found;
-    folders.push(...subfolders.reverse());
+    if (options.isShallow !== true) {
+      folders.push(...subfolders.reverse());
+    }
   }
 }

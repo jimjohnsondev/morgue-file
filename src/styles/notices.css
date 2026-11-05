@@ -43,6 +43,12 @@
   font-family: var(--font-mono);
 }
 
+/* E3, E5: the slots /events refreshes add no box of their own, so the page lays out as if the
+   bands and footer lines inside them were placed directly. */
+.status-slot {
+  display: contents;
+}
+
 /* E3, E5: a band across the page under the tab bar. */
 .status-band {
   display: flex;

@@ -1,5 +1,6 @@
 // The notices the shared frame shows on any page: the Reference folder offline (E3), the index
 // still running (E5), and the notice after a drop (E6), plus the outline shown while dragging.
+// The first two sit in slots that /events refreshes while the page is open (client/live-status.ts).
 import { formatCount } from '../format.js';
 
 import { PendingAction } from './pending-action.js';
@@ -10,10 +11,11 @@ export type OfflineNotice = {
   readonly itemCount: number;
 };
 
-/** How far the scan has got: files found, and how many there are once they've been counted. */
+/** How far the scan has got: files found, how many there are once counted, and if paused. */
 export type IndexingNotice = {
   readonly found: number;
   readonly expected: number | undefined;
+  readonly isPaused: boolean;
 };
 
 /** A file just saved to Unsorted: its item, its name, and the site it came from, if known. */
@@ -32,12 +34,43 @@ export type PageStatus = {
   readonly saved?: SavedNotice | undefined;
 };
 
-/** "Indexing 12,400 of 48,000 files", or "Indexing 12,400 files" before the count is in. */
+/**
+ * "Indexing 12,400 of 48,000 files", or "Indexing 12,400 files" before the count is in; "Indexing
+ * paused at …" while paused.
+ */
 export function indexingLabel(indexing: IndexingNotice): string {
   const found = formatCount(indexing.found);
-  return indexing.expected === undefined
-    ? `Indexing ${found} files`
-    : `Indexing ${found} of ${formatCount(indexing.expected)} files`;
+  const progress =
+    indexing.expected === undefined
+      ? `${found} files`
+      : `${found} of ${formatCount(indexing.expected)} files`;
+  return indexing.isPaused ? `Indexing paused at ${progress}` : `Indexing ${progress}`;
+}
+
+/**
+ * A link-styled button that asks the server to pause or resume the scan, or to look for the
+ * Reference folder now. client/live-status.ts sends it; the next /events update shows the result.
+ */
+function IndexingActionButton(props: {
+  readonly action: 'pause' | 'resume' | 'check';
+  readonly label: string;
+}) {
+  return (
+    <button type="button" class="link-button" data-indexing-action={props.action}>
+      {props.label}
+    </button>
+  );
+}
+
+/** Pause while the scan runs, Resume while it is paused, in the case the place asks for. */
+function PauseButton(props: { readonly isPaused: boolean; readonly isLowerCase: boolean }) {
+  const label = props.isPaused ? 'Resume' : 'Pause';
+  return (
+    <IndexingActionButton
+      action={props.isPaused ? 'resume' : 'pause'}
+      label={props.isLowerCase ? label.toLowerCase() : label}
+    />
+  );
 }
 
 /** The band under the tabs while the Reference folder is offline (E3). */
@@ -54,7 +87,8 @@ export function OfflineBand(props: { readonly offline: OfflineNotice }) {
         back.
       </span>
       <span class="status-band__links">
-        <PendingAction label="Check again" /> · <a href="/settings">Change folder location</a>
+        <IndexingActionButton action="check" label="Check again" /> ·{' '}
+        <a href="/settings">Change folder location</a>
       </span>
     </div>
   );
@@ -75,7 +109,7 @@ export function IndexingBar(props: { readonly indexing: IndexingNotice }) {
         aria-label="Indexing progress"
       />
       <span class="caption">newest first · thumbnails for the page you’re on come first</span>
-      <PendingAction label="Pause" />
+      <PauseButton isPaused={indexing.isPaused} isLowerCase={false} />
     </div>
   );
 }
@@ -88,10 +122,28 @@ export function IndexingFooterLines(props: { readonly indexing: IndexingNotice }
         <span class="counter">{formatCount(props.indexing.found)}</span> files found so far
       </p>
       <p class="footer__line">
-        {indexingLabel(props.indexing).toLowerCase()} · <PendingAction label="pause" />
+        {indexingLabel(props.indexing).toLowerCase()} ·{' '}
+        <PauseButton isPaused={props.indexing.isPaused} isLowerCase={true} />
       </p>
     </>
   );
+}
+
+/** What the slot under the tabs holds: the offline band and the indexing bar, when they apply. */
+export function StatusBands(props: { readonly status: PageStatus }) {
+  const { offline, indexing } = props.status;
+  return (
+    <>
+      {offline && <OfflineBand offline={offline} />}
+      {indexing && <IndexingBar indexing={indexing} />}
+    </>
+  );
+}
+
+/** What the footer's slot holds: the indexing lines while a scan runs. */
+export function StatusFooterLines(props: { readonly status: PageStatus }) {
+  const { indexing } = props.status;
+  return indexing ? <IndexingFooterLines indexing={indexing} /> : null;
 }
 
 /** The notice after a drop, linking to the item it made (E6). */
