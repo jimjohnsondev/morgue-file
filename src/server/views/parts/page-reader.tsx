@@ -58,7 +58,8 @@ function ReaderPage(props: {
     return (
       <canvas
         class={className}
-        // A page-shaped space until the client draws the page and sets its real size.
+        // A page-shaped space until the client draws the page and sets its real size. The strip's
+        // fixed CSS size overrides it for strip pages.
         width="400"
         height="600"
         data-pdf-page={String(page)}

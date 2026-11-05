@@ -130,10 +130,48 @@ test('R21: PDF pages keep their shape when half the viewer is narrower than a pa
   for (const canvas of await pages.all()) {
     const shape = await canvas.evaluate((element: HTMLCanvasElement) => {
       const box = element.getBoundingClientRect();
-      return { shown: box.width / box.height, drawn: element.width / element.height };
+      const stage = element.closest<HTMLElement>('.reader-stage');
+      const style = stage === null ? undefined : getComputedStyle(stage);
+      const stageHeight =
+        stage === null || style === undefined
+          ? 0
+          : stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      return {
+        shown: box.width / box.height,
+        drawn: element.width / element.height,
+        height: box.height,
+        stageHeight,
+      };
     });
+    // The half-width limit really is the tighter one here, so the bug would show.
+    expect(shape.height).toBeLessThan(shape.stageHeight - 10);
     expect(shape.shown).toBeCloseTo(shape.drawn, 2);
   }
+});
+
+test('frame 9: in viewing mode a PDF spread grows to fill the taller viewer', async ({ page }) => {
+  await openFromIndex(page, '/library/magazines/life-drawing-quarterly', 'No. 12 · Winter 2023');
+  await reloadUntil(page, page.locator('.reader-nav'), 'of 72');
+  const reader = page.locator('[data-reader]');
+  await expect(reader).toHaveAttribute('data-drawn', 'true');
+  const pageHeight = page.locator('.reader-stage canvas.reader-page').first();
+  const before = await pageHeight.evaluate((element) => element.getBoundingClientRect().height);
+
+  await page.keyboard.press('v');
+  await expect(async () => {
+    await expect(reader).toHaveAttribute('data-drawn', 'true', { timeout: 1000 });
+    const sizes = await pageHeight.evaluate((element: HTMLCanvasElement) => {
+      const stage = element.closest<HTMLElement>('.reader-stage');
+      const style = stage === null ? undefined : getComputedStyle(stage);
+      const inner =
+        stage === null || style === undefined
+          ? 0
+          : stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      return { shown: element.getBoundingClientRect().height, inner };
+    });
+    expect(sizes.shown).toBeGreaterThan(before + 100);
+    expect(Math.abs(sizes.shown - sizes.inner)).toBeLessThan(2);
+  }).toPass({ timeout: 15_000 });
 });
 
 test('R21: a book of page scans shows its pages as pictures', async ({ page }) => {

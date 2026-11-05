@@ -17,17 +17,19 @@ async function openPdf(url: string): Promise<PDFDocumentProxy> {
   return pdfjs.getDocument({ url, disableAutoFetch: true, disableStream: true }).promise;
 }
 
+/** The height inside the reader stage's padding: the tallest a page on show can be. */
+function stageInnerHeight(stage: HTMLElement): number {
+  const style = getComputedStyle(stage);
+  return stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+}
+
 /**
  * The height a page is drawn for: the reader stage's inner height for the pages on show (CSS then
  * shrinks the page evenly if half the stage's width is tighter), or the strip page's own height.
  */
 function targetHeight(canvas: HTMLCanvasElement): number {
   const stage = canvas.closest<HTMLElement>('.reader-stage');
-  if (stage === null) {
-    return canvas.getBoundingClientRect().height;
-  }
-  const style = getComputedStyle(stage);
-  return stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+  return stage === null ? canvas.getBoundingClientRect().height : stageInnerHeight(stage);
 }
 
 /**
@@ -60,12 +62,49 @@ function drawStripWhenSeen(pdf: PDFDocumentProxy, strip: HTMLElement): void {
   }
 }
 
+/**
+ * Draws the pages on show, and draws them again whenever the stage's height changes (viewing mode,
+ * a resized window), so they fill it and stay sharp. A page is only ever as large as its drawing.
+ * One drawing runs at a time, since pdf.js can't draw on a canvas twice at once; a change during
+ * one queues another. data-drawn is "true" whenever the pages on show match the stage.
+ */
+function drawShownPages(pdf: PDFDocumentProxy, stage: HTMLElement): Promise<void> {
+  const shown = [...stage.querySelectorAll<HTMLCanvasElement>('canvas[data-pdf-page]')];
+  const state = { drawnFor: 0, isDrawing: false, hasChanged: false };
+  // Read through a function: the observer sets hasChanged while a drawing awaits, which the type
+  // checker can't see inside the loop.
+  function hasChanged(): boolean {
+    return state.hasChanged;
+  }
+
+  async function redraw(): Promise<void> {
+    if (state.isDrawing) {
+      state.hasChanged = true;
+      return;
+    }
+    state.isDrawing = true;
+    stage.dataset.drawn = 'false';
+    do {
+      state.hasChanged = false;
+      state.drawnFor = stageInnerHeight(stage);
+      await Promise.all(shown.map((canvas) => drawPage(pdf, canvas)));
+    } while (hasChanged());
+    state.isDrawing = false;
+    stage.dataset.drawn = 'true';
+  }
+
+  new ResizeObserver(() => {
+    if (Math.abs(stageInnerHeight(stage) - state.drawnFor) >= 1) {
+      void redraw();
+    }
+  }).observe(stage);
+  return redraw();
+}
+
 /** Opens the PDF and draws the pages on show, then the strip as it's seen. */
 async function drawPdf(stage: HTMLElement, strip: HTMLElement | null): Promise<void> {
   const pdf = await openPdf(stage.dataset.readerSrc ?? '');
-  const shown = [...stage.querySelectorAll<HTMLCanvasElement>('canvas[data-pdf-page]')];
-  await Promise.all(shown.map((canvas) => drawPage(pdf, canvas)));
-  stage.dataset.drawn = 'true';
+  await drawShownPages(pdf, stage);
   if (strip !== null) {
     drawStripWhenSeen(pdf, strip);
   }
