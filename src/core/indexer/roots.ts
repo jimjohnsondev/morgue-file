@@ -199,11 +199,11 @@ async function checkOnRoot(state: IndexingState): Promise<void> {
   if (state.scanning !== undefined || state.abort.signal.aborted) {
     return;
   }
-  const isPresent = await isRootPresent(state);
-  if (isPresent === undefined) {
+  const look = await lookForRootFolder(state);
+  if (look === undefined) {
     return;
   }
-  if (!isPresent) {
+  if (!look.isPresent) {
     if (!state.isOffline) {
       await goOffline(state);
     }
@@ -212,14 +212,17 @@ async function checkOnRoot(state: IndexingState): Promise<void> {
     setRootStatus(state.options.db, state.options.rootId, 'online');
     startScan(state);
   } else if (state.watcher === undefined) {
-    restartWatcher(state);
+    restartWatcher(state, look.rootPath);
   }
 }
 
-/** Says whether the root's folder is there now, or undefined if looking for it failed. */
-async function isRootPresent(state: IndexingState): Promise<boolean | undefined> {
+/** Looks for the root's folder: where it is stored and whether it is there, or undefined if the look failed. */
+async function lookForRootFolder(
+  state: IndexingState,
+): Promise<{ rootPath: string; isPresent: boolean } | undefined> {
   try {
-    return await isReferenceFolderPresent(rootPathOf(state));
+    const rootPath = rootPathOf(state);
+    return { rootPath, isPresent: await isReferenceFolderPresent(rootPath) };
   } catch (error) {
     state.options.log.warn({ err: error }, 'Could not look for the Reference folder');
     return undefined;
@@ -230,8 +233,8 @@ async function isRootPresent(state: IndexingState): Promise<boolean | undefined>
  * Starts the watcher again after it couldn't start, without a full scan: the last scan finished,
  * and a full scan every 30 s on a folder that can't be watched would keep the E5 bar up for good.
  */
-function restartWatcher(state: IndexingState): void {
-  const watcher = startWatchingFor(state, rootPathOf(state));
+function restartWatcher(state: IndexingState, rootPath: string): void {
+  const watcher = startWatchingFor(state, rootPath);
   state.watcher = watcher;
   watcher?.release();
 }
