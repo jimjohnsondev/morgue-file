@@ -3,6 +3,7 @@
 // this runs; nothing here blocks a request.
 import path from 'node:path';
 
+import { countFiles } from '#core/archive/originals.js';
 import { openLibrary } from '#core/db/library.js';
 import { REFERENCE_ROOT_ID } from '#core/db/repositories/roots.js';
 import { scanRoot } from '#core/indexer/scanner.js';
@@ -20,6 +21,15 @@ import type { FastifyBaseLogger } from 'fastify';
 /** A set-up install: the data folder and the Reference folder, if one was chosen. */
 export type ReadyInstall = Extract<InstallState, { kind: 'ready' }>;
 
+/**
+ * How far a scan of the Reference folder has got (E5): files listed so far, and how many there
+ * are in all once a quick count has finished.
+ */
+export type IndexingProgress = {
+  readonly found: number;
+  readonly expected: number | undefined;
+};
+
 /** An open library, as page and media routes use it. */
 export type OpenLibrary = {
   readonly db: Db;
@@ -35,6 +45,8 @@ export type LibraryRuntime = {
   readonly open: () => OpenLibrary | undefined;
   /** Opens the library and starts indexing. Later calls do nothing. */
   readonly start: (install: ReadyInstall, log: FastifyBaseLogger) => void;
+  /** The running scan's progress, or undefined when no scan is running. */
+  readonly indexing: () => IndexingProgress | undefined;
   /** Resolves once the scan has finished and no thumbnail job is left (tests wait on it). */
   readonly whenIndexed: () => Promise<void>;
   /** Stops the scan and the queue, and closes the database. */
@@ -54,7 +66,39 @@ type StartedLibrary = {
   readonly queue: JobQueue;
   readonly scanning: Promise<void>;
   readonly abortScan: AbortController;
+  /** Written as the scan goes; undefined once it has finished. */
+  readonly progress: { current: IndexingProgress | undefined };
 };
+
+/**
+ * Counts the Reference folder's files alongside the scan, so the progress bar can say how many
+ * there are in all. Until the count is in, the bar shows only how many were found.
+ */
+async function countExpectedFiles(
+  library: Omit<StartedLibrary, 'scanning'>,
+  referenceDir: string,
+  log: FastifyBaseLogger,
+): Promise<void> {
+  try {
+    const expected = await countFiles(referenceDir, library.abortScan.signal);
+    const { current } = library.progress;
+    if (current !== undefined) {
+      library.progress.current = { found: current.found, expected };
+    }
+  } catch (error) {
+    if (!library.abortScan.signal.aborted) {
+      log.warn({ err: error }, 'Could not count the Reference folder’s files');
+    }
+  }
+}
+
+/** Adds a listed folder's files to the scan's progress. */
+function addFoundFiles(library: Omit<StartedLibrary, 'scanning'>, fileCount: number): void {
+  const { current } = library.progress;
+  if (current !== undefined) {
+    library.progress.current = { found: current.found + fileCount, expected: current.expected };
+  }
+}
 
 /** Scans the Reference folder once, then wakes the queue for the thumbnails it found. */
 async function scanReferenceFolder(
@@ -62,6 +106,8 @@ async function scanReferenceFolder(
   referenceDir: string,
   log: FastifyBaseLogger,
 ): Promise<void> {
+  library.progress.current = { found: 0, expected: undefined };
+  void countExpectedFiles(library, referenceDir, log);
   try {
     const summary = await scanRoot({
       db: library.db,
@@ -69,6 +115,9 @@ async function scanReferenceFolder(
       rootPath: referenceDir,
       signal: library.abortScan.signal,
       onBatchWritten: library.queue.wake,
+      onFilesFound: (fileCount) => {
+        addFoundFiles(library, fileCount);
+      },
     });
     log.info({ scan: summary }, 'Scan of the Reference folder finished');
   } catch (error) {
@@ -76,6 +125,7 @@ async function scanReferenceFolder(
       log.error({ err: error }, 'Scan of the Reference folder failed');
     }
   }
+  library.progress.current = undefined;
   library.queue.wake();
 }
 
@@ -107,7 +157,8 @@ function startLibrary(
       log.error({ err: error, jobId: job.id }, 'Could not record a job’s outcome');
     },
   });
-  const started = { db, thumbnails: context, queue, abortScan: new AbortController() };
+  const progress: StartedLibrary['progress'] = { current: undefined };
+  const started = { db, thumbnails: context, queue, abortScan: new AbortController(), progress };
   const scanning =
     install.referenceDir === undefined
       ? Promise.resolve()
@@ -133,6 +184,7 @@ export function createLibraryRuntime(options: LibraryRuntimeOptions): LibraryRun
         log.error({ err: error }, 'Could not open the library');
       }
     },
+    indexing: () => library?.progress.current,
     whenIndexed: async () => {
       await library?.scanning;
       await library?.queue.whenIdle();

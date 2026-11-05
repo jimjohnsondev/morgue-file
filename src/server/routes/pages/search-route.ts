@@ -5,6 +5,7 @@ import { Type } from '@sinclair/typebox';
 import { canonicalOrder, queryToText } from '#core/query/canonical-query.js';
 import { filterTerm, parseQuery } from '#core/query/parse-query.js';
 
+import { SavedQuerystring } from '../page-status.js';
 import { requireLibrary } from '../require-library.js';
 
 import { searchHref } from './active-filters.js';
@@ -34,6 +35,7 @@ const FilterForm = Type.Object({
 
 const SearchQuerystring = Type.Composite([
   ListViewQuerystring,
+  SavedQuerystring,
   FilterForm,
   Type.Object({ q: Type.Optional(Type.String()) }),
 ]);
@@ -109,7 +111,11 @@ export function registerSearchRoute(app: FastifyInstance, context: PageContext):
       const { db } = requireLibrary(context.library);
       const spec = searchSpec(parseQuery(request.query.q ?? ''));
       const model = buildListModel(db, spec, toListView(request.query));
-      const frame = { currentTab: '/search', searchText: spec.address.q ?? '' };
+      const frame = {
+        currentTab: '/search',
+        searchText: spec.address.q ?? '',
+        request: { url: request.url, savedId: request.query.saved },
+      };
       return sendIndexPage(reply, { context, db, model, frame });
     });
 }

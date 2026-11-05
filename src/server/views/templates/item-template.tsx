@@ -4,11 +4,13 @@ import { formatCount } from '../format.js';
 import { Breadcrumb } from '../parts/breadcrumb.js';
 import { DetailsEdge, DetailsPanel } from '../parts/details-panel.js';
 import { PageReader } from '../parts/page-reader.js';
+import { UnavailableViewer } from '../parts/unavailable-viewer.js';
 import { ImageViewer, VideoPlayer } from '../parts/viewers.js';
 
 import type { Crumb } from '../parts/breadcrumb.js';
 import type { DetailsModel } from '../parts/details-panel.js';
 import type { PageReaderModel } from '../parts/page-reader.js';
+import type { UnavailableViewerModel } from '../parts/unavailable-viewer.js';
 import type { ImageViewerModel, VideoPlayerModel } from '../parts/viewers.js';
 
 /** Prev and Next through the list the item was opened from, and the item's place in it. */
@@ -22,7 +24,8 @@ export type ListNavModel = {
 };
 
 /** What fills the viewer slot. */
-export type ViewerModel = ImageViewerModel | VideoPlayerModel | PageReaderModel;
+export type ViewerModel =
+  ImageViewerModel | VideoPlayerModel | PageReaderModel | UnavailableViewerModel;
 
 /** Everything an Item page shows. */
 export type ItemModel = {
@@ -75,6 +78,8 @@ function ViewerSlot(props: { readonly viewer: ViewerModel }) {
       return <VideoPlayer model={viewer} />;
     case 'reader':
       return <PageReader model={viewer} />;
+    case 'unavailable':
+      return <UnavailableViewer model={viewer} />;
   }
 }
 

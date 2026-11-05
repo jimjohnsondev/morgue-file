@@ -133,6 +133,38 @@ export async function listFolder(rootPath: string, relDir: string): Promise<Fold
   return entries;
 }
 
+/** Counts one folder's files and adds its subfolders to the list still to count. */
+async function countFolder(folder: string, subfolders: string[]): Promise<number> {
+  let count = 0;
+  try {
+    for await (const entry of await opendir(folder)) {
+      if (entry.isDirectory()) {
+        subfolders.push(path.join(folder, entry.name));
+      } else if (entry.isFile()) {
+        count += 1;
+      }
+    }
+  } catch {
+    // An unreadable or vanished subfolder only makes the estimate smaller; the scan reports it.
+  }
+  return count;
+}
+
+/**
+ * Counts the files under a root, following the same rules as listFolder (links and devices left
+ * out), without reading each file's details, so a first index can say "12,400 of 48,000" (E5).
+ * A subfolder that can't be read counts as empty; the scan skips it too.
+ */
+export async function countFiles(rootPath: string, signal?: AbortSignal): Promise<number> {
+  const folders = [resolveOriginalPath(rootPath, '')];
+  let count = 0;
+  for (let folder = folders.pop(); folder !== undefined; folder = folders.pop()) {
+    signal?.throwIfAborted();
+    count += await countFolder(folder, folders);
+  }
+  return count;
+}
+
 /** Reads a whole file under a root, read-only. */
 export async function readOriginal(rootPath: string, relPath: string): Promise<Buffer> {
   return readFile(resolveOriginalPath(rootPath, relPath), { flag: 'r' });

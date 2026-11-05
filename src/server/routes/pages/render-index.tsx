@@ -4,16 +4,22 @@ import { countArchive } from '#core/db/repositories/archive-counts.js';
 import { PageLayout } from '../../views/layout/page-layout.js';
 import { renderDocument } from '../../views/render.js';
 import { IndexTemplate } from '../../views/templates/index-template.js';
+import { readPageStatus } from '../page-status.js';
 
 import type { Db } from '#core/db/connection.js';
 import type { IndexModel } from '../../views/templates/index-template.js';
 import type { PageContext } from '../page-context.js';
+import type { PageRequest } from '../page-status.js';
 import type { FastifyReply } from 'fastify';
 
-/** What the layout needs besides the model: the tab it sits under and the search box text. */
+/**
+ * What the layout needs besides the model: the tab it sits under, the search box text, and the
+ * request, for the notices around the page.
+ */
 export type IndexPageFrame = {
   readonly currentTab: string;
   readonly searchText?: string;
+  readonly request: PageRequest;
 };
 
 /** Sends an Index page: the model in the template, in the layout with the archive's counts. */
@@ -30,6 +36,7 @@ export function sendIndexPage(
       assets={context.assets}
       counts={countArchive(db)}
       searchText={frame.searchText}
+      status={readPageStatus(context, frame.request)}
     >
       <IndexTemplate model={model} />
     </PageLayout>,

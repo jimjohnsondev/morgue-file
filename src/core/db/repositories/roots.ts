@@ -54,6 +54,14 @@ export function markRootScanned(db: Db, id: number, now: string): void {
   db.prepare(`UPDATE roots SET status = 'online', last_scan_at = ? WHERE id = ?`).run(now, id);
 }
 
+/** Counts a root's items that weren't missing at its last scan: what an offline drive keeps (E3). */
+export function countKeptItems(db: Db, rootId: number): number {
+  const row = db
+    .prepare('SELECT COUNT(*) AS count FROM items WHERE root_id = ? AND missing_since IS NULL')
+    .get(rootId) as { count: number };
+  return row.count;
+}
+
 function toRoot(row: RootRow): Root {
   return {
     id: row.id,

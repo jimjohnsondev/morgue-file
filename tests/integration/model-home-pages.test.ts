@@ -39,6 +39,7 @@ async function startSite(library: TempLibrary): Promise<TestSite> {
       wakeQueue: () => undefined,
     }),
     start: () => undefined,
+    indexing: () => undefined,
     whenIndexed: () => Promise.resolve(),
     stop: () => Promise.resolve(),
   };

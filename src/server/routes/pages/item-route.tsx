@@ -7,6 +7,7 @@ import { countArchive } from '#core/db/repositories/archive-counts.js';
 import { PageLayout } from '../../views/layout/page-layout.js';
 import { renderDocument } from '../../views/render.js';
 import { ItemTemplate } from '../../views/templates/item-template.js';
+import { readPageStatus, SavedQuerystring } from '../page-status.js';
 import { requireLibrary } from '../require-library.js';
 
 import { buildItemPage } from './item-model.js';
@@ -23,7 +24,7 @@ export function registerItemRoute(app: FastifyInstance, context: PageContext): v
     {
       schema: {
         params: Type.Object({ id: Type.Integer({ minimum: 1 }) }),
-        querystring: ItemViewQuerystring,
+        querystring: Type.Composite([ItemViewQuerystring, SavedQuerystring]),
       },
     },
     async (request, reply) => {
@@ -38,6 +39,7 @@ export function registerItemRoute(app: FastifyInstance, context: PageContext): v
           assets={context.assets}
           counts={countArchive(db)}
           isViewing={view.isViewing}
+          status={readPageStatus(context, { url: request.url, savedId: request.query.saved })}
         >
           <ItemTemplate model={page.model} />
         </PageLayout>,
