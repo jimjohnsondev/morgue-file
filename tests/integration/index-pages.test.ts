@@ -104,6 +104,7 @@ beforeAll(async () => {
     }),
     start: () => undefined,
     indexing: () => undefined,
+    controlIndexing: () => Promise.resolve(),
     whenIndexed: () => Promise.resolve(),
     stop: () => Promise.resolve(),
   };

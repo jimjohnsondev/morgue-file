@@ -127,6 +127,28 @@ export function insertItem(db: Db, item: NewItem): number {
   return Number(result.lastInsertRowid);
 }
 
+/** Where a moved file now is, with its size and time there. */
+export type ItemMove = {
+  readonly id: number;
+  readonly relPath: string;
+  readonly size: number;
+  readonly mtimeMs: number;
+};
+
+/**
+ * Re-points an item at the path its file moved to. The item keeps its id, so its tags,
+ * collections, fields and models stay with it (R1). Unless it was filed by hand, it is filed
+ * again by the folder mappings that hold its new path.
+ */
+export function moveItem(db: Db, move: ItemMove): void {
+  db.prepare(
+    `UPDATE items SET rel_path = ?, size = ?, mtime = ?, missing_since = NULL,
+       subcategory_id = CASE WHEN subcategory_manual = 1 THEN subcategory_id
+         ELSE ${mappedSubcategorySql('items.root_id', '?')} END
+     WHERE id = ?`,
+  ).run(move.relPath, move.size, move.mtimeMs, move.relPath, move.id);
+}
+
 /** Returns an item by id, or undefined if there is none. */
 export function findItemById(db: Db, id: number): Item | undefined {
   const row = db.prepare('SELECT * FROM items WHERE id = ?').get(id) as ItemRow | undefined;

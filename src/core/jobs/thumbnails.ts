@@ -1,10 +1,16 @@
 // Runs a thumbnail job: reads the item's original through originals.ts, makes its default
-// thumbnail with the worker for its kind, saves it to the cache and stores its media details.
+// thumbnail with the worker for its kind, saves it to the cache and stores its media details and
+// partial hash.
 import { readOriginal, resolveOriginalPath } from '#core/archive/originals.js';
-import { setItemMediaDetails, setThumbState } from '#core/db/repositories/item-files.js';
+import {
+  setItemMediaDetails,
+  setItemPartialHash,
+  setThumbState,
+} from '#core/db/repositories/item-files.js';
 import { findItemById } from '#core/db/repositories/items.js';
 import { findRootById } from '#core/db/repositories/roots.js';
 import { AppError } from '#core/errors.js';
+import { readMoveHash } from '#core/indexer/moves.js';
 
 import { defaultThumbnailSize, saveThumbnail, thumbnailPath } from './thumbnail-files.js';
 import { makeImageThumbnail } from './workers/thumb-image.js';
@@ -72,6 +78,20 @@ function requireItemAndRoot(db: Db, itemId: number): { item: Item; root: Root } 
   return { item, root };
 }
 
+/**
+ * Fails the job if a scan found the item's file changed while its thumbnail was being made, so
+ * the queue's retry makes it again from the new file rather than keeping one of the old file.
+ */
+function refuseIfChangedMeanwhile(db: Db, before: Item): void {
+  const now = findItemById(db, before.id);
+  if (now?.size !== before.size || now.mtimeMs !== before.mtimeMs) {
+    throw new AppError(
+      'media-unreadable',
+      `${before.relPath} changed while its thumbnail was made; it will be made again.`,
+    );
+  }
+}
+
 /** Makes one item's thumbnail at one size and saves it to the cache. */
 async function makeAndSave(
   context: ThumbnailContext,
@@ -89,11 +109,17 @@ async function makeAndSave(
   return result;
 }
 
-/** Makes and saves the default thumbnail for a job's item, and stores its media details. */
+/**
+ * Makes and saves the default thumbnail for a job's item, and stores its media details. The
+ * partial hash comes first and is kept even if the thumbnail fails, so a video with no ffmpeg
+ * to read it can still be recognized after a move.
+ */
 export async function runThumbnailJob(context: ThumbnailContext, job: Job): Promise<void> {
-  const item = findItemById(context.db, job.itemId);
-  const size = defaultThumbnailSize(item?.kind ?? 'image');
+  const { item, root } = requireItemAndRoot(context.db, job.itemId);
+  setItemPartialHash(context.db, item.id, await readMoveHash(root.path, item));
+  const size = defaultThumbnailSize(item.kind);
   const result = await makeAndSave(context, job.itemId, size);
+  refuseIfChangedMeanwhile(context.db, item);
   setItemMediaDetails(context.db, job.itemId, result.details);
 }
 

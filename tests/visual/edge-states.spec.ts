@@ -1,8 +1,6 @@
 // The design gate's edge states E1–E6 (docs/DESIGN-BRIEF.md, Edge states). E2 and E6 are
 // captured on the shared server; E1 and E3–E5 each need a library in another state, so they
 // start a small server of their own (tests/support/start-state-server.ts).
-import { spawn } from 'node:child_process';
-
 import { expect, test } from '@playwright/test';
 
 import {
@@ -12,9 +10,10 @@ import {
   settlePointerAndFocus,
   waitForFontsAndImages,
 } from '../support/screenshots.js';
+import { startStateServerProcess, stopStateServer } from '../support/state-server-process.js';
 
+import type { StateServer } from '../support/state-server-process.js';
 import type { Page } from '@playwright/test';
-import type { ChildProcess } from 'node:child_process';
 
 /**
  * One port per state server, kept apart from the shared server's and the other specs'. Fixed
@@ -23,70 +22,15 @@ import type { ChildProcess } from 'node:child_process';
 const STATE_PORTS = { 'empty-unsorted': 47694, offline: 47695, indexing: 47696 } as const;
 type State = keyof typeof STATE_PORTS;
 
-/** How long a state server may take to index its copy and make its thumbnails. */
-const STATE_SERVER_WAIT_MS = 240_000;
-
-/** A state server and the address it answers on. */
-type StateServer = { readonly process: ChildProcess; readonly url: string };
-
 test.describe.configure({ timeout: 660_000 });
 
 test.beforeEach(async ({ page }) => {
   await freezeClock(page);
 });
 
-/**
- * Waits until a server answers its health check; state servers listen only once ready. Stops
- * waiting at once if the server has exited, whose error is then on the test's output.
- */
-async function waitForServer(child: ChildProcess, url: string): Promise<void> {
-  const deadline = Date.now() + STATE_SERVER_WAIT_MS;
-  while (Date.now() < deadline) {
-    if (hasExited(child)) {
-      throw new Error(`The state server at ${url} exited before it was ready.`);
-    }
-    try {
-      if ((await fetch(`${url}/healthz`)).ok) {
-        return;
-      }
-    } catch {
-      // Not listening yet: it listens only once its thumbnails are made.
-    }
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  throw new Error(`The state server at ${url} didn't start.`);
-}
-
-/** Starts a state server and waits for it. */
+/** Starts a state server on its own port and waits for it. */
 async function startStateServer(state: State): Promise<StateServer> {
-  const port = STATE_PORTS[state];
-  const child = spawn(process.execPath, ['tests/support/start-state-server.ts'], {
-    env: { ...process.env, MORGUE_STATE: state, MORGUE_PORT: String(port) },
-    stdio: ['ignore', 'ignore', 'inherit'],
-  });
-  const url = `http://127.0.0.1:${String(port)}`;
-  try {
-    await waitForServer(child, url);
-  } catch (error) {
-    child.kill();
-    throw error;
-  }
-  return { process: child, url };
-}
-
-/** Says whether a child process has ended, by itself or from a signal. */
-function hasExited(child: ChildProcess): boolean {
-  return child.exitCode !== null || child.signalCode !== null;
-}
-
-/** Stops a state server and waits for it to exit. */
-async function stopStateServer(server: StateServer | undefined): Promise<void> {
-  if (server === undefined || hasExited(server.process)) {
-    return;
-  }
-  const exited = new Promise((resolve) => server.process.once('exit', resolve));
-  server.process.kill();
-  await exited;
+  return startStateServerProcess(state, STATE_PORTS[state]);
 }
 
 /** Starts a drag of one file over the page, as Explorer does. */

@@ -19,12 +19,12 @@ export type QueueLane = {
 };
 
 /**
- * Images, PDFs and pages share one lane sized to half the cores; videos get their own, with at
- * most two ffmpeg processes.
+ * Images, PDFs, pages and hash jobs share one lane sized to half the cores; videos get their
+ * own, with at most two ffmpeg processes.
  */
 export const DEFAULT_LANES: readonly QueueLane[] = [
   {
-    types: ['thumb-image', 'thumb-pdf', 'thumb-pages'],
+    types: ['thumb-image', 'thumb-pdf', 'thumb-pages', 'hash'],
     limit: Math.max(1, Math.floor(os.availableParallelism() / 2)),
   },
   { types: ['thumb-video'], limit: 2 },

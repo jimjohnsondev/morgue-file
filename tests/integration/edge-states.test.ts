@@ -80,6 +80,7 @@ beforeAll(async () => {
     }),
     start: () => undefined,
     indexing: () => indexing,
+    controlIndexing: () => Promise.resolve(),
     whenIndexed: () => Promise.resolve(),
     stop: () => Promise.resolve(),
   };
@@ -218,7 +219,7 @@ describe('E4: original missing', () => {
 
 describe('E5: first index running', () => {
   it('shows the bar under the tabs and the count in the footer while a scan runs', async () => {
-    indexing = { found: 12_400, expected: 48_000 };
+    indexing = { found: 12_400, expected: 48_000, isPaused: false };
     const body = await getPage('/');
     expect(body).toContain('<b>Indexing 12,400 of 48,000 files</b>');
     expect(body).toContain('max="48000" value="12400"');
@@ -227,7 +228,7 @@ describe('E5: first index running', () => {
   });
 
   it('shows how many files were found before the total has been counted', async () => {
-    indexing = { found: 900, expected: undefined };
+    indexing = { found: 900, expected: undefined, isPaused: false };
     const body = await getPage('/photos');
     expect(body).toContain('<b>Indexing 900 files</b>');
     expect(body).not.toContain(' of 48,000');

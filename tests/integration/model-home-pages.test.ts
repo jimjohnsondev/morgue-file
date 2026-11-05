@@ -40,6 +40,7 @@ async function startSite(library: TempLibrary): Promise<TestSite> {
     }),
     start: () => undefined,
     indexing: () => undefined,
+    controlIndexing: () => Promise.resolve(),
     whenIndexed: () => Promise.resolve(),
     stop: () => Promise.resolve(),
   };
