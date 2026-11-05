@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/jimjohnsondev/morgue-file/compare/v1.6.0...v1.6.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* PDF pages in the reader keep their shape in narrow windows ([#36](https://github.com/jimjohnsondev/morgue-file/issues/36)) ([495ff31](https://github.com/jimjohnsondev/morgue-file/commit/495ff31a756d3bc527d38fc63c908adc241274b9))
+
 ## [1.6.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.5.0...v1.6.0) (2026-11-05)
 
 
