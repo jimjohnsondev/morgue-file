@@ -19,8 +19,12 @@ export async function freezeClock(page: Page): Promise<void> {
   await page.clock.setFixedTime(FROZEN_TIME);
 }
 
-/** Takes focus off whatever was last clicked, so no focus ring shows in the capture. */
-export async function blurFocus(page: Page): Promise<void> {
+/**
+ * Moves the pointer to the page's top-left corner and takes focus off whatever was last
+ * clicked, so no hover style or focus ring shows in the capture.
+ */
+export async function settlePointerAndFocus(page: Page): Promise<void> {
+  await page.mouse.move(0, 0);
   await page.evaluate(() => {
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
@@ -45,22 +49,29 @@ export async function waitForFontsAndImages(page: Page): Promise<void> {
   });
 }
 
-/** Says whether every thumbnail on the page is a real one, not the 1 px stand-in. */
-async function hasEveryThumbnail(page: Page): Promise<boolean> {
+/**
+ * Says whether the page is settled: the server's startup scan has finished (no E5 bar) and every
+ * thumbnail on the page is a real one, not the 1 px stand-in.
+ */
+async function isSettled(page: Page): Promise<boolean> {
   await waitForFontsAndImages(page);
+  if ((await page.locator('.status-band--indexing').count()) > 0) {
+    return false;
+  }
   return page
     .locator('img[data-thumb]')
     .evaluateAll((images: HTMLImageElement[]) => images.every((image) => image.naturalWidth > 1));
 }
 
 /**
- * Opens a page and reloads it until every thumbnail on it has been made. The shared server
- * indexes as the tests start, and an item's details arrive with its thumbnail.
+ * Opens a page and reloads it until the startup scan has finished and every thumbnail on it has
+ * been made. The shared server indexes as the tests start, and an item's details arrive with its
+ * thumbnail.
  */
-export async function openWhenThumbnailsExist(page: Page, url: string): Promise<void> {
+export async function openWhenSettled(page: Page, url: string): Promise<void> {
   await page.goto(url);
   await expect(async () => {
     await page.reload();
-    expect(await hasEveryThumbnail(page)).toBe(true);
+    expect(await isSettled(page)).toBe(true);
   }).toPass({ timeout: THUMBNAIL_WAIT_MS, intervals: [2000] });
 }

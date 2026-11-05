@@ -9,7 +9,7 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import {
-  blurFocus,
+  settlePointerAndFocus,
   freezeClock,
   SCREENSHOT_OPTIONS,
   waitForFontsAndImages,
@@ -48,7 +48,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  if (server?.exitCode === null) {
+  if (server?.exitCode === null && server.signalCode === null) {
     const running = server;
     const exited = new Promise((resolve) => running.once('exit', resolve));
     running.kill();
@@ -69,6 +69,6 @@ test('R30: the setup page with Keep data with the app', async ({ page }) => {
 
 test('R30: the setup page with Use a folder I choose', async ({ page }) => {
   await page.getByLabel('Use a folder I choose').check();
-  await blurFocus(page);
+  await settlePointerAndFocus(page);
   await expect(page).toHaveScreenshot('setup-use-a-folder-i-choose.png', SCREENSHOT_OPTIONS);
 });

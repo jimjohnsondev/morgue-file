@@ -7,15 +7,19 @@ import { expect, test } from '@playwright/test';
 
 import {
   freezeClock,
-  openWhenThumbnailsExist,
+  openWhenSettled,
   SCREENSHOT_OPTIONS,
+  settlePointerAndFocus,
   waitForFontsAndImages,
 } from '../support/screenshots.js';
 
 import type { Page } from '@playwright/test';
 import type { ChildProcess } from 'node:child_process';
 
-/** One port per state server, kept apart from the shared server's and the other specs'. */
+/**
+ * One port per state server, kept apart from the shared server's and the other specs'. Fixed
+ * ports and homes suit a fresh CI runner; locally, stop any server left by a crashed run first.
+ */
 const STATE_PORTS = { 'empty-unsorted': 47694, offline: 47695, indexing: 47696 } as const;
 type State = keyof typeof STATE_PORTS;
 
@@ -38,8 +42,8 @@ test.beforeEach(async ({ page }) => {
 async function waitForServer(child: ChildProcess, url: string): Promise<void> {
   const deadline = Date.now() + STATE_SERVER_WAIT_MS;
   while (Date.now() < deadline) {
-    if (child.exitCode !== null) {
-      throw new Error(`The state server at ${url} exited with code ${String(child.exitCode)}.`);
+    if (hasExited(child)) {
+      throw new Error(`The state server at ${url} exited before it was ready.`);
     }
     try {
       if ((await fetch(`${url}/healthz`)).ok) {
@@ -61,13 +65,23 @@ async function startStateServer(state: State): Promise<StateServer> {
     stdio: ['ignore', 'ignore', 'inherit'],
   });
   const url = `http://127.0.0.1:${String(port)}`;
-  await waitForServer(child, url);
+  try {
+    await waitForServer(child, url);
+  } catch (error) {
+    child.kill();
+    throw error;
+  }
   return { process: child, url };
+}
+
+/** Says whether a child process has ended, by itself or from a signal. */
+function hasExited(child: ChildProcess): boolean {
+  return child.exitCode !== null || child.signalCode !== null;
 }
 
 /** Stops a state server and waits for it to exit. */
 async function stopStateServer(server: StateServer | undefined): Promise<void> {
-  if (server?.process.exitCode !== null) {
+  if (server === undefined || hasExited(server.process)) {
     return;
   }
   const exited = new Promise((resolve) => server.process.once('exit', resolve));
@@ -86,24 +100,23 @@ async function startFileDrag(page: Page): Promise<void> {
 }
 
 test('E2: a search with no results', async ({ page }) => {
-  await page.goto('/search?q=tag%3Ahands+model%3ANobody');
-  await waitForFontsAndImages(page);
+  await openWhenSettled(page, '/search?q=tag%3Ahands+model%3ANobody');
   await expect(page).toHaveScreenshot('e2-search-no-results.png', SCREENSHOT_OPTIONS);
 });
 
 test('E6: the outline while a file is dragged over the page', async ({ page }) => {
-  await openWhenThumbnailsExist(page, '/photos/figure');
+  await openWhenSettled(page, '/photos/figure');
   await startFileDrag(page);
   await expect(page.locator('[data-drop-outline]')).toBeVisible();
   await expect(page).toHaveScreenshot('e6-drop-outline.png', SCREENSHOT_OPTIONS);
 });
 
 test('E6: the Saved to Unsorted notice after a drop', async ({ page }) => {
-  await page.goto('/unsorted');
+  await openWhenSettled(page, '/unsorted');
   const itemHref = await page.locator('.thumb-card__label').first().getAttribute('href');
   const itemId = itemHref?.match(/^\/item\/(\d+)/)?.[1];
   expect(itemId).toBeDefined();
-  await openWhenThumbnailsExist(page, `/photos/figure?saved=${String(itemId)}`);
+  await openWhenSettled(page, `/photos/figure?saved=${String(itemId)}`);
   await expect(page.getByRole('status').filter({ hasText: 'Saved to Unsorted' })).toBeVisible();
   await expect(page).toHaveScreenshot('e6-saved-notice.png', SCREENSHOT_OPTIONS);
 });
@@ -137,15 +150,16 @@ test.describe('E3 and E4: the Reference folder offline', () => {
   });
 
   test('E3: the offline band above a page whose thumbnails still show', async ({ page }) => {
-    await openWhenThumbnailsExist(page, `${String(server?.url)}/photos/figure`);
+    await openWhenSettled(page, `${String(server?.url)}/photos/figure`);
     await expect(page.getByText('Reference folder (E:\\Reference) is offline.')).toBeVisible();
     await expect(page).toHaveScreenshot('e3-drive-offline.png', SCREENSHOT_OPTIONS);
   });
 
   test('E4: an original that can’t be opened shows its thumbnail enlarged', async ({ page }) => {
-    await openWhenThumbnailsExist(page, `${String(server?.url)}/photos/figure`);
+    await openWhenSettled(page, `${String(server?.url)}/photos/figure`);
     await page.locator('.thumb-card a').first().click();
     await waitForFontsAndImages(page);
+    await settlePointerAndFocus(page);
     await expect(page.getByText('The original can’t be opened right now.')).toBeVisible();
     await expect(page).toHaveScreenshot('e4-original-missing.png', SCREENSHOT_OPTIONS);
   });
@@ -162,7 +176,9 @@ test.describe('E5: the first index running', () => {
   });
 
   test('E5: the slim bar under the nav and the footer counters', async ({ page }) => {
-    await openWhenThumbnailsExist(page, `${String(server?.url)}/photos/figure`);
+    // The held scan's bar never goes away; the server made every thumbnail before listening.
+    await page.goto(`${String(server?.url)}/photos/figure`);
+    await waitForFontsAndImages(page);
     const bar = page.locator('.status-band--indexing');
     await expect(bar).toContainText('12,400');
     await expect(bar).toHaveScreenshot('e5-indexing-bar.png', SCREENSHOT_OPTIONS);
