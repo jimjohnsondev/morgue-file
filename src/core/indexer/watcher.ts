@@ -41,6 +41,8 @@ export type WatcherOptions = {
  */
 export type HeldWatcher = RootWatcher & {
   readonly release: () => void;
+  /** Says whether it has stopped, closed or lost by the system, so it watches nothing. */
+  readonly isClosed: () => boolean;
 };
 
 /** A running watcher. */
@@ -229,6 +231,7 @@ export function startHeldWatcher(options: WatcherOptions): HeldWatcher {
     );
   }
   return {
+    isClosed: () => state.isClosed,
     release: () => {
       state.isHeld = false;
       if (state.changed.size > 0) {

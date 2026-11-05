@@ -29,7 +29,8 @@ const STATUS_CHANNEL = 'morgue-file-status';
  * Keeps one /events stream for all of the archive's tabs, not one per tab: the browser allows
  * only six connections to the server, and every open tab would take one for good. The tab that
  * gets the lock opens the stream and passes each update to the others; when it closes, the lock
- * goes to another tab, which opens the stream in its place.
+ * goes to another tab, which opens the stream in its place. A tab that joins later hears only
+ * the changes after it opened, which is enough: its page was drawn with the status of that moment.
  */
 function followStatus(): void {
   if (document.querySelector('[data-status-slot]') === null) {

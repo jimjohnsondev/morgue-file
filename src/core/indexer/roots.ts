@@ -61,6 +61,11 @@ type IndexingState = {
   watcher: HeldWatcher | undefined;
   /** True while the root's folder is known to be gone, until a check finds it back. */
   isOffline: boolean;
+  /**
+   * True when the last full scan didn't finish, or changes during it may have been missed (its
+   * watcher was lost), so the next check scans again rather than only restarting the watcher.
+   */
+  needsScan: boolean;
   checking: ReturnType<typeof setInterval> | undefined;
 };
 
@@ -149,9 +154,12 @@ async function scanThenWatch(state: IndexingState): Promise<void> {
       await watcher?.close();
       return;
     }
-    state.watcher = watcher;
-    watcher?.release();
+    // A watcher lost during the scan saw nothing after that point: scan again at the next check.
+    state.needsScan = watcher?.isClosed() === true;
+    state.watcher = watcher?.isClosed() === true ? undefined : watcher;
+    state.watcher?.release();
   } catch (error) {
+    state.needsScan = true;
     if (!state.abort.signal.aborted) {
       options.log.error({ err: error }, 'Scan of the Reference folder failed; retrying later');
     }
@@ -191,20 +199,41 @@ async function checkOnRoot(state: IndexingState): Promise<void> {
   if (state.scanning !== undefined || state.abort.signal.aborted) {
     return;
   }
-  let isPresent = false;
-  try {
-    isPresent = await isReferenceFolderPresent(rootPathOf(state));
-  } catch (error) {
-    state.options.log.warn({ err: error }, 'Could not look for the Reference folder');
+  const isPresent = await isRootPresent(state);
+  if (isPresent === undefined) {
     return;
   }
-  if (!isPresent && !state.isOffline) {
-    await goOffline(state);
-  } else if (isPresent && (state.isOffline || state.watcher === undefined)) {
+  if (!isPresent) {
+    if (!state.isOffline) {
+      await goOffline(state);
+    }
+  } else if (state.isOffline || state.needsScan) {
     state.isOffline = false;
     setRootStatus(state.options.db, state.options.rootId, 'online');
     startScan(state);
+  } else if (state.watcher === undefined) {
+    restartWatcher(state);
   }
+}
+
+/** Says whether the root's folder is there now, or undefined if looking for it failed. */
+async function isRootPresent(state: IndexingState): Promise<boolean | undefined> {
+  try {
+    return await isReferenceFolderPresent(rootPathOf(state));
+  } catch (error) {
+    state.options.log.warn({ err: error }, 'Could not look for the Reference folder');
+    return undefined;
+  }
+}
+
+/**
+ * Starts the watcher again after it couldn't start, without a full scan: the last scan finished,
+ * and a full scan every 30 s on a folder that can't be watched would keep the E5 bar up for good.
+ */
+function restartWatcher(state: IndexingState): void {
+  const watcher = startWatchingFor(state, rootPathOf(state));
+  state.watcher = watcher;
+  watcher?.release();
 }
 
 /** Creates the state of a root's indexing, with nothing running yet. */
@@ -217,6 +246,7 @@ function createIndexingState(options: RootIndexingOptions): IndexingState {
     scanning: undefined,
     watcher: undefined,
     isOffline: false,
+    needsScan: false,
     checking: undefined,
   };
 }
