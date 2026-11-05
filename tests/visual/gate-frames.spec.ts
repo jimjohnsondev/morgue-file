@@ -4,10 +4,10 @@
 import { expect, test } from '@playwright/test';
 
 import {
-  settlePointerAndFocus,
   freezeClock,
   openWhenSettled,
   SCREENSHOT_OPTIONS,
+  settlePointerAndFocus,
   waitForFontsAndImages,
 } from '../support/screenshots.js';
 
