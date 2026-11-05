@@ -20,9 +20,12 @@ function watchPageDrags(): () => boolean {
   document.addEventListener('dragstart', () => {
     isDragging = true;
   });
-  document.addEventListener('dragend', () => {
-    isDragging = false;
-  });
+  // A dragged element removed mid-drag may never send dragend, so a drop ends it too.
+  for (const ending of ['dragend', 'drop']) {
+    document.addEventListener(ending, () => {
+      isDragging = false;
+    });
+  }
   return () => isDragging;
 }
 
