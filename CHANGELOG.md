@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.5.0...v1.6.0) (2026-11-05)
+
+
+### Features
+
+* edge states E1–E6 ([#33](https://github.com/jimjohnsondev/morgue-file/issues/33)) ([a79af5c](https://github.com/jimjohnsondev/morgue-file/commit/a79af5ca9b2a5963f0449de59269bbd18fdf1858))
+
 ## [1.5.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.4.0...v1.5.0) (2026-11-04)
 
 
