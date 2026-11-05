@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.6.1...v1.7.0) (2026-11-05)
+
+
+### Features
+
+* watch the Reference folder, recognize moves, re-check offline roots, stream progress ([#38](https://github.com/jimjohnsondev/morgue-file/issues/38)) ([b9b332f](https://github.com/jimjohnsondev/morgue-file/commit/b9b332f671980ec38fc15ce28e0f9977e580b6df))
+
 ## [1.6.1](https://github.com/jimjohnsondev/morgue-file/compare/v1.6.0...v1.6.1) (2026-11-05)
 
 
