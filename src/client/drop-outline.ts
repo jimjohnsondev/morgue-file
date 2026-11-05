@@ -11,23 +11,42 @@ function isDroppable(event: DragEvent): boolean {
   return DROPPABLE_TYPES.some((type) => types.includes(type));
 }
 
+/**
+ * Tracks drags that start on the page itself: a thumbnail or link dragged within the page
+ * carries its address too, and that isn't a drop. Returns whether one is under way.
+ */
+function watchPageDrags(): () => boolean {
+  let isDragging = false;
+  document.addEventListener('dragstart', () => {
+    isDragging = true;
+  });
+  document.addEventListener('dragend', () => {
+    isDragging = false;
+  });
+  return () => isDragging;
+}
+
 /** Shows the outline while a droppable drag is over the page, and hides it when it ends. */
 function watchDrags(outline: HTMLElement): void {
   // dragenter and dragleave fire for every element crossed, so count them to know when the drag
   // has really left the window.
   let depth = 0;
+  const isDragFromPage = watchPageDrags();
+  function isDropFromOutside(event: DragEvent): boolean {
+    return !isDragFromPage() && isDroppable(event);
+  }
   function hide(): void {
     depth = 0;
     outline.setAttribute('hidden', '');
   }
   document.addEventListener('dragenter', (event) => {
-    if (isDroppable(event)) {
+    if (isDropFromOutside(event)) {
       depth += 1;
       outline.removeAttribute('hidden');
     }
   });
   document.addEventListener('dragleave', (event) => {
-    if (isDroppable(event)) {
+    if (isDropFromOutside(event)) {
       depth = Math.max(0, depth - 1);
       if (depth === 0) {
         hide();
@@ -35,13 +54,13 @@ function watchDrags(outline: HTMLElement): void {
     }
   });
   document.addEventListener('dragover', (event) => {
-    if (isDroppable(event)) {
+    if (isDropFromOutside(event)) {
       // Allowing the drop here is what keeps the browser from navigating to the file.
       event.preventDefault();
     }
   });
   document.addEventListener('drop', (event) => {
-    if (isDroppable(event)) {
+    if (isDropFromOutside(event)) {
       event.preventDefault();
       hide();
     }

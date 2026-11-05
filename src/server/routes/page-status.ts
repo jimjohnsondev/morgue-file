@@ -46,7 +46,8 @@ function sourceHostOf(db: Db, itemId: number): string | undefined {
 function withoutSaved(url: string): string {
   const address = new URL(url, 'http://localhost');
   address.searchParams.delete('saved');
-  return `${address.pathname}${address.search}`;
+  // A path that collapses to `//host` would read as another site's address; keep it on this one.
+  return `${address.pathname.replace(/^\/+/, '/')}${address.search}`;
 }
 
 /** The notice for the item a drop just made, or none if `saved` names no item. */

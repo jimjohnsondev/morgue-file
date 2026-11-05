@@ -76,17 +76,17 @@ type StartedLibrary = {
  */
 async function countExpectedFiles(
   library: Omit<StartedLibrary, 'scanning'>,
-  referenceDir: string,
+  count: { readonly referenceDir: string; readonly signal: AbortSignal },
   log: FastifyBaseLogger,
 ): Promise<void> {
   try {
-    const expected = await countFiles(referenceDir, library.abortScan.signal);
+    const expected = await countFiles(count.referenceDir, count.signal);
     const { current } = library.progress;
     if (current !== undefined) {
       library.progress.current = { found: current.found, expected };
     }
   } catch (error) {
-    if (!library.abortScan.signal.aborted) {
+    if (!count.signal.aborted) {
       log.warn({ err: error }, 'Could not count the Reference folder’s files');
     }
   }
@@ -107,7 +107,11 @@ async function scanReferenceFolder(
   log: FastifyBaseLogger,
 ): Promise<void> {
   library.progress.current = { found: 0, expected: undefined };
-  void countExpectedFiles(library, referenceDir, log);
+  // The count stops when the scan does, so a scan that finishes first isn't followed by a
+  // second walk of the whole folder.
+  const counting = new AbortController();
+  const signal = AbortSignal.any([library.abortScan.signal, counting.signal]);
+  void countExpectedFiles(library, { referenceDir, signal }, log);
   try {
     const summary = await scanRoot({
       db: library.db,
@@ -125,6 +129,7 @@ async function scanReferenceFolder(
       log.error({ err: error }, 'Scan of the Reference folder failed');
     }
   }
+  counting.abort();
   library.progress.current = undefined;
   library.queue.wake();
 }
