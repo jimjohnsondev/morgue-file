@@ -33,7 +33,7 @@
     "test:watch": "vitest",
     "check": "npm run format:check && npm run lint && npm run check:readme && npm run typecheck && npm run test",
     "test:e2e": "npm run build && playwright test --project=e2e",
-    "test:visual": "npm run build && playwright test --project=visual --pass-with-no-tests",
+    "test:visual": "npm run build && playwright test --project=visual",
     "test:perf": "npm run build && playwright test --project=perf",
     "package": "node scripts/package-win.ts",
     "setup-repo": "node scripts/setup-repo.ts",

@@ -63,8 +63,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-playwright
-      # Screenshot specs arrive with the design gate's baseline PR; until then the job passes with none.
-      - run: npx playwright test --project=visual --pass-with-no-tests
+      - run: npx playwright test --project=visual
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

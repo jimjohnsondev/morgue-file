@@ -258,7 +258,7 @@ Every page is plain HTML rendered on the server from one of three templates. Eve
 - The banner is the canvas's banner SVG, copied to `src/styles/banner.svg` and bundled by Vite as a file (`assetsInlineLimit: 0`, since the CSP refuses `data:` images); the asset route serves `.svg` too. `tokens.css` gained the few extra shades the canvas uses (the dark ground, bevel edges, text on dark bars).
 - A page or thumbnail asked for before the library is open is refused with `library-unavailable` (503). Home still renders, without counts.
 - Query engine (`core/query/`): `parse-query.ts` never fails (anything unknown is a word), `canonical-query.ts` writes the canonical q, `compile-query.ts` builds a condition on `items` from fixed SQL fragments with every value bound. It is the one place outside `core/db/repositories` that writes SQL text, as this doc's layout says; the repositories run it. Until full-text search arrives in PR 15, words and phrases match the file path with `LIKE`.
-- Tests: the e2e server's home (`tests/support/make-e2e-home.ts`) now indexes the fixture archive and applies `seed.json` before the server starts, so e2e pages show the brief's content. The R18 perf test starts its own server on a copy of `perf.db`. Screenshot specs for frames 1–4 and 11 are not added yet: no baseline may exist before the design gate, and a spec without one fails, so they arrive with the gate's baseline PR, together with frames 5–12 and E1–E6.
+- Tests: the e2e server's home (`tests/support/make-e2e-home.ts`) now indexes the fixture archive and applies `seed.json` before the server starts, so e2e pages show the brief's content. The R18 perf test starts its own server on a copy of `perf.db`. Screenshot specs for frames 1–4 and 11 arrived with the gate's baseline PR, together with frames 5–12 and E1–E6 (see Screenshot specs).
 - Not built yet, so its links answer 404: `/settings` (PR 13). `/models` and the collections list arrived in PR 9. `/item/<id>` arrived in PR 8.
 
 **As built in PR 8.**
@@ -288,7 +288,7 @@ Every page is plain HTML rendered on the server from one of three templates. Eve
 - E6's outline: `client/drop-outline.ts` shows `[data-drop-outline]` while a drag carrying files or a browser address is over the page, and cancels the drop so the browser doesn't open the file in place of the archive. Saving the drop is PR 12.
 - Left out of the mocks for now: E2's "search tips" link (there's no tips page until the filter bar, PR 15); E3's "thumbnails from cache" note in the grid title and the "offline" caption under each card (the band says it once for the whole page); and E5's "Welcome" panel, which stands for whatever page is open.
 - E3's band counts the items the offline root keeps (4,572 on the fixture archive). The brief's 4,312 is the archive's image count; that sentence counts every item, as the brief's own words say.
-- Tests: `tests/integration/edge-states.test.ts` draws E1–E6 against a temp library put in each state; `tests/e2e/edge-states.spec.ts` drives E2 and E6 in Chromium on the fixture archive. E1 and E3–E5 can't be reached on the shared e2e server (its Unsorted holds 54 items, its drive is online and indexed before the tests start), so the gate's screenshot specs need a server of their own for them: a home whose Unsorted is empty, one whose Reference folder is gone, and, for E5, a scan held mid-way or its counters masked.
+- Tests: `tests/integration/edge-states.test.ts` draws E1–E6 against a temp library put in each state; `tests/e2e/edge-states.spec.ts` drives E2 and E6 in Chromium on the fixture archive. E1 and E3–E5 can't be reached on the shared e2e server (its Unsorted holds 54 items, its drive is online and indexed before the tests start), so the gate's screenshot specs start a server of their own for them (see Screenshot specs).
 
 ## Search
 
@@ -362,6 +362,12 @@ Every PRD acceptance line becomes an automated test. Every test runs on generate
 
 **Stable screenshots.** The viewport is 2560×1440 at device scale 1, and the clock is frozen at 31 Oct 2026. Only system fonts are used. Tests start after every thumbnail exists, then wait for `document.fonts.ready` and for every image to finish loading. The caret is hidden.
 
+**Screenshot specs (design gate).** `tests/visual/` holds three specs, with shared waits in `tests/support/screenshots.ts`. Every baseline lives in `tests/visual/__screenshots__/<spec file>/`, with no platform suffix, since only the Windows runner makes them.
+
+- `gate-frames.spec.ts` captures frames 1–12 from the shared server. Each test reloads its page until every `img[data-thumb]` is a real thumbnail rather than the 1 px stand-in, since the server is still making them as the tests start; Item frames wait on the Index page they're opened from. Frame 7 seeks to the brief's playhead (0:42.12, frame 1,264) after setting the loop to 0:58.50–1:33.60; frame 8 jumps to pages 12–13 of LDQ No. 12.
+- `edge-states.spec.ts` captures E2 and E6 on the shared server, and E1 and E3–E5 on small servers of their own, started by `tests/support/start-state-server.ts` with `MORGUE_STATE` set to `empty-unsorted`, `offline` or `indexing`. Each copies the first 24 Figure photos and 3 Books from the fixture archive (keeping their file times, so the footer's day is the fixture's), files them, makes every thumbnail and only then listens. `offline` then points root 1 at `E:\Reference` and marks it offline, as on the brief's E3 and E4. `indexing` reports a scan held at 12,400 of 48,000 files, the brief's E5 counters, through a wrapped `LibraryRuntime`; nothing in `src/` knows about it. Their counts are the small copy's, not the brief's.
+- `setup-page.spec.ts` captures the setup page once per data choice, on a fixed empty home folder and a fixed `LOCALAPPDATA`, so the suggested folders are the same on every run.
+
 **Baseline updates.**
 
 - Baselines are only ever generated on the CI Windows runner, by `update-baselines.yml`, which commits the PNGs to the PR's branch.
@@ -384,7 +390,7 @@ A merged PR becomes a downloadable Windows zip with no human step. The only manu
 As built in PR 2:
 
 - The jobs are split across two workflows. `ci.yml` runs `lint-typecheck`, `unit`, `e2e`, `visual` and `perf` on `windows-2025` for every push to a PR. `pr-checks.yml` runs `pr-title` and `baseline-guard` on Linux and also re-runs when the title or labels change. Keeping them apart means adding a label never re-runs, or skips, the build and test jobs; GitHub can count a skipped required job as passing.
-- `perf` got its first test in PR 7. `visual` runs with `--pass-with-no-tests` until the design gate's baseline PR adds the screenshot specs.
+- `perf` got its first test in PR 7. `visual` got its specs in the design gate's baseline PR; `update-baselines.yml` still passes `--pass-with-no-tests`, so it can run on a branch that has none.
 - The Playwright jobs share a composite action, `.github/actions/setup-playwright`: Node from `.nvmrc`, `npm ci`, a cached Chromium, then `npm run build`. Tests run the built server on port 47690.
 - `update-baselines.yml` runs in two jobs so `RELEASE_TOKEN` never shares a workspace with the branch's own code. `render` installs, builds and updates the screenshots on Windows with no secrets, then uploads them. `push` makes a fresh Linux checkout, runs nothing from the branch, and commits them with `RELEASE_TOKEN`, with git hooks and global config turned off. A push made with `GITHUB_TOKEN` wouldn't start CI on the new commit. It fails on `main`. It adds and changes baselines; a deleted screenshot test leaves its old PNG for the PR to remove by hand.
 - `baseline-guard` lists the PR's files, including the old path of a rename, through the paginated REST API, and fails if it can't list them all, so a large baseline PR can't slip through.
