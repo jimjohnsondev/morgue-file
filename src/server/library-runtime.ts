@@ -6,6 +6,7 @@ import path from 'node:path';
 import { openLibrary } from '#core/db/library.js';
 import { REFERENCE_ROOT_ID } from '#core/db/repositories/roots.js';
 import { startRootIndexing } from '#core/indexer/roots.js';
+import { queueMissingHashes, runHashJob } from '#core/jobs/hash-jobs.js';
 import { DEFAULT_LANES, startJobQueue } from '#core/jobs/queue.js';
 import { THUMBS_FOLDER_NAME } from '#core/jobs/thumbnail-files.js';
 import { markThumbnailFailed, runThumbnailJob } from '#core/jobs/thumbnails.js';
@@ -69,6 +70,29 @@ type StartedLibrary = {
   readonly indexing: RootIndexing | undefined;
 };
 
+/** Starts the job queue: thumbnails, and the hash jobs of items an earlier release indexed. */
+function startQueue(context: ThumbnailContext, log: FastifyBaseLogger): JobQueue {
+  const { db } = context;
+  // Items an earlier release indexed have no partial hash; without one they can't be
+  // recognized after a move.
+  queueMissingHashes(db, new Date());
+  return startJobQueue({
+    db,
+    lanes: DEFAULT_LANES,
+    runJob: async (job) =>
+      job.type === 'hash' ? runHashJob(db, job) : runThumbnailJob(context, job),
+    onGiveUp: (job, error) => {
+      if (job.type !== 'hash') {
+        markThumbnailFailed(db, job);
+      }
+      log.warn({ err: error, itemId: job.itemId, type: job.type }, 'Gave up on a job');
+    },
+    onQueueError: (job, error) => {
+      log.error({ err: error, jobId: job.id }, 'Could not record a job’s outcome');
+    },
+  });
+}
+
 /** Opens the library and starts its queue and the Reference folder's indexing. */
 function startLibrary(
   options: LibraryRuntimeOptions,
@@ -85,23 +109,15 @@ function startLibrary(
     log.warn('ffmpeg and ffprobe were not found; video thumbnails will fail.');
   }
   const context = { db, thumbsDir: path.join(install.dataDir, THUMBS_FOLDER_NAME), mediaTools };
-  const queue = startJobQueue({
-    db,
-    lanes: DEFAULT_LANES,
-    runJob: async (job) => runThumbnailJob(context, job),
-    onGiveUp: (job, error) => {
-      markThumbnailFailed(db, job);
-      log.warn({ err: error, itemId: job.itemId }, 'Gave up making a thumbnail');
-    },
-    onQueueError: (job, error) => {
-      log.error({ err: error, jobId: job.id }, 'Could not record a job’s outcome');
-    },
-  });
+  const queue = startQueue(context, log);
   const indexing =
     install.referenceDir === undefined
       ? undefined
       : startRootIndexing({
-          ...{ db, rootId: REFERENCE_ROOT_ID, log, wakeQueue: queue.wake },
+          db,
+          rootId: REFERENCE_ROOT_ID,
+          log,
+          wakeQueue: queue.wake,
           ...(options.recheckMs === undefined ? {} : { recheckMs: options.recheckMs }),
           ...(options.settleMs === undefined ? {} : { settleMs: options.settleMs }),
         });

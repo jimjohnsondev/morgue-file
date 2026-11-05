@@ -57,3 +57,22 @@ test('pages follow /events for the live notices', async ({ page }) => {
   const request = await opened;
   expect((await request.response())?.status()).toBe(200);
 });
+
+test('eight open tabs share one /events stream, so every tab still loads', async ({ context }) => {
+  let streams = 0;
+  context.on('request', (request) => {
+    if (request.url().endsWith('/events')) {
+      streams += 1;
+    }
+  });
+  const pages = [];
+  for (let index = 0; index < 8; index += 1) {
+    const page = await context.newPage();
+    await page.goto(`${server!.url}/photos/figure`, { timeout: 10_000 });
+    pages.push(page);
+  }
+  expect(streams).toBe(1);
+  // A further page load in the last tab still finds a free connection.
+  await pages[7]!.goto(`${server!.url}/library/books`, { timeout: 10_000 });
+  await expect(pages[7]!.locator('.thumb-card').first()).toBeVisible();
+});

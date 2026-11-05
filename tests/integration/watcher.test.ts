@@ -146,6 +146,30 @@ describe('R1: watched folders', () => {
     expect(itemAt('Books/Hands Sketchbook')).toMatchObject({ id: book.id, kind: 'pagefolder' });
   });
 
+  it('R1: a file added during the startup scan, where the scan has already been, appears', async () => {
+    indexing = startRootIndexing({
+      db: library.db,
+      rootId: REFERENCE_ROOT_ID,
+      log: SILENT_LOG,
+      wakeQueue: () => undefined,
+    });
+    indexing.pause();
+    // Paused at its first item, the page folder in Books, so Books itself has been listed.
+    await waitFor(() => indexing!.progress()?.found !== 0);
+    await writeArchiveFile('Books/Notes on Gesture.pdf', 7000);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    indexing.resume();
+    await indexing.whenIdle();
+    const elapsed = await waitFor(() => itemAt('Books/Notes on Gesture.pdf') !== undefined);
+    expect(elapsed).toBeLessThan(R1_LIMIT_MS);
+  });
+
+  it('R1: takes in files and folders whose names are not plain ASCII', async () => {
+    await startIndexing();
+    await writeArchiveFile('Études/drapé_ü_001.jpg', 5100);
+    await waitFor(() => itemAt('Études/drapé_ü_001.jpg') !== undefined);
+  });
+
   it('R1: a deleted file is marked missing, never deleted', async () => {
     await startIndexing();
     const item = itemAt('Hands/hands_001.jpg')!;

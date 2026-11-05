@@ -22,6 +22,7 @@ export function registerIndexingApi(
     '/api/indexing/:action',
     { schema: { params: ActionParams } },
     async (request, reply) => {
+      // Refuses while no library is open; the runtime is always there once one is.
       requireLibrary(library);
       await library?.controlIndexing(request.params.action);
       return reply.code(204).send();

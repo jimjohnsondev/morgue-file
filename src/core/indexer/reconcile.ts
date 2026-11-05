@@ -78,7 +78,7 @@ type EntryOutcome = { readonly change?: Change; readonly foundAgainId?: number }
  * Folds ASCII letters to lower case and leaves the rest, matching SQLite's NOCASE on rel_path,
  * so a path matches its stored item exactly when the database would say it does.
  */
-function foldPathCase(relPath: string): string {
+export function foldPathCase(relPath: string): string {
   return relPath.replaceAll(/[A-Z]/g, (letter) => letter.toLowerCase());
 }
 
@@ -164,18 +164,27 @@ function recordEntry(
   return stored.missingSince === undefined ? {} : { foundAgainId: stored.id };
 }
 
+/** A tally with nothing counted yet. */
+function emptyTally(): WalkTally {
+  return {
+    added: 0,
+    changed: 0,
+    unchanged: 0,
+    moved: 0,
+    ignored: 0,
+    seenPaths: new Set(),
+    unreadableFolders: [],
+    maybeMoved: [],
+  };
+}
+
 /** Walks the entries, comparing each with the stored items and writing the differences. */
 async function walkAndWrite(
   run: ReconcileRun,
   entries: AsyncIterable<FoundEntry> | Iterable<FoundEntry>,
   context: { readonly known: ReadonlyMap<string, ScanState>; readonly moves: MovePool },
 ): Promise<WalkTally> {
-  const tally: WalkTally = {
-    ...{ added: 0, changed: 0, unchanged: 0, moved: 0, ignored: 0 },
-    seenPaths: new Set(),
-    unreadableFolders: [],
-    maybeMoved: [],
-  };
+  const tally = emptyTally();
   let changes: Change[] = [];
   let foundAgain: number[] = [];
   function flush(): void {

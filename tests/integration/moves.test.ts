@@ -16,6 +16,7 @@ import { insertFolderMapping, insertSubcategory } from '#core/db/repositories/su
 import { findTagNamesByItem, tagItems } from '#core/db/repositories/tags.js';
 import { readMoveHash } from '#core/indexer/moves.js';
 import { scanRoot } from '#core/indexer/scanner.js';
+import { queueMissingHashes, runHashJob } from '#core/jobs/hash-jobs.js';
 import { runThumbnailJob } from '#core/jobs/thumbnails.js';
 
 import { makeTempLibrary } from '../support/temp-library.ts';
@@ -181,5 +182,38 @@ describe('partial hashes', () => {
     updateItemFile(library.db, { id: item.id, size: item.size + 1, mtimeMs: item.mtimeMs });
     await expect(running).rejects.toThrow('changed while its thumbnail was made');
     expect(itemAt('Figure/seated_001.jpg')?.thumbState).toBe('pending');
+  });
+});
+
+describe('partial hashes of items indexed by an earlier release', () => {
+  /** Turns the library into one an earlier release made: every thumbnail done, no hash stored. */
+  function asIndexedByOldRelease(): void {
+    library.db.prepare("UPDATE jobs SET state = 'done'").run();
+    library.db.prepare('UPDATE items SET partial_hash = NULL').run();
+  }
+
+  it('queues one hash job per unhashed item, once, behind other work', async () => {
+    await writeArchiveFile('Figure/seated_002.jpg');
+    await scanAt(1);
+    asIndexedByOldRelease();
+    expect(queueMissingHashes(library.db, START)).toBe(2);
+    expect(queueMissingHashes(library.db, START)).toBe(0);
+    const job = findJob(library.db, itemAt('Figure/seated_001.jpg')!.id, 'hash')!;
+    expect(job).toMatchObject({ priority: 2, state: 'queued' });
+  });
+
+  it('R1: an item from an earlier release is recognized after a move once its hash job ran', async () => {
+    asIndexedByOldRelease();
+    queueMissingHashes(library.db, START);
+    const before = itemAt('Figure/seated_001.jpg')!;
+    await runHashJob(library.db, findJob(library.db, before.id, 'hash')!);
+    await moveFile('Figure/seated_001.jpg', 'Hands/seated_001.jpg');
+    expect(await scanAt(2)).toMatchObject({ moved: 1 });
+    expect(itemAt('Hands/seated_001.jpg')?.id).toBe(before.id);
+  });
+
+  it('leaves out items whose thumbnail job is still to run, since it stores the hash', () => {
+    library.db.prepare('UPDATE items SET partial_hash = NULL').run();
+    expect(queueMissingHashes(library.db, START)).toBe(0);
   });
 });

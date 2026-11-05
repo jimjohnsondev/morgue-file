@@ -5,6 +5,8 @@ import { formatCount } from '../format.js';
 
 import { PendingAction } from './pending-action.js';
 
+import type { IndexingAction } from '../../library-runtime.js';
+
 /** The Reference folder can't be reached: where it should be, and how many items it keeps. */
 export type OfflineNotice = {
   readonly folder: string;
@@ -51,10 +53,7 @@ export function indexingLabel(indexing: IndexingNotice): string {
  * A link-styled button that asks the server to pause or resume the scan, or to look for the
  * Reference folder now. client/live-status.ts sends it; the next /events update shows the result.
  */
-function IndexingActionButton(props: {
-  readonly action: 'pause' | 'resume' | 'check';
-  readonly label: string;
-}) {
+function IndexingActionButton(props: { readonly action: IndexingAction; readonly label: string }) {
   return (
     <button type="button" class="link-button" data-indexing-action={props.action}>
       {props.label}

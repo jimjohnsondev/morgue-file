@@ -4,8 +4,11 @@ import { optional } from './sql-values.js';
 
 import type { Db } from '../connection.js';
 
-/** The work a job does; each type has its own worker in core/jobs/workers. */
-export type JobType = 'thumb-image' | 'thumb-video' | 'thumb-pdf' | 'thumb-pages';
+/**
+ * The work a job does: a thumbnail, with its worker in core/jobs/workers, or the partial hash
+ * alone, for items indexed before thumbnail jobs stored it (core/jobs/hash-jobs.ts).
+ */
+export type JobType = 'thumb-image' | 'thumb-video' | 'thumb-pdf' | 'thumb-pages' | 'hash';
 
 /** 0 for the page being viewed, 1 for ingested files, 2 for background work. */
 export type JobPriority = 0 | 1 | 2;
@@ -122,6 +125,26 @@ export function failJob(
     failure.job.id,
   );
   return state;
+}
+
+/**
+ * Queues a background hash job for every present item with no partial hash and no queued or
+ * running job that will store one; an item that already had a hash job isn't queued again.
+ * Returns how many it queued.
+ */
+export function queueHashJobsForUnhashedItems(db: Db, now: string): number {
+  const result = db
+    .prepare(
+      `INSERT INTO jobs (type, item_id, priority, state, updated_at)
+       SELECT 'hash', items.id, 2, 'queued', ? FROM items
+       WHERE items.partial_hash IS NULL AND items.missing_since IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM jobs WHERE jobs.item_id = items.id
+             AND (jobs.type = 'hash' OR jobs.state IN ('queued', 'running'))
+         )`,
+    )
+    .run(now);
+  return result.changes;
 }
 
 /** Puts jobs left running by a stopped server back in the queue, so a restart resumes them. */

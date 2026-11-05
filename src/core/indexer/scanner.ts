@@ -6,7 +6,7 @@ import { findScanStates, findScanStatesUnder } from '#core/db/repositories/item-
 import { markRootScanned, setRootStatus } from '#core/db/repositories/roots.js';
 import { systemErrorCode } from '#core/errors.js';
 
-import { reconcileEntries } from './reconcile.js';
+import { foldPathCase, reconcileEntries } from './reconcile.js';
 import { walkRoot } from './walk.js';
 
 import type { Db } from '#core/db/connection.js';
@@ -37,8 +37,13 @@ export type ScanSummary = ReconcileSummary & { readonly isOffline: boolean };
 function untouched(isOffline: boolean): ScanSummary {
   return {
     isOffline,
-    ...{ added: 0, changed: 0, unchanged: 0, moved: 0, missing: 0 },
-    ...{ ignored: 0, unreadableFolders: 0 },
+    added: 0,
+    changed: 0,
+    unchanged: 0,
+    moved: 0,
+    missing: 0,
+    ignored: 0,
+    unreadableFolders: 0,
   };
 }
 
@@ -77,13 +82,11 @@ export function parentFolder(relPath: string): string {
  * it, whose pages are that folder's own scan.
  */
 function isInScope(state: ScanState, scope: ScanScope): boolean {
-  if (!scope.isShallow || state.relPath.toLowerCase() === scope.relDir.toLowerCase()) {
+  const folder = foldPathCase(scope.relDir);
+  if (!scope.isShallow || foldPathCase(state.relPath) === folder) {
     return true;
   }
-  return (
-    state.kind !== 'pagefolder' &&
-    parentFolder(state.relPath).toLowerCase() === scope.relDir.toLowerCase()
-  );
+  return state.kind !== 'pagefolder' && foldPathCase(parentFolder(state.relPath)) === folder;
 }
 
 /** Says whether a failed listing means the folder is gone, rather than merely unreadable. */

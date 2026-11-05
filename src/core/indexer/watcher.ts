@@ -35,6 +35,14 @@ export type WatcherOptions = {
   readonly settleMs?: number;
 };
 
+/**
+ * A watcher started before its root's full scan: it gathers changes from the start, so none made
+ * during a long scan is lost, but holds them until `release`, when the scan is done.
+ */
+export type HeldWatcher = RootWatcher & {
+  readonly release: () => void;
+};
+
 /** A running watcher. */
 export type RootWatcher = {
   /** Resolves once no change is waiting to settle or be scanned (tests wait on it). */
@@ -47,11 +55,16 @@ type WatchState = {
   readonly options: WatcherOptions;
   /** Paths changed since the last batch; '' stands for the whole root. */
   readonly changed: Set<string>;
+  /** True until the root's full scan is done; changes are gathered but not scanned. */
+  isHeld: boolean;
+  readonly settleMs: number;
   batchStartedAt: number | undefined;
   settleTimer: ReturnType<typeof setTimeout> | undefined;
   /** Folders waiting, by path; true when only the folder's own files need a look. */
   readonly waiting: Map<string, boolean>;
+  /** The last of the batches being sorted into folder scans, one after another. */
   sorting: Promise<void> | undefined;
+  batchesSorting: number;
   scanning: Promise<void> | undefined;
   isClosed: boolean;
 };
@@ -120,27 +133,34 @@ async function sortBatch(state: WatchState, paths: readonly string[]): Promise<v
   for (const change of [...removals, ...others]) {
     enqueueChange(state, change.relPath, change.kind);
   }
-  state.sorting = undefined;
   if (!state.isClosed) {
     state.scanning ??= scanWaiting(state);
   }
 }
 
-/** Takes the changes gathered so far as one batch. */
+/**
+ * Takes the changes gathered so far as one batch, sorted after any batch still being sorted, so
+ * batches keep their order and `sorting` covers all of them until the last is done.
+ */
 function endBatch(state: WatchState): void {
   const paths = [...state.changed];
   state.changed.clear();
   state.batchStartedAt = undefined;
   state.settleTimer = undefined;
-  state.sorting = sortBatch(state, paths);
+  const previous = state.sorting;
+  state.batchesSorting += 1;
+  state.sorting = (async () => {
+    await previous;
+    await sortBatch(state, paths);
+    state.batchesSorting -= 1;
+    if (state.batchesSorting === 0) {
+      state.sorting = undefined;
+    }
+  })();
 }
 
-/** Records a changed path and restarts the wait for things to settle. */
-function onChange(state: WatchState, relPath: string | undefined, settleMs: number): void {
-  if (state.isClosed) {
-    return;
-  }
-  state.changed.add(relPath ?? '');
+/** Restarts the wait for changes to settle; the batch ends after it, or 2 s after it began. */
+function restartSettleTimer(state: WatchState): void {
   state.batchStartedAt ??= Date.now();
   clearTimeout(state.settleTimer);
   const waitedMs = Date.now() - state.batchStartedAt;
@@ -148,20 +168,48 @@ function onChange(state: WatchState, relPath: string | undefined, settleMs: numb
     () => {
       endBatch(state);
     },
-    Math.max(0, Math.min(settleMs, MAX_WAIT_MS - waitedMs)),
+    Math.max(0, Math.min(state.settleMs, MAX_WAIT_MS - waitedMs)),
   );
 }
 
-/** Starts watching a root. */
-export function startWatcher(options: WatcherOptions): RootWatcher {
-  const settleMs = options.settleMs ?? DEFAULT_SETTLE_MS;
-  const state: WatchState = {
-    ...{ options, changed: new Set(), batchStartedAt: undefined, settleTimer: undefined },
-    ...{ waiting: new Map(), sorting: undefined, scanning: undefined, isClosed: false },
+/** Records a changed path; while held, it only waits there for the scan to end. */
+function onChange(state: WatchState, relPath: string | undefined): void {
+  if (state.isClosed) {
+    return;
+  }
+  state.changed.add(relPath ?? '');
+  if (!state.isHeld) {
+    restartSettleTimer(state);
+  }
+}
+
+/** The state of a new watcher, held or not. */
+function createWatchState(options: WatcherOptions, isHeld: boolean): WatchState {
+  return {
+    options,
+    changed: new Set(),
+    isHeld,
+    settleMs: options.settleMs ?? DEFAULT_SETTLE_MS,
+    batchStartedAt: undefined,
+    settleTimer: undefined,
+    waiting: new Map(),
+    sorting: undefined,
+    batchesSorting: 0,
+    scanning: undefined,
+    isClosed: false,
   };
+}
+
+/**
+ * Starts watching a root, holding what it sees until `release` (see HeldWatcher). The root's
+ * full scan runs in between; changes it already took in are scanned again, which finds nothing
+ * new.
+ */
+export function startHeldWatcher(options: WatcherOptions): HeldWatcher {
+  const state = createWatchState(options, true);
   const watch = watchOriginals(options.rootPath, {
     onChange: (relPath) => {
-      onChange(state, relPath, settleMs);
+      onChange(state, relPath);
     },
     onError: (error) => {
       void close();
@@ -181,6 +229,12 @@ export function startWatcher(options: WatcherOptions): RootWatcher {
     );
   }
   return {
+    release: () => {
+      state.isHeld = false;
+      if (state.changed.size > 0) {
+        endBatch(state);
+      }
+    },
     whenSettled: async () => {
       while (!state.isClosed && isBusy()) {
         await (state.sorting ?? state.scanning ?? sleep(20));
