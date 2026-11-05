@@ -6,7 +6,7 @@ import path from 'node:path';
 import { openLibrary } from '#core/db/library.js';
 import { REFERENCE_ROOT_ID } from '#core/db/repositories/roots.js';
 import { startRootIndexing } from '#core/indexer/roots.js';
-import { queueMissingHashes, runHashJob } from '#core/jobs/hash-jobs.js';
+import { runHashJob } from '#core/jobs/hash-jobs.js';
 import { DEFAULT_LANES, startJobQueue } from '#core/jobs/queue.js';
 import { THUMBS_FOLDER_NAME } from '#core/jobs/thumbnail-files.js';
 import { markThumbnailFailed, runThumbnailJob } from '#core/jobs/thumbnails.js';
@@ -73,9 +73,6 @@ type StartedLibrary = {
 /** Starts the job queue: thumbnails, and the hash jobs of items an earlier release indexed. */
 function startQueue(context: ThumbnailContext, log: FastifyBaseLogger): JobQueue {
   const { db } = context;
-  // Items an earlier release indexed have no partial hash; without one they can't be
-  // recognized after a move.
-  queueMissingHashes(db, new Date());
   return startJobQueue({
     db,
     lanes: DEFAULT_LANES,

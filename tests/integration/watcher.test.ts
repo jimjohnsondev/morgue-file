@@ -258,3 +258,35 @@ describe('E5: pausing the index', () => {
     indexing = undefined;
   });
 });
+
+describe('hash jobs for items an earlier release indexed', () => {
+  /** How many hash jobs are queued. */
+  function countHashJobs(): number {
+    const row = library.db
+      .prepare("SELECT COUNT(*) AS count FROM jobs WHERE type = 'hash'")
+      .get() as {
+      count: number;
+    };
+    return row.count;
+  }
+
+  it('are queued after a scan finds the folder, one per unhashed item', async () => {
+    await startIndexing();
+    await indexing!.stop();
+    library.db.prepare("UPDATE jobs SET state = 'done'").run();
+    library.db.prepare('UPDATE items SET partial_hash = NULL').run();
+    await startIndexing();
+    expect(countHashJobs()).toBe(4);
+  });
+
+  it('are not queued while the folder is offline, so no job is spent on a file it cannot read', async () => {
+    await startIndexing();
+    await indexing!.stop();
+    library.db.prepare("UPDATE jobs SET state = 'done'").run();
+    library.db.prepare('UPDATE items SET partial_hash = NULL').run();
+    await rename(referenceDir, `${referenceDir}-away`);
+    await startIndexing();
+    expect(findRootById(library.db, REFERENCE_ROOT_ID)?.status).toBe('offline');
+    expect(countHashJobs()).toBe(0);
+  });
+});

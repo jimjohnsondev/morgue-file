@@ -5,6 +5,7 @@
 import { isReferenceFolderPresent } from '#core/archive/originals.js';
 import { findRootById, setRootStatus } from '#core/db/repositories/roots.js';
 import { AppError } from '#core/errors.js';
+import { queueMissingHashes } from '#core/jobs/hash-jobs.js';
 
 import { countExpectedFiles, createPauseGate } from './scan-progress.js';
 import { scanRoot } from './scanner.js';
@@ -154,6 +155,11 @@ async function scanThenWatch(state: IndexingState): Promise<void> {
       await watcher?.close();
       return;
     }
+    // Items an earlier release indexed have no partial hash, so a move can't recognize them.
+    // Queued only now, with the folder known to be there and gone files marked missing, so
+    // no job is spent on a file that can't be read.
+    queueMissingHashes(options.db, new Date());
+    options.wakeQueue();
     // A watcher lost during the scan saw nothing after that point: scan again at the next check.
     state.needsScan = watcher?.isClosed() === true;
     state.watcher = watcher?.isClosed() === true ? undefined : watcher;
