@@ -211,10 +211,13 @@ describe('R1: offline roots', () => {
   });
 
   it('looks for the folder at once when asked ("Check again", E3)', async () => {
-    // A re-check far in the future, so only checkNow can find the folder in time.
+    // A re-check far in the future, so only checkNow can notice either change in time. Windows
+    // reports no change when the watched folder itself is renamed, so checkNow, the same check
+    // the 30 s timer runs, is what notices it going too.
     await startIndexing({ recheckMs: 600_000 });
     await rename(referenceDir, `${referenceDir}-away`);
-    await waitFor(() => findRootById(library.db, REFERENCE_ROOT_ID)?.status === 'offline');
+    await indexing!.checkNow();
+    expect(findRootById(library.db, REFERENCE_ROOT_ID)?.status).toBe('offline');
     await rename(`${referenceDir}-away`, referenceDir);
     await indexing!.checkNow();
     expect(findRootById(library.db, REFERENCE_ROOT_ID)?.status).toBe('online');
