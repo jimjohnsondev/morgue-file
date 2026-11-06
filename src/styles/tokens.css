@@ -139,8 +139,8 @@
   --unavailable-note-width: 480px;
   --drop-outline-width: 3px;
 
-  /* Settings (frame 15): the side list, the fields tables' least width, the path fields, the
-     online badge and the row being edited. */
+  /* Settings, as the frame 15 canvas draws them: the side list, the fields tables' least width,
+     the path fields, the online badge and the row being edited. */
   --settings-side-width: 260px;
   --settings-fields-min-width: 560px;
   --path-field-width: 320px;

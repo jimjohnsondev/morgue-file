@@ -80,7 +80,6 @@ export function addSubcategory(db: Db, subcategory: NewSubcategory): number {
 
 /** Renames a subcategory; its items and mappings stay with it. */
 export function renameSubcategoryTo(db: Db, id: number, name: string): void {
-  requireSubcategory(db, id);
   renameSubcategory(db, id, name.trim());
 }
 

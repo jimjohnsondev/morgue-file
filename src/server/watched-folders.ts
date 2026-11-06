@@ -83,12 +83,13 @@ async function saveReferenceLocation(context: WatchedFolderContext, folder: stri
   if (install.current.kind !== 'ready') {
     throw new AppError('setup-required', 'Finish setup before moving the Reference folder.');
   }
+  // Drops and pastes go to its Inbox, which a copied drive may not have yet. Made first, so a
+  // read-only copy is refused before the next launch is told to use it.
+  await createInbox(folder);
   await updateDataSettings(install.current.dataDir, {
     referenceDir: toStoredPath(context.homeDir, folder),
     referenceDirAbsolute: folder,
   });
-  // Drops and pastes go to its Inbox, which a copied drive may not have yet.
-  await createInbox(folder);
   install.current = { ...install.current, referenceDir: folder };
 }
 

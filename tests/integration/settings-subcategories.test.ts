@@ -71,8 +71,14 @@ describe('the Subcategories table in Settings', () => {
     expect(sketchbook.section).toBe('library');
     expect(sketchbook.subcategoryId).toBeUndefined();
     expect(findSubcategoryById(settings.db, figure)?.section).toBe('photos');
-    const sections = settings.db.prepare('SELECT DISTINCT section FROM items WHERE id = ?');
-    expect(sections.all(sketchbook.id)).toEqual([{ section: 'library' }]);
+    // No item anywhere sits in a subcategory of another section.
+    const strays = settings.db
+      .prepare(
+        `SELECT COUNT(*) AS count FROM items JOIN subcategories ON subcategories.id = items.subcategory_id
+         WHERE subcategories.section <> items.section`,
+      )
+      .get() as { count: number };
+    expect(strays.count).toBe(0);
   });
 
   it('R36: a subcategory is renamed, mapped, unmapped and removed from Settings', async () => {

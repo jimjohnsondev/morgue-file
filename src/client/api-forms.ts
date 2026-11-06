@@ -21,6 +21,18 @@ function readFields(form: HTMLFormElement): Record<string, string> {
   return fields;
 }
 
+/** The server's reason for a refusal, or a general one if its answer isn't JSON. */
+async function readRefusal(response: Response): Promise<string> {
+  const fallback = 'That change could not be saved. Check the values and try again.';
+  try {
+    const answer = (await response.json()) as { message?: string };
+    return answer.message ?? fallback;
+  } catch {
+    // Not JSON (a proxy's page, say): the server answered, so don't say it is gone.
+    return fallback;
+  }
+}
+
 /** Sends a form and returns undefined once saved, or the message to show if it wasn't. */
 async function sendForm(form: HTMLFormElement): Promise<string | undefined> {
   const method = form.dataset.apiMethod ?? 'POST';
@@ -35,11 +47,7 @@ async function sendForm(form: HTMLFormElement): Promise<string | undefined> {
       },
       ...(hasBody && { body: JSON.stringify(fields) }),
     });
-    if (response.ok) {
-      return undefined;
-    }
-    const answer = (await response.json()) as { message?: string };
-    return answer.message ?? 'That change could not be saved. Check the values and try again.';
+    return response.ok ? undefined : await readRefusal(response);
   } catch {
     // No answer at all: most likely the "Morgue File server" window was closed.
     return NO_SERVER_MESSAGE;

@@ -94,10 +94,16 @@ describe('the Watched folders table in Settings', () => {
   });
 
   it('R1: rescan from Settings picks up a file the watcher was not told about', async () => {
+    // As if the watcher had missed the file: its item is gone but the file is unchanged on disk,
+    // so no change event will ever bring it back. Only a rescan can.
+    const missed = findItemByPath(settings.db, REFERENCE_ROOT_ID, 'Figure/figure_0001.jpg')!;
+    settings.db.prepare('DELETE FROM jobs WHERE item_id = ?').run(missed.id);
+    settings.db.prepare('DELETE FROM items WHERE id = ?').run(missed.id);
     const response = await settings.send('POST', `/api/roots/${String(REFERENCE_ROOT_ID)}/rescan`);
     expect(response.statusCode).toBe(204);
     await settings.library.whenIndexed();
     expect(findRootById(settings.db, REFERENCE_ROOT_ID)?.status).toBe('online');
+    expect(findItemByPath(settings.db, REFERENCE_ROOT_ID, 'Figure/figure_0001.jpg')).toBeDefined();
     const missing = await settings.send('POST', '/api/roots/99/rescan');
     expect(missing.statusCode).toBe(404);
   });

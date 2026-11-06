@@ -37,8 +37,8 @@ function onClick(target: Element): void {
     }
     return;
   }
-  const cancelled = target.closest('[data-edit-cancel]')?.closest('form');
-  if (cancelled !== null && cancelled !== undefined) {
+  const cancelled = target.closest('[data-edit-cancel]')?.closest('form') ?? undefined;
+  if (cancelled !== undefined) {
     closeForm(cancelled);
   }
 }
@@ -50,7 +50,7 @@ document.addEventListener('click', (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
-  const form = event.target instanceof Element ? event.target.closest('form') : null;
+  const form = event.target instanceof Element ? event.target.closest('form') : undefined;
   if (event.key === 'Escape' && form?.hasAttribute('data-edit-form') === true) {
     closeForm(form);
   }
