@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.7.0...v1.8.0) (2026-11-06)
+
+
+### Features
+
+* save dropped, pasted and dragged-address files to the Inbox ([#40](https://github.com/jimjohnsondev/morgue-file/issues/40)) ([70d8e5f](https://github.com/jimjohnsondev/morgue-file/commit/70d8e5fe944279cbd854e250d2b2a9e87422147d))
+
 ## [1.7.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.6.1...v1.7.0) (2026-11-05)
 
 
