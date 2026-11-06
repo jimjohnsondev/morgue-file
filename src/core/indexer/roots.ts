@@ -192,17 +192,23 @@ async function scanThenWatch(state: IndexingState): Promise<void> {
   }
 }
 
-/** Starts a scan unless one is running or indexing has stopped. */
-function startScan(state: IndexingState): void {
+/**
+ * Starts a scan unless one is running or indexing has stopped. With `isFresh`, the watcher is
+ * closed first, inside the same scan, so anything waiting on the scan also waits for that.
+ */
+function startScan(state: IndexingState, isFresh = false): void {
   if (state.scanning !== undefined || state.abort.signal.aborted) {
     return;
   }
   state.scanning = (async () => {
+    if (isFresh) {
+      await stopWatching(state);
+    }
     await scanThenWatch(state);
     state.scanning = undefined;
     if (state.isRescanAsked) {
       state.isRescanAsked = false;
-      await rescan(state);
+      startScan(state, true);
     }
   })();
 }
@@ -210,7 +216,7 @@ function startScan(state: IndexingState): void {
 /** Settings' rescan: now, or once the running scan ends, which may have read an old path. */
 function askForRescan(state: IndexingState): void {
   if (state.scanning === undefined) {
-    void rescan(state);
+    startScan(state, true);
   } else {
     state.isRescanAsked = true;
   }
