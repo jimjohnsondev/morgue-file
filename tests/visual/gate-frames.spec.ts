@@ -31,7 +31,8 @@ async function openFromIndex(page: Page, indexUrl: string, label: string): Promi
 /**
  * Waits until the reader's page strip has drawn every page scrolled into its view. The reader
  * draws those after the pages on show, as each one is seen, so `data-drawn` on the stage alone
- * can leave the strip half drawn when the screenshot is taken.
+ * can leave the strip half drawn when the screenshot is taken. The reader only draws strip pages
+ * that are on screen, as frame 8's strip is.
  */
 async function waitForPageStrip(page: Page): Promise<void> {
   await expect(async () => {
