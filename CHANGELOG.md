@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.8.0...v1.9.0) (2026-11-06)
+
+
+### Features
+
+* Settings page for subcategories, folder mappings and watched folders; filing by hand ([#42](https://github.com/jimjohnsondev/morgue-file/issues/42)) ([39f1cb5](https://github.com/jimjohnsondev/morgue-file/commit/39f1cb5cf2f7e32389551c55bb7f2cb109aebc6e))
+
 ## [1.8.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.7.0...v1.8.0) (2026-11-06)
 
 
