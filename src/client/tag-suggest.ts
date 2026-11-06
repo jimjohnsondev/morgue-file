@@ -102,8 +102,8 @@ async function fetchSuggestions(field: HTMLInputElement): Promise<void> {
   try {
     const response = await fetch(`/api/tags?${new URLSearchParams({ prefix: typed }).toString()}`);
     const answer = (await response.json()) as { tags?: Suggestion[] };
-    // Only the answer for what the field still says is shown; a slower, older one is dropped.
-    if (field.value.trim() === typed) {
+    // Only the answer for what a still-focused field says is shown; an older one is dropped.
+    if (field.value.trim() === typed && document.activeElement === field) {
       showSuggestions(field, answer.tags ?? []);
     }
   } catch {

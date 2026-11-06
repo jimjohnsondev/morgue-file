@@ -32,7 +32,9 @@ export function isWholeListSelected(panel: HTMLElement): boolean {
 /** What is selected now, or undefined when nothing is. */
 export function readSelection(panel: HTMLElement): Selection | undefined {
   if (isWholeListSelected(panel)) {
-    return { query: panel.dataset.selectionQuery ?? '' };
+    const query = panel.dataset.selectionQuery;
+    // Never fall back to an empty query, which would match the whole archive.
+    return query === undefined || query === '' ? undefined : { query };
   }
   const itemIds = findTickBoxes()
     .filter((box) => box.checked)

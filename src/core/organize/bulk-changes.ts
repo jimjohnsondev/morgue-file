@@ -39,7 +39,7 @@ export function selectedItemIds(db: Db, selection: Selection): number[] {
   return itemIds;
 }
 
-/** Returns how many items it changed, for the panel's "Tagged 31 items" line. */
+/** How many items an action changed, for the panel's "Tagged 31 items" line. */
 type BulkResult = { readonly itemCount: number };
 
 /** Adds a tag to every selected item, making the tag if it's new (R10). */
@@ -51,12 +51,11 @@ export function tagSelection(db: Db, selection: Selection, tagName: string): Bul
   })();
 }
 
-/** Takes a tag off every selected item that has it. */
+/** Takes a tag off every selected item that has it; the count is of those that had it. */
 export function untagSelection(db: Db, selection: Selection, tagName: string): BulkResult {
   return db.transaction(() => {
     const itemIds = selectedItemIds(db, selection);
-    untagItems(db, itemIds, tagName.trim());
-    return { itemCount: itemIds.length };
+    return { itemCount: untagItems(db, itemIds, tagName.trim()) };
   })();
 }
 
@@ -80,12 +79,13 @@ export function collectSelection(db: Db, selection: Selection, collectionId: num
   })();
 }
 
-/** Takes every selected item out of a collection. Their files stay where they are (R9). */
+/** Takes every selected item out of a collection; the count is of those that were in it. */
 export function uncollectSelection(db: Db, selection: Selection, collectionId: number): BulkResult {
   return db.transaction(() => {
     const itemIds = selectedItemIds(db, selection);
-    removeItemsFromCollection(db, requireCollection(db, collectionId), itemIds);
-    return { itemCount: itemIds.length };
+    return {
+      itemCount: removeItemsFromCollection(db, requireCollection(db, collectionId), itemIds),
+    };
   })();
 }
 

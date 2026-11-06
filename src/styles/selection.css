@@ -73,7 +73,7 @@
   border-left: 0;
 }
 
-.selection-group:nth-child(2) {
+.selection-group--tag {
   min-width: var(--tag-group-min-width);
 }
 
@@ -156,7 +156,7 @@
   justify-content: space-between;
   padding: var(--space-1) var(--space-2);
   cursor: pointer;
-  border-bottom: 1px dotted var(--color-suggest-rule);
+  border-bottom: 1px dotted var(--color-page);
 }
 
 .suggest__list li[aria-selected='true'] {

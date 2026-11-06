@@ -1,7 +1,6 @@
 // How an Index page is viewed: which page, how many thumbnails per page, at which size, and
 // whether the filter panel is open or items are being selected (frame 13). All of it lives in
-// the URL, so every view is a plain link
-// that works with JavaScript off.
+// the URL, so every view is a plain link that works with JavaScript off.
 import { Type } from '@sinclair/typebox';
 
 import type { SquareSizeName } from '#core/jobs/thumbnail-files.js';

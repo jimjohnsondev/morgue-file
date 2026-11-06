@@ -34,9 +34,15 @@ export type SelectionPanelModel = {
 };
 
 /** One labelled group of controls, set off from the next by a dotted rule. */
-function Group(props: { readonly label: ComponentChildren; readonly children: ComponentChildren }) {
+function Group(props: {
+  readonly label: ComponentChildren;
+  /** A modifier for a group that is laid out differently: `tag` is the wide one. */
+  readonly modifier?: string;
+  readonly children: ComponentChildren;
+}) {
+  const modifier = props.modifier === undefined ? '' : ` selection-group--${props.modifier}`;
   return (
-    <div class="selection-group">
+    <div class={`selection-group${modifier}`}>
       {props.label}
       {props.children}
     </div>
@@ -93,7 +99,7 @@ function ChoiceSelect(props: {
     <select id={props.id} name={props.name} class="field">
       {props.groups.map((group) =>
         group.heading === undefined ? (
-          <ChoiceOptions choices={group.choices} />
+          <ChoiceOptions key={group.choices[0]?.value ?? 'none'} choices={group.choices} />
         ) : (
           <optgroup key={group.heading} label={group.heading}>
             <ChoiceOptions choices={group.choices} />
@@ -130,6 +136,7 @@ function SelectGroup(props: { readonly model: SelectionPanelModel }) {
 function TagGroup() {
   return (
     <Group
+      modifier="tag"
       label={
         <label for="selection-tag" class="selection-group__label">
           Tag

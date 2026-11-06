@@ -24,15 +24,20 @@ export function tagItems(db: Db, itemIds: readonly number[], tagName: string): v
   })();
 }
 
-/** Takes a tag off many items in one transaction (R10). An unknown tag changes nothing. */
-export function untagItems(db: Db, itemIds: readonly number[], tagName: string): void {
+/**
+ * Takes a tag off many items in one transaction (R10) and returns how many had it. An unknown tag
+ * changes nothing.
+ */
+export function untagItems(db: Db, itemIds: readonly number[], tagName: string): number {
   const untagOne = db.prepare(
     'DELETE FROM item_tags WHERE item_id = ? AND tag_id = (SELECT id FROM tags WHERE name = ?)',
   );
-  db.transaction(() => {
+  return db.transaction(() => {
+    let untagged = 0;
     for (const itemId of itemIds) {
-      untagOne.run(itemId, tagName);
+      untagged += untagOne.run(itemId, tagName).changes;
     }
+    return untagged;
   })();
 }
 

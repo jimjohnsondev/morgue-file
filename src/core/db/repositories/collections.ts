@@ -38,19 +38,24 @@ export function addItemsToCollection(
   })();
 }
 
-/** Takes items out of a collection in one transaction. The files stay where they are (R9). */
+/**
+ * Takes items out of a collection in one transaction and returns how many were in it. The files
+ * stay where they are (R9).
+ */
 export function removeItemsFromCollection(
   db: Db,
   collectionId: number,
   itemIds: readonly number[],
-): void {
+): number {
   const removeOne = db.prepare(
     'DELETE FROM collection_items WHERE collection_id = ? AND item_id = ?',
   );
-  db.transaction(() => {
+  return db.transaction(() => {
+    let removed = 0;
     for (const itemId of itemIds) {
-      removeOne.run(collectionId, itemId);
+      removed += removeOne.run(collectionId, itemId).changes;
     }
+    return removed;
   })();
 }
 

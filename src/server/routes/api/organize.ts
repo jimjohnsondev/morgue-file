@@ -28,7 +28,7 @@ const ID = Type.Integer({ minimum: 1 });
 /** The ids ticked on a page, or the query of a whole list ("all 1,236 in Figure"). */
 const SelectionSchema = Type.Union([
   Type.Object({ itemIds: Type.Array(ID, { minItems: 1, maxItems: 100_000 }) }),
-  Type.Object({ query: Type.String({ maxLength: 2000 }) }),
+  Type.Object({ query: Type.String({ minLength: 1, maxLength: 2000 }) }),
 ]);
 
 /** Forms send their fields as text, so a collection's id comes as digits. */
