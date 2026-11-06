@@ -308,8 +308,8 @@ export type InboxFile = {
 
 /** Refuses a folder or file name that is a path, so a write can't leave its Inbox folder. */
 function requireSingleName(name: string): void {
-  // Both slashes are checked, since path.basename only splits on the running system's own.
-  const isPath = name.includes('/') || name.includes('\\');
+  // Both slashes, whatever the system; a colon would name a drive or an NTFS alternate stream.
+  const isPath = name.includes('/') || name.includes('\\') || name.includes(':');
   if (isPath || name === '' || name === '.' || name === '..') {
     throw new AppError('invalid-input', `${name} is not a plain file name.`);
   }

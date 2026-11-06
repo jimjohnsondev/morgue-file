@@ -107,8 +107,8 @@ type OutlineParts = {
 /** Finds the drop outline the frame draws on every page, if this page has one. */
 function findOutline(): OutlineParts | undefined {
   const outline = document.querySelector<HTMLElement>('[data-drop-outline]');
-  const title = outline?.querySelector<HTMLElement>('.drop-outline__title');
-  const line = outline?.querySelector<HTMLElement>('.drop-outline__line');
+  const title = outline?.querySelector<HTMLElement>('[data-drop-outline-title]');
+  const line = outline?.querySelector<HTMLElement>('[data-drop-outline-line]');
   if (
     outline === null ||
     title === null ||

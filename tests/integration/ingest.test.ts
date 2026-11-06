@@ -12,6 +12,8 @@ import { findItemById } from '#core/db/repositories/items.js';
 import { findJob } from '#core/db/repositories/jobs.js';
 import { REFERENCE_ROOT_ID, setReferenceRoot, setRootStatus } from '#core/db/repositories/roots.js';
 import { readFieldValues } from '#core/fields/fields.js';
+import { reconcileEntries } from '#core/indexer/reconcile.js';
+import { walkRoot } from '#core/indexer/walk.js';
 import { inboxMonthFolder, ingestUrl } from '#core/ingest/ingest.js';
 import { buildApp } from '#server/app.js';
 import { findAppDir, LOOPBACK_HOST } from '#server/config.js';
@@ -196,6 +198,28 @@ describe('R2: dropped and pasted files', () => {
     expect(await readdir(referenceDir)).toEqual(['Inbox']);
   });
 
+  it('a scan that listed the folder before the drop adds no second item for the file', async () => {
+    const { itemId } = (await postFile('hand.jpg', 'jpeg bytes')).json<{ itemId: number }>();
+    const run = {
+      db: library.db,
+      rootId: REFERENCE_ROOT_ID,
+      rootPath: referenceDir,
+      now: new Date(),
+    };
+    // Stored states read before the drop: the pass doesn't know the item yet.
+    const summary = await reconcileEntries(
+      run,
+      walkRoot(referenceDir, {
+        startDir: `Inbox/${inboxMonthFolder(new Date())}`,
+        isShallow: true,
+      }),
+      [],
+    );
+    expect(summary.missing).toBe(0);
+    expect(findItemById(library.db, itemId)?.relPath).toContain('hand.jpg');
+    expect(findJob(library.db, itemId, 'thumb-image')?.priority).toBe(1);
+  });
+
   it('refuses a file the archive does not keep, writing nothing', async () => {
     const response = await postFile('notes.txt', 'text');
     expect(response.statusCode).toBe(415);
@@ -248,6 +272,15 @@ describe('R2: web addresses dragged with no file', () => {
       expect(response.json<{ error: string }>().error, url).toBe('fetch-refused');
     }
     expect(await readdir(path.join(referenceDir, 'Inbox'))).toEqual([]);
+  });
+
+  it('refuses an address whose host does not resolve, and keeps answering', async () => {
+    const response = await postUrl('http://no-such-host.invalid/a.jpg');
+    expect(response.statusCode).toBe(502);
+    expect(response.json<{ error: string }>().error).toBe('fetch-failed');
+    expect(
+      (await app.inject({ url: '/healthz', headers: { host: OWN_PAGE.host } })).statusCode,
+    ).toBe(200);
   });
 
   it('refuses addresses that are not http or https', async () => {

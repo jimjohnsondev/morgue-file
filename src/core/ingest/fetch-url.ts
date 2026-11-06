@@ -60,8 +60,13 @@ function refuseAddress(url: URL): AppError {
 function checkedLookup(url: URL, run: FetchRun): LookupFunction {
   return (hostname, options, callback) => {
     lookup(hostname, options, (error, address, family) => {
+      // A failed lookup (a typo, or no network) brings no address to check.
+      if (error !== null) {
+        callback(error, address, family);
+        return;
+      }
       const addresses = typeof address === 'string' ? [address] : address.map((one) => one.address);
-      if (error === null && !addresses.every(run.isAllowedAddress)) {
+      if (!addresses.every(run.isAllowedAddress)) {
         callback(refuseAddress(url), address, family);
         return;
       }
@@ -113,7 +118,8 @@ async function requestFollowingRedirects(url: URL, run: FetchRun): Promise<Final
     if (!REDIRECT_STATUSES.has(response.statusCode ?? 0) || location === undefined) {
       return { response, url: current };
     }
-    response.resume();
+    // A redirect's own body is never read; drop it so its connection is freed.
+    response.destroy();
     current = new URL(location, current);
   }
   throw new AppError('fetch-failed', `${url.hostname} redirected too many times.`);

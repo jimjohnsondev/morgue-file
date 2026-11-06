@@ -25,6 +25,8 @@ for (const [network, prefix] of [
   ['fc00::', 7], // unique local (private)
   ['fe80::', 10], // link-local
   ['ff00::', 8], // multicast
+  ['64:ff9b::', 96], // NAT64, which can reach private IPv4 hosts behind the gateway
+  ['2002::', 16], // 6to4, which embeds an IPv4 address of any kind
 ] as const) {
   BLOCKED.addSubnet(network, prefix, 'ipv6');
 }

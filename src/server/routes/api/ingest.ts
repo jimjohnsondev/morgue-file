@@ -43,13 +43,19 @@ export function registerIngestApi(app: FastifyInstance, library: LibraryRuntime 
       '/api/ingest',
       { schema: { querystring: FileQuerystring, response: { 201: IngestReply } } },
       async (request, reply) => {
-        const open = requireLibrary(library);
-        const itemId = await ingestFile(open, {
-          fileName: request.query.name,
-          content: request.raw,
-          sourceUrl: request.query.source,
-        });
-        return reply.code(201).send({ itemId });
+        try {
+          const itemId = await ingestFile(requireLibrary(library), {
+            fileName: request.query.name,
+            content: request.raw,
+            sourceUrl: request.query.source,
+          });
+          return await reply.code(201).send({ itemId });
+        } catch (error) {
+          // A refusal comes before the body is read; read it to the end so the browser gets the
+          // reason rather than a dropped connection.
+          request.raw.resume();
+          throw error;
+        }
       },
     );
     typed.post(
