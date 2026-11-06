@@ -180,8 +180,8 @@ function collectionModel(db: Db, params: { id: number }, view: ListView): IndexM
 }
 
 /**
- * How things reach Unsorted, for when it's empty (E1). Pasting comes with ingest (PR 12), and
- * this line names it then, as Home's keys do.
+ * How things reach Unsorted, for when it's empty (E1). Paste works since PR 12, but naming it
+ * here changes the approved E1 screenshot, so it joins this line with a baseline change of its own.
  */
 const UNSORTED_HELP: EmptyHelp = {
   line:

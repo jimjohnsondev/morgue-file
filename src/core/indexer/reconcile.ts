@@ -7,7 +7,7 @@ import {
   markItemMissing,
   updateItemFile,
 } from '#core/db/repositories/item-files.js';
-import { insertItem, moveItem } from '#core/db/repositories/items.js';
+import { findItemByPath, insertItem, moveItem } from '#core/db/repositories/items.js';
 import { queueThumbnail } from '#core/jobs/thumbnail-jobs.js';
 
 import { createMovePool } from './moves.js';
@@ -83,7 +83,7 @@ export function foldPathCase(relPath: string): string {
 }
 
 /** Says whether a file's size or time differs from what was stored, so it must be re-read. */
-function hasChanged(stored: ScanState, entry: FoundEntry): boolean {
+function hasChanged(stored: Pick<ScanState, 'size' | 'mtimeMs'>, entry: FoundEntry): boolean {
   return stored.size !== entry.size || stored.mtimeMs !== entry.mtimeMs;
 }
 
@@ -102,7 +102,14 @@ function writeChanges(run: ReconcileRun, changes: readonly Change[]): void {
   const now = run.now.toISOString();
   db.transaction(() => {
     for (const { entry, stored } of changes) {
-      let itemId = stored?.id;
+      // Ingest indexes a saved file at once, so another pass that listed the folder before then
+      // may find its item already stored; update it rather than adding the path twice, and leave
+      // it alone if ingest stored it as it is now, so its thumbnail isn't made twice.
+      const current = stored ?? findItemByPath(db, run.rootId, entry.relPath);
+      if (stored === undefined && current !== undefined && !hasChanged(current, entry)) {
+        continue;
+      }
+      let itemId = current?.id;
       if (itemId === undefined) {
         itemId = insertItem(db, {
           rootId: run.rootId,
@@ -223,7 +230,9 @@ async function settleMoves(run: ReconcileRun, tally: WalkTally, moves: MovePool)
   const added: Change[] = [];
   for (const entry of tally.maybeMoved) {
     const match = await moves.claimMatch(entry, isSeen);
-    if (match === undefined) {
+    // A path ingest indexed during the pass is already an item; moving another onto it would
+    // store the path twice.
+    if (match === undefined || findItemByPath(run.db, run.rootId, entry.relPath) !== undefined) {
       added.push({ entry, stored: undefined });
       continue;
     }

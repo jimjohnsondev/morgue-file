@@ -28,10 +28,10 @@ import type { Section } from '#core/db/repositories/items.js';
 import type { LibraryRuntime } from '#server/library-runtime.js';
 
 /**
- * The states a spec can ask for. Unsorted is empty in all of them (E1). `watching` is
- * `empty-unsorted` in a home of its own, for the R1 spec, which adds files to it.
+ * The states a spec can ask for. Unsorted is empty in all of them (E1). `watching` and `ingest`
+ * are `empty-unsorted` in homes of their own, for the R1 and R2 specs, which add files to them.
  */
-const STATES = ['empty-unsorted', 'offline', 'indexing', 'watching'] as const;
+const STATES = ['empty-unsorted', 'offline', 'indexing', 'watching', 'ingest'] as const;
 type State = (typeof STATES)[number];
 
 const REPO_DIR = path.resolve(import.meta.dirname, '..', '..');

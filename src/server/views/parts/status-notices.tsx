@@ -172,8 +172,10 @@ export function SavedNoticePanel(props: { readonly saved: SavedNotice }) {
 export function DropOutline() {
   return (
     <div class="drop-outline" data-drop-outline hidden>
-      <b class="drop-outline__title">Drop to save to Unsorted</b>
-      <span class="drop-outline__line">
+      <b class="drop-outline__title" data-drop-outline-title>
+        Drop to save to Unsorted
+      </b>
+      <span class="drop-outline__line" data-drop-outline-line>
         The file is copied into the Inbox folder; the source address is kept when the browser sends
         it.
       </span>

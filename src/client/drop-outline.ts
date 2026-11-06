@@ -1,6 +1,7 @@
-// Shows the drop outline while a file or a browser image is dragged over any page (E6), and
-// stops the browser from opening a dropped file in place of the archive. Saving the drop to the
-// Inbox and showing "Saved to Unsorted" comes with ingest (PR 12).
+// Shows the drop outline while a file or a browser image is dragged over any page (E6), stops
+// the browser from opening a dropped file in place of the archive, and saves the drop to the
+// Inbox (R2, through ingest-upload.ts).
+import { readTransfer, saveToInbox } from './ingest-upload.js';
 
 /** What a drag can carry that ingest will take: files, or an address dragged from a browser. */
 const DROPPABLE_TYPES = ['Files', 'text/uri-list'];
@@ -11,22 +12,29 @@ function isDroppable(event: DragEvent): boolean {
   return DROPPABLE_TYPES.some((type) => types.includes(type));
 }
 
+/** Whether a drag that started on the page itself is under way, and how to end it. */
+type PageDrags = { readonly isUnderWay: () => boolean; readonly end: () => void };
+
 /**
  * Tracks drags that start on the page itself: a thumbnail or link dragged within the page
- * carries its address too, and that isn't a drop. Returns whether one is under way.
+ * carries its address too, and that isn't a drop to save.
  */
-function watchPageDrags(): () => boolean {
+function watchPageDrags(): PageDrags {
   let isDragging = false;
   document.addEventListener('dragstart', () => {
     isDragging = true;
   });
-  // A dragged element removed mid-drag may never send dragend, so a drop ends it too.
-  for (const ending of ['dragend', 'drop']) {
-    document.addEventListener(ending, () => {
+  document.addEventListener('dragend', () => {
+    isDragging = false;
+  });
+  // A dragged element removed mid-drag may never send dragend, so the drop handler ends it too,
+  // once it has checked where the drag came from.
+  return {
+    isUnderWay: () => isDragging,
+    end: () => {
       isDragging = false;
-    });
-  }
-  return () => isDragging;
+    },
+  };
 }
 
 /** Shows the outline while a droppable drag is over the page, and hides it when it ends. */
@@ -34,9 +42,9 @@ function watchDrags(outline: HTMLElement): void {
   // dragenter and dragleave fire for every element crossed, so count them to know when the drag
   // has really left the window.
   let depth = 0;
-  const isDragFromPage = watchPageDrags();
+  const pageDrags = watchPageDrags();
   function isDropFromOutside(event: DragEvent): boolean {
-    return !isDragFromPage() && isDroppable(event);
+    return !pageDrags.isUnderWay() && isDroppable(event);
   }
   function hide(): void {
     depth = 0;
@@ -63,9 +71,13 @@ function watchDrags(outline: HTMLElement): void {
     }
   });
   document.addEventListener('drop', (event) => {
-    if (isDropFromOutside(event)) {
+    const isFromOutside = isDropFromOutside(event);
+    pageDrags.end();
+    if (isFromOutside && event.dataTransfer !== null) {
       event.preventDefault();
       hide();
+      // Read now: the browser empties the drop's data once this handler returns.
+      void saveToInbox(readTransfer(event.dataTransfer));
     }
   });
 }
