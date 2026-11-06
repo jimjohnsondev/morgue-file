@@ -81,6 +81,8 @@ beforeAll(async () => {
     start: () => undefined,
     indexing: () => indexing,
     controlIndexing: () => Promise.resolve(),
+    watchRoot: () => undefined,
+    rescanRoot: () => undefined,
     whenIndexed: () => Promise.resolve(),
     stop: () => Promise.resolve(),
   };

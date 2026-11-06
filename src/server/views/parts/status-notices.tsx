@@ -3,7 +3,7 @@
 // The first two sit in slots that /events refreshes while the page is open (client/live-status.ts).
 import { formatCount } from '../format.js';
 
-import { PendingAction } from './pending-action.js';
+import { FILING_FORM_ID } from './details-panel.js';
 
 import type { IndexingAction } from '../../library-runtime.js';
 
@@ -157,7 +157,8 @@ export function SavedNoticePanel(props: { readonly saved: SavedNotice }) {
           {saved.sourceHost !== undefined && ` · from ${saved.sourceHost}`}
         </span>
         <span class="saved-notice__links">
-          <a href={saved.itemHref}>Open the item</a> · <PendingAction label="file it now" /> ·{' '}
+          <a href={saved.itemHref}>Open the item</a> ·{' '}
+          <a href={`${saved.itemHref}#${FILING_FORM_ID}`}>file it now</a> ·{' '}
           <a href="/unsorted">go to Unsorted</a> ·{' '}
           <a href={saved.dismissHref} aria-label="Dismiss notice">
             dismiss

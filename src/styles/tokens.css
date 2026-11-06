@@ -139,6 +139,15 @@
   --unavailable-note-width: 480px;
   --drop-outline-width: 3px;
 
+  /* Settings (frame 15): the side list, the fields tables' least width, the path fields, the
+     online badge and the row being edited. */
+  --settings-side-width: 260px;
+  --settings-fields-min-width: 560px;
+  --path-field-width: 320px;
+  --color-status-text: #0a5e6b;
+  --color-status-border: #0e8fa3;
+  --color-editing-row: #fff0f8;
+
   /* Spacing: multiples of 4 px */
   --space-1: 4px;
   --space-2: 8px;

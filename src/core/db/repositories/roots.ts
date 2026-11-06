@@ -38,6 +38,26 @@ export function setReferenceRoot(db: Db, folder: string): void {
   ).run(REFERENCE_ROOT_ID, folder);
 }
 
+/** Every root, the Reference folder first, then watched folders in the order they were added. */
+export function findAllRoots(db: Db): Root[] {
+  const rows = db.prepare('SELECT * FROM roots ORDER BY id').all() as RootRow[];
+  return rows.map(toRoot);
+}
+
+/** Adds a watched folder as a new root and returns its id. */
+export function insertRoot(db: Db, folder: string, label: string): number {
+  const result = db.prepare('INSERT INTO roots (path, label) VALUES (?, ?)').run(folder, label);
+  return Number(result.lastInsertRowid);
+}
+
+/**
+ * Points a root at its folder's new location. Items keep their relative paths, so nothing is
+ * re-indexed: a new drive letter is one edit.
+ */
+export function setRootPath(db: Db, id: number, folder: string): void {
+  db.prepare('UPDATE roots SET path = ? WHERE id = ?').run(folder, id);
+}
+
 /** Returns a root by id, or undefined if there is none. */
 export function findRootById(db: Db, id: number): Root | undefined {
   const row = db.prepare('SELECT * FROM roots WHERE id = ?').get(id) as RootRow | undefined;
@@ -59,6 +79,21 @@ export function countKeptItems(db: Db, rootId: number): number {
   const row = db
     .prepare('SELECT COUNT(*) AS count FROM items WHERE root_id = ? AND missing_since IS NULL')
     .get(rootId) as { count: number };
+  return row.count;
+}
+
+/**
+ * Counts the kept items in a folder under a root, by its relative path (`Inbox`), ignoring case.
+ * The pattern escapes LIKE's wildcards, so a folder named `100%` matches only itself.
+ */
+export function countKeptItemsUnder(db: Db, rootId: number, relFolder: string): number {
+  const pattern = `${relFolder.replaceAll(/[\\%_]/g, (char) => `\\${char}`)}/%`;
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) AS count FROM items
+       WHERE root_id = ? AND missing_since IS NULL AND rel_path LIKE ? ESCAPE '\\'`,
+    )
+    .get(rootId, pattern) as { count: number };
   return row.count;
 }
 

@@ -1,7 +1,8 @@
-// Keeps one root indexed for as long as the server runs: a full scan, with the watcher started
-// just before it so no change made during the scan is lost, then the watcher alone. A check every
-// 30 s notices the folder going offline even when no change is reported, scans it again once it
-// is back, and retries a scan that failed (docs/ARCHITECTURE.md, Offline roots).
+// Keeps one root (the Reference folder or another watched folder) indexed for as long as the
+// server runs: a full scan, with the watcher started just before it so no change made during the
+// scan is lost, then the watcher alone. A check every 30 s notices the folder going offline even
+// when no change is reported, scans it again once it is back, and retries a scan that failed
+// (docs/ARCHITECTURE.md, Offline roots).
 import { isReferenceFolderPresent } from '#core/archive/originals.js';
 import { findRootById, setRootStatus } from '#core/db/repositories/roots.js';
 import { AppError } from '#core/errors.js';
@@ -47,6 +48,11 @@ export type RootIndexing = {
   readonly resume: () => void;
   /** Runs the 30 s check now ("Check again", E3). */
   readonly checkNow: () => Promise<void>;
+  /**
+   * Scans the whole root again from its stored path ("rescan" and "change location" in
+   * Settings). A scan already running finishes first, then the new one starts.
+   */
+  readonly rescan: () => void;
   /** Resolves once no scan is running and the watcher, if on, has nothing waiting. */
   readonly whenIdle: () => Promise<void>;
   readonly stop: () => Promise<void>;
@@ -68,6 +74,8 @@ type IndexingState = {
    */
   needsScan: boolean;
   checking: ReturnType<typeof setInterval> | undefined;
+  /** True when Settings asked for a rescan while a scan was running. */
+  isRescanAsked: boolean;
 };
 
 /** The root's folder as stored now, so an edit in Settings takes effect at the next scan. */
@@ -100,17 +108,23 @@ function startWatchingFor(state: IndexingState, rootPath: string): HeldWatcher |
         void goOffline(state);
       },
       onLost: (error) => {
-        options.log.warn({ err: error }, 'Lost track of the Reference folder; scanning it again');
+        options.log.warn(
+          { err: error, rootId: options.rootId },
+          'Lost track of a watched folder; scanning it again',
+        );
         void rescan(state);
       },
       onError: (error) => {
-        options.log.warn({ err: error }, 'Could not take in a change to the Reference folder');
+        options.log.warn(
+          { err: error, rootId: options.rootId },
+          'Could not take in a change to a watched folder',
+        );
       },
     });
   } catch (error) {
     // Gone since the check, or the system is out of watches: the scan says which, and the next
     // check tries again.
-    options.log.warn({ err: error }, 'Could not watch the Reference folder');
+    options.log.warn({ err: error, rootId: options.rootId }, 'Could not watch a folder');
     return undefined;
   }
 }
@@ -149,7 +163,10 @@ async function scanThenWatch(state: IndexingState): Promise<void> {
     const rootPath = rootPathOf(state);
     const watcher = startWatchingFor(state, rootPath);
     const summary = await scanWithProgress(state, rootPath);
-    options.log.info({ scan: summary }, 'Scan of the Reference folder finished');
+    options.log.info(
+      { scan: summary, rootId: options.rootId },
+      'Scan of a watched folder finished',
+    );
     if (summary.isOffline || state.abort.signal.aborted) {
       state.isOffline = summary.isOffline;
       await watcher?.close();
@@ -167,7 +184,10 @@ async function scanThenWatch(state: IndexingState): Promise<void> {
   } catch (error) {
     state.needsScan = true;
     if (!state.abort.signal.aborted) {
-      options.log.error({ err: error }, 'Scan of the Reference folder failed; retrying later');
+      options.log.error(
+        { err: error, rootId: options.rootId },
+        'Scan of a watched folder failed; retrying later',
+      );
     }
   }
 }
@@ -180,7 +200,20 @@ function startScan(state: IndexingState): void {
   state.scanning = (async () => {
     await scanThenWatch(state);
     state.scanning = undefined;
+    if (state.isRescanAsked) {
+      state.isRescanAsked = false;
+      await rescan(state);
+    }
   })();
+}
+
+/** Settings' rescan: now, or once the running scan ends, which may have read an old path. */
+function askForRescan(state: IndexingState): void {
+  if (state.scanning === undefined) {
+    void rescan(state);
+  } else {
+    state.isRescanAsked = true;
+  }
 }
 
 /** Stops the watcher and scans the whole root again, which starts a new watcher. */
@@ -191,7 +224,7 @@ async function rescan(state: IndexingState): Promise<void> {
 
 /** Marks the root offline and stops watching it; the 30 s check waits for it to come back. */
 async function goOffline(state: IndexingState): Promise<void> {
-  state.options.log.warn({}, 'The Reference folder went offline');
+  state.options.log.warn({ rootId: state.options.rootId }, 'A watched folder went offline');
   state.isOffline = true;
   setRootStatus(state.options.db, state.options.rootId, 'offline');
   await stopWatching(state);
@@ -230,7 +263,10 @@ async function lookForRootFolder(
     const rootPath = rootPathOf(state);
     return { rootPath, isPresent: await isReferenceFolderPresent(rootPath) };
   } catch (error) {
-    state.options.log.warn({ err: error }, 'Could not look for the Reference folder');
+    state.options.log.warn(
+      { err: error, rootId: state.options.rootId },
+      'Could not look for a watched folder',
+    );
     return undefined;
   }
 }
@@ -257,6 +293,7 @@ function createIndexingState(options: RootIndexingOptions): IndexingState {
     isOffline: false,
     needsScan: false,
     checking: undefined,
+    isRescanAsked: false,
   };
 }
 
@@ -272,8 +309,14 @@ export function startRootIndexing(options: RootIndexingOptions): RootIndexing {
     pause: state.gate.pause,
     resume: state.gate.resume,
     checkNow: async () => checkOnRoot(state),
+    rescan: () => {
+      askForRescan(state);
+    },
     whenIdle: async () => {
-      await state.scanning;
+      // A scan can end by starting the rescan Settings asked for, so wait for that one too.
+      while (state.scanning !== undefined) {
+        await state.scanning;
+      }
       await state.watcher?.whenSettled();
     },
     stop: async () => {
