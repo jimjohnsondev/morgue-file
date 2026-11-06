@@ -2,6 +2,7 @@
 // models and collections, and the item's own fields as the fields table holds them (R11).
 import { findCollectionsByItem } from '#core/db/repositories/collections.js';
 import { findModelLinksByItem } from '#core/db/repositories/models.js';
+import { findSubcategoriesBySection } from '#core/db/repositories/subcategories.js';
 import { findTagNamesByItem } from '#core/db/repositories/tags.js';
 
 import {
@@ -21,7 +22,12 @@ import type { Item } from '#core/db/repositories/items.js';
 import type { Subcategory } from '#core/db/repositories/subcategories.js';
 import type { FieldWithValue } from '#core/fields/fields.js';
 import type { ItemView } from './item-view.js';
-import type { DetailsModel, FactRow, FieldRow } from '../../views/parts/details-panel.js';
+import type {
+  DetailsModel,
+  FactRow,
+  FieldRow,
+  FilingForm,
+} from '../../views/parts/details-panel.js';
 
 /** The grouped value an issue belongs to: its magazine title, and the issue's own name. */
 export type IssueOf = {
@@ -99,13 +105,33 @@ function ratingFact(fields: readonly FieldWithValue[]): FactRow[] {
   ];
 }
 
+/** The [move] form: Unsorted, then the subcategories of the item's own section (R5). */
+function filingForm(db: Db, source: DetailsSource): FilingForm {
+  const { item, subcategory } = source;
+  return {
+    action: `/api/items/${String(item.id)}/subcategory`,
+    choices: [
+      { value: 'unsorted', label: 'Unsorted' },
+      ...findSubcategoriesBySection(db, item.section).map((choice) => ({
+        value: String(choice.id),
+        label: choice.name,
+      })),
+    ],
+    current: subcategory === undefined ? 'unsorted' : String(subcategory.id),
+  };
+}
+
 /** The facts table: name, section, subcategory, media details, format and rating. */
-function factRows(source: DetailsSource): FactRow[] {
+function factRows(db: Db, source: DetailsSource): FactRow[] {
   const { item, subcategory } = source;
   return [
     ...nameFacts(source),
     { label: 'Section', text: SECTION_LABELS[item.section] },
-    { label: 'Subcategory', text: subcategory?.name ?? 'Unsorted', action: 'move' },
+    {
+      label: 'Subcategory',
+      text: subcategory?.name ?? 'Unsorted',
+      filing: filingForm(db, source),
+    },
     ...mediaFacts(item),
     { label: 'Format', text: formatName(item) },
     ...ratingFact(source.fields),
@@ -140,7 +166,7 @@ export function buildDetailsModel(db: Db, source: DetailsSource): DetailsModel {
   }));
   const [firstShown, lastShown] = [shownPages?.[0], shownPages?.at(-1)];
   return {
-    facts: factRows(source),
+    facts: factRows(db, source),
     tags: findTagNamesByItem(db, item.id).map((name) => ({ label: name })),
     models,
     addModelLabel:

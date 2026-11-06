@@ -81,24 +81,49 @@ type ItemRow = {
   thumb_state: ThumbState;
 };
 
+/** Where the mapping SQL reads an item's root, path and section: a bound `?` or its own column. */
+type MappingSql = {
+  readonly rootId: '?' | 'items.root_id';
+  readonly relPath: '?' | 'items.rel_path';
+  readonly section: '?' | 'items.section';
+};
+
 /**
  * SQL for the subcategory of the longest folder mapping that holds a path, matched on whole
- * folder names (Figure/ holds Figure/a.jpg but not Figures/a.jpg). Insert and refiling share it,
- * so both follow the same rule. The arguments are fixed SQL (a `?` or a column), never values.
+ * folder names (Figure/ holds Figure/a.jpg but not Figures/a.jpg). Only subcategories of the
+ * item's own section count, so a PDF in a mapped photo folder waits in Unsorted rather than
+ * joining a Photos subcategory. Insert, moves and refiling share it, so all follow one rule. The
+ * parts are fixed SQL (a `?` or a column), never values; bound ones take root, path, section.
  */
-function mappedSubcategorySql(
-  rootId: '?' | 'items.root_id',
-  relPath: '?' | 'items.rel_path',
-): string {
+function mappedSubcategorySql(parts: MappingSql): string {
   return `(
     SELECT mapping.subcategory_id FROM folder_mappings AS mapping
-    WHERE mapping.root_id = ${rootId}
-      AND lower(substr(${relPath}, 1, length(mapping.rel_prefix) + 1))
+    JOIN subcategories AS mapped ON mapped.id = mapping.subcategory_id
+    WHERE mapping.root_id = ${parts.rootId}
+      AND lower(substr(${parts.relPath}, 1, length(mapping.rel_prefix) + 1))
         = lower(mapping.rel_prefix || '/')
+      AND mapped.section = ${parts.section}
     ORDER BY length(mapping.rel_prefix) DESC
     LIMIT 1
   )`;
 }
+
+/** The mapped subcategory of a new item, from its bound root, path and section. */
+const MAPPED_FOR_NEW_ITEM = mappedSubcategorySql({ rootId: '?', relPath: '?', section: '?' });
+
+/** The mapped subcategory of an item at a new bound path, keeping its root and section. */
+const MAPPED_FOR_NEW_PATH = mappedSubcategorySql({
+  rootId: 'items.root_id',
+  relPath: '?',
+  section: 'items.section',
+});
+
+/** The mapped subcategory of an item where it is now. */
+const MAPPED_FOR_ROW = mappedSubcategorySql({
+  rootId: 'items.root_id',
+  relPath: 'items.rel_path',
+  section: 'items.section',
+});
 
 /** Adds an item, filed by the folder mappings that hold it, and returns its id. */
 export function insertItem(db: Db, item: NewItem): number {
@@ -106,7 +131,7 @@ export function insertItem(db: Db, item: NewItem): number {
     .prepare(
       `INSERT INTO items (root_id, rel_path, kind, section, subcategory_id, size, mtime, width,
          height, duration_ms, fps, page_count, added_at)
-       VALUES (?, ?, ?, ?, ${mappedSubcategorySql('?', '?')}, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ${MAPPED_FOR_NEW_ITEM}, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       item.rootId,
@@ -115,6 +140,7 @@ export function insertItem(db: Db, item: NewItem): number {
       SECTION_BY_KIND[item.kind],
       item.rootId,
       item.relPath,
+      SECTION_BY_KIND[item.kind],
       item.size,
       item.mtimeMs,
       item.width ?? null,
@@ -144,7 +170,7 @@ export function moveItem(db: Db, move: ItemMove): void {
   db.prepare(
     `UPDATE items SET rel_path = ?, size = ?, mtime = ?, missing_since = NULL,
        subcategory_id = CASE WHEN subcategory_manual = 1 THEN subcategory_id
-         ELSE ${mappedSubcategorySql('items.root_id', '?')} END
+         ELSE ${MAPPED_FOR_NEW_PATH} END
      WHERE id = ?`,
   ).run(move.relPath, move.size, move.mtimeMs, move.relPath, move.id);
 }
@@ -192,10 +218,9 @@ export function fileItemsByHand(
  * Returns how many items it looked at.
  */
 export function refileItemsByMappings(db: Db, rootId: number): number {
-  const mapped = mappedSubcategorySql('items.root_id', 'items.rel_path');
   const result = db
     .prepare(
-      `UPDATE items SET subcategory_id = ${mapped} WHERE root_id = ? AND subcategory_manual = 0`,
+      `UPDATE items SET subcategory_id = ${MAPPED_FOR_ROW} WHERE root_id = ? AND subcategory_manual = 0`,
     )
     .run(rootId);
   return result.changes;

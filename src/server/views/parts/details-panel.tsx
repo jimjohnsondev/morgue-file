@@ -2,6 +2,7 @@
 // collections as chips, then its other fields. It folds to a thin edge (frame 6). The editing
 // controls are drawn as the frames show them and come alive with the editing PRs (13, 14, 17, 18).
 import { FieldText } from './field-text.js';
+import { ApiForm, EditButton, EditView, HiddenLabel, SaveOrCancel } from './inline-edit.js';
 import { PendingAction } from './pending-action.js';
 
 import type { FieldType } from '#core/db/repositories/fields.js';
@@ -16,6 +17,18 @@ export type FactRow = {
   readonly stars?: { readonly text: string; readonly rating: number };
   /** The edit link after the value: [move], [change]. */
   readonly action?: string;
+  /** The Subcategory row's [move] form, which files the item by hand (R5). */
+  readonly filing?: FilingForm;
+};
+
+/** The id of the [move] form; E6's "file it now" opens the item page at #filing. */
+export const FILING_FORM_ID = 'filing';
+
+/** What the [move] form offers: its section's subcategories and Unsorted, and where it posts. */
+export type FilingForm = {
+  readonly action: string;
+  readonly choices: readonly { readonly value: string; readonly label: string }[];
+  readonly current: string;
 };
 
 /** A chip linking somewhere, such as a model, with a note after it ("pages 12–19"). */
@@ -45,9 +58,46 @@ export type DetailsModel = {
   readonly hideHref: string;
 };
 
+/** The [move] form, in place of the subcategory's name while it is open. */
+function FilingFields(props: { readonly filing: FilingForm }) {
+  const { filing } = props;
+  return (
+    <ApiForm action={filing.action} editId={FILING_FORM_ID} label="File this item">
+      <HiddenLabel for="filing-subcategory">Subcategory</HiddenLabel>
+      <select id="filing-subcategory" name="subcategory" class="field">
+        {filing.choices.map((choice) => (
+          <option
+            key={choice.value}
+            value={choice.value}
+            selected={choice.value === filing.current}
+          >
+            {choice.label}
+          </option>
+        ))}
+      </select>{' '}
+      <SaveOrCancel />
+    </ApiForm>
+  );
+}
+
+/** The Subcategory fact: its name and [move], which opens the filing form in its place. */
+function FilingValue(props: { readonly row: FactRow; readonly filing: FilingForm }) {
+  return (
+    <td>
+      <EditView formId={FILING_FORM_ID}>
+        {props.row.text} [<EditButton formId={FILING_FORM_ID} label="move" />]
+      </EditView>
+      <FilingFields filing={props.filing} />
+    </td>
+  );
+}
+
 /** The value cell of a fact: text or a link, stars, and the edit action in brackets. */
 function FactValue(props: { readonly row: FactRow }) {
   const { row } = props;
+  if (row.filing !== undefined) {
+    return <FilingValue row={row} filing={row.filing} />;
+  }
   return (
     <td>
       {row.stars === undefined &&

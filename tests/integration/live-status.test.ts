@@ -87,6 +87,8 @@ beforeAll(async () => {
       actions.push(action);
       await Promise.resolve();
     },
+    watchRoot: () => undefined,
+    rescanRoot: () => undefined,
     whenIndexed: () => Promise.resolve(),
     stop: () => Promise.resolve(),
   };

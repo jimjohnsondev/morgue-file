@@ -8,6 +8,8 @@ import { registerErrorHandler } from './error-handler.js';
 import { registerIndexingApi } from './routes/api/indexing.js';
 import { registerIngestApi } from './routes/api/ingest.js';
 import { registerSetupApi } from './routes/api/setup.js';
+import { registerSubcategoryApi } from './routes/api/subcategories.js';
+import { registerWatchedFolderApi } from './routes/api/watched-folders.js';
 import { registerAssetRoute } from './routes/assets.js';
 import { registerEventsRoute } from './routes/events.js';
 import { registerHealthRoute } from './routes/healthz.js';
@@ -19,6 +21,7 @@ import { registerIndexRoutes } from './routes/pages/index-routes.js';
 import { registerItemRoute } from './routes/pages/item-route.js';
 import { registerModelRoute } from './routes/pages/model-route.js';
 import { registerSearchRoute } from './routes/pages/search-route.js';
+import { registerSettingsPage } from './routes/pages/settings-route.js';
 import { registerSetupPage } from './routes/pages/setup.js';
 import { registerSetupGate } from './routes/setup-gate.js';
 import { createLaunchToken, registerSecurityHooks } from './security/security-hooks.js';
@@ -66,11 +69,14 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerModelRoute(app, pageContext);
   registerSearchRoute(app, pageContext);
   registerItemRoute(app, pageContext);
+  registerSettingsPage(app, pageContext);
   registerMediaRoutes(app, library);
   registerOriginalRoutes(app, library);
   registerEventsRoute(app, library);
   registerIndexingApi(app, library);
   registerIngestApi(app, library);
+  registerSubcategoryApi(app, library);
+  registerWatchedFolderApi(app, { homeDir: config.homeDir, install, library });
 
   return app;
 }

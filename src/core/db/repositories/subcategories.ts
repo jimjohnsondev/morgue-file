@@ -34,12 +34,18 @@ type SubcategoryRow = {
   group_by: string | null;
 };
 
-/** Adds a subcategory at the end of its section and returns its id. */
-export function insertSubcategory(db: Db, section: Section, name: string): number {
+/** The slug for a subcategory name, refusing a name with no letter or digit to make one from. */
+function requireSlug(name: string): string {
   const slug = slugify(name);
   if (slug === '') {
     throw new AppError('invalid-input', 'A subcategory needs a name with a letter or digit.');
   }
+  return slug;
+}
+
+/** Adds a subcategory at the end of its section and returns its id. */
+export function insertSubcategory(db: Db, section: Section, name: string): number {
+  const slug = requireSlug(name);
   if (findSubcategoryBySlug(db, section, slug) !== undefined) {
     throw new AppError('invalid-input', `There is already a subcategory called "${name}".`);
   }
@@ -60,6 +66,56 @@ export function findSubcategoriesBySection(db: Db, section: Section): Subcategor
     .prepare('SELECT * FROM subcategories WHERE section = ? ORDER BY position, id')
     .all(section) as SubcategoryRow[];
   return rows.map(toSubcategory);
+}
+
+/** Every subcategory, section by section (Photos, Video, Library) in tab order: Settings' table. */
+export function findAllSubcategories(db: Db): Subcategory[] {
+  const rows = db
+    .prepare(
+      `SELECT * FROM subcategories
+       ORDER BY CASE section WHEN 'photos' THEN 1 WHEN 'video' THEN 2 ELSE 3 END, position, id`,
+    )
+    .all() as SubcategoryRow[];
+  return rows.map(toSubcategory);
+}
+
+/**
+ * Renames a subcategory. Its slug follows the name, so its address reads as it is now called;
+ * the id stays, so its items and mappings stay with it.
+ */
+export function renameSubcategory(db: Db, id: number, name: string): void {
+  const subcategory = findSubcategoryById(db, id);
+  if (subcategory === undefined) {
+    throw new AppError('not-found', `No subcategory ${String(id)}.`);
+  }
+  const slug = requireSlug(name);
+  const sameSlug = findSubcategoryBySlug(db, subcategory.section, slug);
+  if (sameSlug !== undefined && sameSlug.id !== id) {
+    throw new AppError('invalid-input', `There is already a subcategory called "${name}".`);
+  }
+  db.prepare('UPDATE subcategories SET name = ?, slug = ? WHERE id = ?').run(name, slug, id);
+}
+
+/**
+ * Removes a subcategory. Its items wait in Unsorted (the column is ON DELETE SET NULL) and its
+ * folder mappings go with it (ON DELETE CASCADE). Items filed into it by hand are no longer held
+ * by hand, so a mapping that still covers them can file them again.
+ */
+export function deleteSubcategory(db: Db, id: number): void {
+  db.prepare('UPDATE items SET subcategory_manual = 0 WHERE subcategory_id = ?').run(id);
+  db.prepare('DELETE FROM subcategories WHERE id = ?').run(id);
+}
+
+/** How many items each subcategory holds, missing ones left out, by subcategory id. */
+export function countItemsBySubcategory(db: Db): Map<number, number> {
+  const rows = db
+    .prepare(
+      `SELECT subcategory_id AS id, COUNT(*) AS count FROM items
+       WHERE subcategory_id IS NOT NULL AND missing_since IS NULL
+       GROUP BY subcategory_id`,
+    )
+    .all() as { id: number; count: number }[];
+  return new Map(rows.map((row) => [row.id, row.count]));
 }
 
 /** Returns the subcategory at /<section>/<slug>, or undefined if there is none. */
@@ -93,6 +149,69 @@ export function insertFolderMapping(
     .prepare('INSERT INTO folder_mappings (root_id, rel_prefix, subcategory_id) VALUES (?, ?, ?)')
     .run(mapping.rootId, mapping.relPrefix, mapping.subcategoryId);
   return Number(result.lastInsertRowid);
+}
+
+/** A folder whose items file themselves into a subcategory. */
+export type FolderMapping = {
+  readonly id: number;
+  readonly rootId: number;
+  /** The folder relative to its root, with forward slashes. */
+  readonly relPrefix: string;
+  readonly subcategoryId: number;
+};
+
+type FolderMappingRow = {
+  id: number;
+  root_id: number;
+  rel_prefix: string;
+  subcategory_id: number;
+};
+
+/** Every folder mapping, in the order they were made. */
+export function findFolderMappings(db: Db): FolderMapping[] {
+  const rows = db.prepare('SELECT * FROM folder_mappings ORDER BY id').all() as FolderMappingRow[];
+  return rows.map(toFolderMapping);
+}
+
+/** Returns the mapping of a folder under a root, ignoring case as Windows does, if there is one. */
+export function findFolderMappingByPrefix(
+  db: Db,
+  rootId: number,
+  relPrefix: string,
+): FolderMapping | undefined {
+  // rel_prefix compares NOCASE.
+  const row = db
+    .prepare('SELECT * FROM folder_mappings WHERE root_id = ? AND rel_prefix = ?')
+    .get(rootId, relPrefix) as FolderMappingRow | undefined;
+  return row === undefined ? undefined : toFolderMapping(row);
+}
+
+/** Returns a folder mapping by id, or undefined if there is none. */
+export function findFolderMappingById(db: Db, id: number): FolderMapping | undefined {
+  const row = db.prepare('SELECT * FROM folder_mappings WHERE id = ?').get(id) as
+    FolderMappingRow | undefined;
+  return row === undefined ? undefined : toFolderMapping(row);
+}
+
+function toFolderMapping(row: FolderMappingRow): FolderMapping {
+  return {
+    id: row.id,
+    rootId: row.root_id,
+    relPrefix: row.rel_prefix,
+    subcategoryId: row.subcategory_id,
+  };
+}
+
+/** Removes a folder mapping; the items it filed are filed again by the caller. */
+export function deleteFolderMapping(db: Db, id: number): void {
+  db.prepare('DELETE FROM folder_mappings WHERE id = ?').run(id);
+}
+
+/** Says whether any field belongs to a subcategory alone (Magazines' title and issue date). */
+export function hasScopedFields(db: Db, subcategoryId: number): boolean {
+  return (
+    db.prepare('SELECT 1 FROM fields WHERE scope = ? LIMIT 1').get(subcategoryId) !== undefined
+  );
 }
 
 function toSubcategory(row: SubcategoryRow): Subcategory {

@@ -63,6 +63,13 @@ you close Morgue File, it carries on where it stopped next time.
   app are saved in the `Inbox` folder inside it, sorted by month.
 - Morgue File never changes, moves or deletes your files. Tags, collections and notes live in its
   own database.
+- **Filing:** every photo, video and Library item has one subcategory, such as Figure or Books.
+  In **Settings**, map a folder to a subcategory (type `E:\Reference\Figure`, or just `Figure`)
+  and everything in it, now and later, files itself there. Anything else waits in **Unsorted**.
+  To file one item by hand, click **[move]** beside its subcategory on the item's page; it then
+  stays where you put it. Removing a subcategory moves its items to Unsorted, never on disk.
+- **More folders:** under **Settings → Watched folders**, add another folder, such as
+  `D:\Phone exports`. It is indexed and watched like the Reference folder.
 
 More about browsing, tagging and searching is added here as those features arrive.
 
@@ -108,7 +115,8 @@ to.
 - **The page says it can't find the data folder:** the drive holding it is probably unplugged.
   Plug it in and reload the page, or point Morgue File to where the data is now.
 - **The Reference folder's drive is offline:** your items are kept and come back when the drive
-  does.
+  does. If the drive now has a new letter, or you moved the folder, open **Settings → Watched
+  folders**, click **change location** and type where it is now. Nothing is indexed again.
 - **A video won't play:** your browser can't play that video format (some MOV and HEVC files).
   Morgue File shows a still frame from it instead.
 
