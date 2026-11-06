@@ -1,0 +1,164 @@
+/* Selection mode on Index pages (frame 13): selected cards framed in magenta with a ticked box,
+   the action panel above the grid, and the suggestion list under a tag field. */
+.thumb-card--selectable {
+  position: relative;
+}
+
+.thumb-card__tick {
+  position: absolute;
+  top: var(--tick-inset);
+  left: var(--tick-inset);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tick-box);
+  height: var(--tick-box);
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  box-shadow: 1px 1px 0 var(--color-bevel-dark);
+}
+
+.thumb-card__tick input {
+  width: var(--tick-check);
+  height: var(--tick-check);
+  margin: 0;
+  accent-color: var(--color-magenta);
+}
+
+/* The frame grows inward as the mat shrinks, so a selected card keeps its size. */
+.thumb-card--selected .thumb {
+  padding: calc(var(--thumb-mat) + var(--thumb-border) - var(--selected-frame));
+  background: var(--color-selected-fill);
+  border: var(--selected-frame) solid var(--color-magenta);
+  box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--color-edit-bar-bottom);
+}
+
+.thumb-card--selected .thumb-card__label {
+  font-weight: bold;
+  color: var(--color-magenta-hover);
+}
+
+.panel__title--edit {
+  background: linear-gradient(var(--color-edit-bar-top), var(--color-edit-bar-bottom));
+  box-shadow: inset 0 1px 0 var(--color-edit-bar-highlight);
+}
+
+.panel__title--edit::before {
+  background: var(--color-white);
+}
+
+.panel__title--edit a,
+.panel__title--edit a:visited {
+  color: var(--color-white);
+  text-decoration: underline;
+}
+
+.selection-panel__body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) 0;
+  align-items: flex-start;
+}
+
+.selection-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  border-left: 1px dotted var(--color-hairline);
+}
+
+.selection-group:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.selection-group:nth-child(2) {
+  min-width: var(--tag-group-min-width);
+}
+
+.selection-group__label {
+  font-size: var(--text-caption);
+  font-weight: bold;
+  color: var(--color-text-quiet);
+  text-transform: uppercase;
+  letter-spacing: var(--panel-title-spacing);
+}
+
+.selection-group__links {
+  font-size: var(--text-table);
+}
+
+.selection-form {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.selection-form__grow {
+  flex: 1;
+}
+
+.selection-form__name {
+  width: var(--collection-name-width);
+}
+
+.selection-tags .chip {
+  margin-left: var(--space-1);
+}
+
+.selection-tags[hidden],
+.selection-panel__result[hidden] {
+  display: none;
+}
+
+.selection-panel__result {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-table);
+  background: var(--color-notice-cyan);
+  border-top: 1px solid var(--color-border);
+}
+
+/* A tag field and the list of suggestions attached under it. */
+.suggest {
+  position: relative;
+  display: block;
+}
+
+.suggest__field {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.suggest__list {
+  position: absolute;
+  z-index: 2;
+  top: 100%;
+  right: 0;
+  left: 0;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  font-size: var(--text-table);
+  list-style: none;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--color-shadow);
+}
+
+.suggest__list[hidden] {
+  display: none;
+}
+
+.suggest__list li {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  border-bottom: 1px dotted var(--color-suggest-rule);
+}
+
+.suggest__list li[aria-selected='true'] {
+  background: var(--color-cyan);
+}

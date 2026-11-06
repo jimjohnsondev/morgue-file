@@ -1,6 +1,9 @@
 // Builds the details panel of an Item page (frames 5, 7, 8): facts by kind, chips for tags,
 // models and collections, and the item's own fields as the fields table holds them (R11).
-import { findCollectionsByItem } from '#core/db/repositories/collections.js';
+import {
+  findCollectionsByItem,
+  findCollectionSummaries,
+} from '#core/db/repositories/collections.js';
 import { findModelLinksByItem } from '#core/db/repositories/models.js';
 import { findSubcategoriesBySection } from '#core/db/repositories/subcategories.js';
 import { findTagNamesByItem } from '#core/db/repositories/tags.js';
@@ -151,6 +154,34 @@ function fieldRows(source: DetailsSource): FieldRow[] {
     }));
 }
 
+/** The item's collections as chips, each [x] taking it out, and the ones it can be added to. */
+function collectionParts(db: Db, itemId: number) {
+  const itemPath = `/api/items/${String(itemId)}`;
+  const holding = findCollectionsByItem(db, itemId);
+  const heldIds = new Set(holding.map((collection) => collection.id));
+  return {
+    collections: holding.map((collection) => ({
+      label: collection.name,
+      href: `/collections/${String(collection.id)}`,
+      removeAction: `${itemPath}/collections/${String(collection.id)}`,
+    })),
+    collectionAdding: {
+      action: `${itemPath}/collections`,
+      choices: findCollectionSummaries(db)
+        .filter((collection) => !heldIds.has(collection.id))
+        .map((collection) => ({ value: String(collection.id), label: collection.name })),
+    },
+  };
+}
+
+/** The item's tags as chips, each [x] taking the tag off (R10). */
+function tagChips(db: Db, itemId: number) {
+  return findTagNamesByItem(db, itemId).map((name) => ({
+    label: name,
+    removeAction: `/api/items/${String(itemId)}/tags/${encodeURIComponent(name)}`,
+  }));
+}
+
 /** Builds the details panel for one item. */
 export function buildDetailsModel(db: Db, source: DetailsSource): DetailsModel {
   const { item, view, shownPages } = source;
@@ -167,16 +198,14 @@ export function buildDetailsModel(db: Db, source: DetailsSource): DetailsModel {
   const [firstShown, lastShown] = [shownPages?.[0], shownPages?.at(-1)];
   return {
     facts: factRows(db, source),
-    tags: findTagNamesByItem(db, item.id).map((name) => ({ label: name })),
+    tags: tagChips(db, item.id),
+    tagAction: `/api/items/${String(item.id)}/tags`,
     models,
     addModelLabel:
       firstShown === undefined || lastShown === undefined
         ? 'add model'
         : `add model to ${formatPages(firstShown, lastShown)}`,
-    collections: findCollectionsByItem(db, item.id).map((collection) => ({
-      label: collection.name,
-      href: `/collections/${String(collection.id)}`,
-    })),
+    ...collectionParts(db, item.id),
     fields: fieldRows(source),
     hideHref: itemPageHref(item.id, view, { isDetailsHidden: true }),
   };

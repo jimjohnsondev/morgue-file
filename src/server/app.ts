@@ -7,6 +7,7 @@ import { loadPageAssets } from './assets.js';
 import { registerErrorHandler } from './error-handler.js';
 import { registerIndexingApi } from './routes/api/indexing.js';
 import { registerIngestApi } from './routes/api/ingest.js';
+import { registerOrganizeApi } from './routes/api/organize.js';
 import { registerSetupApi } from './routes/api/setup.js';
 import { registerSubcategoryApi } from './routes/api/subcategories.js';
 import { registerWatchedFolderApi } from './routes/api/watched-folders.js';
@@ -76,6 +77,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerIndexingApi(app, library);
   registerIngestApi(app, library);
   registerSubcategoryApi(app, library);
+  registerOrganizeApi(app, library);
   registerWatchedFolderApi(app, { homeDir: config.homeDir, install, library });
 
   return app;

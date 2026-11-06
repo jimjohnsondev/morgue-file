@@ -197,6 +197,14 @@ export function findItemIdsByPath(db: Db, rootId: number): Map<string, number> {
   return new Map(rows.map((row) => [row.rel_path, row.id]));
 }
 
+/** The section of each item that exists, by id, for checking a bulk filing before it runs. */
+export function findSectionsByItemIds(db: Db, ids: readonly number[]): Map<number, Section> {
+  const rows = db
+    .prepare('SELECT id, section FROM items WHERE id IN (SELECT value FROM json_each(?))')
+    .all(JSON.stringify(ids)) as Pick<ItemRow, 'id' | 'section'>[];
+  return new Map(rows.map((row) => [row.id, row.section]));
+}
+
 /** Files items by hand (R5), so later scans and mapping changes leave them where they were put. */
 export function fileItemsByHand(
   db: Db,

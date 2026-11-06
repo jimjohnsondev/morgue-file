@@ -1,4 +1,4 @@
-// Shared keyboard handling for the Item page's behaviors: each module listens for its own keys,
+// Shared keyboard handling for the page's key behaviors: each module listens for its own keys,
 // and none of them fires while a focused control wants the key, or Ctrl, Alt or Windows is held.
 
 /** Input types that take no typing, so letter keys still belong to the page. */
@@ -8,7 +8,7 @@ const KEYLESS_INPUTS: ReadonlySet<string> = new Set(['range', 'checkbox', 'radio
  * Says whether a key press belongs to a focused control, not to the page: anything typed into a
  * field, or the arrow keys that move a slider such as the video's scrub bar.
  */
-function isForControl(event: KeyboardEvent): boolean {
+export function isKeyForControl(event: KeyboardEvent): boolean {
   const target = event.target;
   if (!(target instanceof HTMLElement)) {
     return false;
@@ -25,7 +25,7 @@ function isForControl(event: KeyboardEvent): boolean {
  */
 export function onPageKeys(handlers: Readonly<Record<string, () => void>>): void {
   document.addEventListener('keydown', (event) => {
-    if (isForControl(event) || event.ctrlKey || event.altKey || event.metaKey) {
+    if (isKeyForControl(event) || event.ctrlKey || event.altKey || event.metaKey) {
       return;
     }
     const handler = handlers[event.key];

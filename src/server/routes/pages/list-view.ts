@@ -1,5 +1,6 @@
 // How an Index page is viewed: which page, how many thumbnails per page, at which size, and
-// whether the filter panel is open. All of it lives in the URL, so every view is a plain link
+// whether the filter panel is open or items are being selected (frame 13). All of it lives in
+// the URL, so every view is a plain link
 // that works with JavaScript off.
 import { Type } from '@sinclair/typebox';
 
@@ -23,6 +24,7 @@ export const ListViewQuerystring = Type.Object({
     Type.Union([Type.Literal('small'), Type.Literal('medium'), Type.Literal('large')]),
   ),
   filters: Type.Optional(Type.Union([Type.Literal('shown'), Type.Literal('hidden')])),
+  select: Type.Optional(Type.Literal('on')),
 });
 
 /** The parsed query string of an Index page. */
@@ -35,6 +37,8 @@ export type ListView = {
   readonly size: SquareSizeName;
   /** Whether the filter panel is open; undefined means the page's own default. */
   readonly filters: 'shown' | 'hidden' | undefined;
+  /** Whether the page is in selection mode, with tick boxes and the action panel (frame 13). */
+  readonly isSelecting: boolean;
 };
 
 /** Fills in the defaults: page 1, 96 per page, Medium thumbnails. */
@@ -44,6 +48,7 @@ export function toListView(params: ListViewParams): ListView {
     perPage: params.per ?? 96,
     size: params.size ?? 'medium',
     filters: params.filters,
+    isSelecting: params.select === 'on',
   };
 }
 
@@ -75,6 +80,9 @@ export function listHref(address: ListAddress, view: ListView, changes: Partial<
   }
   if (next.filters !== undefined) {
     params.set('filters', next.filters);
+  }
+  if (next.isSelecting) {
+    params.set('select', 'on');
   }
   const search = params.toString();
   return search === '' ? address.path : `${address.path}?${search}`;

@@ -176,7 +176,7 @@ function collectionModel(db: Db, params: { id: number }, view: ListView): IndexM
     crumbs: [{ label: 'Collections' }, { label: collection.name }],
     emptyText: 'This collection is empty.',
   });
-  return buildListModel(db, spec, view);
+  return buildListModel(db, { ...spec, collection }, view);
 }
 
 /**

@@ -4,7 +4,7 @@ import { Type } from '@sinclair/typebox';
 
 import {
   addSubcategory,
-  fileItem,
+  fileItems,
   mapFolder,
   removeSubcategory,
   renameSubcategoryTo,
@@ -92,7 +92,7 @@ export function registerSubcategoryApi(
       async (request, reply) => {
         const choice = request.body.subcategory;
         const subcategoryId = choice === 'unsorted' ? undefined : Number(choice);
-        fileItem(requireLibrary(library).db, request.params.id, subcategoryId);
+        fileItems(requireLibrary(library).db, [request.params.id], subcategoryId);
         return reply.code(204).send();
       },
     );

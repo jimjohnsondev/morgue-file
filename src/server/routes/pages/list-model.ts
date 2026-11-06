@@ -19,6 +19,7 @@ import {
   withoutPanelTerms,
 } from './filter-choices.js';
 import { listHref, PER_PAGE_CHOICES, SIZE_CHOICES } from './list-view.js';
+import { selectionParts } from './selection-model.js';
 import { toThumbCards } from './thumb-cards.js';
 
 import type { Db } from '#core/db/connection.js';
@@ -45,6 +46,8 @@ export type ListSpec = {
   readonly isShelf: boolean;
   readonly emptyText: string;
   readonly emptyHelp?: EmptyHelp;
+  /** The collection a collection's page lists, whose items its action panel can take out. */
+  readonly collection?: { readonly id: number; readonly name: string };
 };
 
 /** The size and per-page links, each keeping the rest of the view. */
@@ -137,34 +140,54 @@ function countList(
   };
 }
 
+/**
+ * Whether the filter panel shows, and where "» show filters" goes when it doesn't. Selection mode
+ * puts the action panel in its place (frame 13), and showing filters leaves selection mode.
+ */
+function filterPlace(spec: ListSpec, view: ListView, isSelecting: boolean) {
+  const isPanelOpen =
+    !isSelecting && (view.filters === undefined ? !spec.isShelf : view.filters === 'shown');
+  const showFiltersHref = isPanelOpen
+    ? undefined
+    : listHref(spec.address, view, { filters: 'shown', isSelecting: false });
+  return { isPanelOpen, showFiltersHref };
+}
+
 /** Reads the page of the list the view asks for and builds everything the template shows. */
 export function buildListModel(db: Db, spec: ListSpec, view: ListView): IndexModel {
   const compiled = compileQuery(spec.query);
-  const { page, lastPage, caption, panelTitle } = countList(db, { spec, compiled, view });
+  const counts = countList(db, { spec, compiled, view });
+  const { page, lastPage } = counts;
   const items = findItemsByQuery(db, compiled, {
     limit: view.perPage,
     offset: (page - 1) * view.perPage,
   });
-  const cards = toThumbCards(items, {
-    size: view.size,
-    fromQuery: queryToText(spec.query),
-    caption: spec.isSearch ? 'where' : 'details',
+  const selection = selectionParts(db, {
+    spec,
+    view,
+    total: counts.total,
+    cards: toThumbCards(items, {
+      size: view.size,
+      fromQuery: queryToText(spec.query),
+      caption: spec.isSearch ? 'where' : 'details',
+    }),
   });
-  const isPanelOpen = view.filters === undefined ? !spec.isShelf : view.filters === 'shown';
+  const { isPanelOpen, showFiltersHref } = filterPlace(spec, view, selection.panel !== undefined);
   return {
     title: spec.title,
     ...(spec.echo !== undefined && { echo: spec.echo }),
     breadcrumb: spec.breadcrumb,
-    caption,
-    panelTitle,
+    caption: counts.caption,
+    panelTitle: counts.panelTitle,
     size: view.size,
-    groups: [{ cards }],
+    groups: [{ cards: selection.cards }],
     emptyText: spec.emptyText,
     emptyHelp: spec.isSearch ? noResultsHelp(spec.query) : spec.emptyHelp,
-    toolbar: toolbarFor(spec.address, view),
+    toolbar: { ...toolbarFor(spec.address, view), selectHref: selection.selectHref },
     paging: { page, lastPage, hrefFor: (target) => listHref(spec.address, view, { page: target }) },
     filterPanel: isPanelOpen ? filterPanelFor(db, spec, view) : undefined,
-    showFiltersHref: isPanelOpen ? undefined : listHref(spec.address, view, { filters: 'shown' }),
+    showFiltersHref,
     activeFilters: spec.isSearch ? activeFilters(db, spec.query) : undefined,
+    selection: selection.panel,
   };
 }

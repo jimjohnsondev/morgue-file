@@ -61,6 +61,7 @@ export function toThumbCards<Listed extends ListedItem>(
 ): ThumbCard[] {
   return items.map((item) => ({
     key: String(item.id),
+    itemId: item.id,
     href: itemHref(item.id, options.fromQuery),
     imageSrc: thumbnailSrc(item, options.size),
     shape: hasSquareThumbnail(item.kind) ? 'square' : 'cover',
