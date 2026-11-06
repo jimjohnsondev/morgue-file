@@ -7,7 +7,7 @@ import {
   markItemMissing,
   updateItemFile,
 } from '#core/db/repositories/item-files.js';
-import { insertItem, moveItem } from '#core/db/repositories/items.js';
+import { findItemByPath, insertItem, moveItem } from '#core/db/repositories/items.js';
 import { queueThumbnail } from '#core/jobs/thumbnail-jobs.js';
 
 import { createMovePool } from './moves.js';
@@ -102,7 +102,9 @@ function writeChanges(run: ReconcileRun, changes: readonly Change[]): void {
   const now = run.now.toISOString();
   db.transaction(() => {
     for (const { entry, stored } of changes) {
-      let itemId = stored?.id;
+      // Ingest indexes a saved file at once, so another pass that listed the folder before then
+      // may find its item already stored; update it rather than adding the path twice.
+      let itemId = stored?.id ?? findItemByPath(db, run.rootId, entry.relPath)?.id;
       if (itemId === undefined) {
         itemId = insertItem(db, {
           rootId: run.rootId,

@@ -13,4 +13,5 @@ import './viewer-image.js';
 import './viewer-video.js';
 import './reader.js';
 import './drop-outline.js';
+import './paste.js';
 import './live-status.js';

@@ -17,7 +17,12 @@ export type AppErrorCode =
   | 'already-set-up'
   | 'no-free-port'
   | 'media-unreadable'
-  | 'library-unavailable';
+  | 'library-unavailable'
+  | 'reference-offline'
+  | 'unsupported-file'
+  | 'too-large'
+  | 'fetch-refused'
+  | 'fetch-failed';
 
 /**
  * An expected failure with a stable code, so callers can react to the code
@@ -50,6 +55,11 @@ const statusByCode: Readonly<Record<AppErrorCode, number>> = {
   'no-free-port': 500,
   'media-unreadable': 500,
   'library-unavailable': 503,
+  'reference-offline': 503,
+  'unsupported-file': 415,
+  'too-large': 413,
+  'fetch-refused': 400,
+  'fetch-failed': 502,
 };
 
 /** Returns the HTTP status for an error code, kept in one place so routes agree. */

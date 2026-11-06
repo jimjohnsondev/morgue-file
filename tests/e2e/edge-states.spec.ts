@@ -1,6 +1,7 @@
 // The edge states a browser reaches on the fixture archive (build plan row 10): a search with
 // no results (E2), and the drop outline and its notice (E6). E1 and E3-E5 need a library in
-// another state; tests/integration/edge-states.test.ts draws those.
+// another state; tests/integration/edge-states.test.ts draws those. Dropping a file saves it, so
+// drops are tested in ingest.spec.ts, on a server of their own.
 import { expect, test } from '@playwright/test';
 
 import type { Page } from '@playwright/test';
@@ -35,15 +36,6 @@ test('E6: dragging a file over a page shows the outline until it leaves', async 
   await expect(outline).toContainText('Drop to save to Unsorted');
   await page.dispatchEvent('main', 'dragleave', { dataTransfer });
   await expect(outline).toBeHidden();
-});
-
-test('E6: dropping a file keeps the archive open rather than the file', async ({ page }) => {
-  await page.goto('/photos/figure');
-  const dataTransfer = await startFileDrag(page);
-  await page.dispatchEvent('main', 'dragover', { dataTransfer });
-  await page.dispatchEvent('main', 'drop', { dataTransfer });
-  await expect(page.locator('[data-drop-outline]')).toBeHidden();
-  await expect(page).toHaveURL('/photos/figure');
 });
 
 test('E6: the Saved to Unsorted notice links to its item and is dismissed', async ({ page }) => {

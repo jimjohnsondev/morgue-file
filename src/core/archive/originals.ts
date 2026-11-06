@@ -1,13 +1,15 @@
-// The only module that touches files under a Reference root: it reads, watches, and creates the
-// Inbox.
+// The only module that touches files under a Reference root: it reads and watches them, and
+// creates the Inbox and writes dropped files into it.
 import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, watch } from 'node:fs';
-import { lstat, mkdir, open, opendir, readdir, readFile, stat } from 'node:fs/promises';
+import { lstat, mkdir, open, opendir, readdir, readFile, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { pipeline } from 'node:stream/promises';
 
 import { AppError, systemErrorCode } from '#core/errors.js';
 
 import type { Stats } from 'node:fs';
+import type { FileHandle } from 'node:fs/promises';
 import type { Readable } from 'node:stream';
 
 /** The folder inside the Reference folder where dropped and pasted files are saved (R2). */
@@ -293,4 +295,84 @@ export function watchOriginals(rootPath: string, listener: WatchListener): Origi
       watcher.close();
     },
   };
+}
+
+/** A file to save in the Inbox: the month folder, the cleaned name and the bytes. */
+export type InboxFile = {
+  /** The folder inside the Inbox, such as `2026-11`; one name, never a path. */
+  readonly folderName: string;
+  /** A name already cleaned for Windows (core/ingest/file-names.ts); one name, never a path. */
+  readonly fileName: string;
+  readonly content: Readable;
+};
+
+/** Refuses a folder or file name that is a path, so a write can't leave its Inbox folder. */
+function requireSingleName(name: string): void {
+  // Both slashes are checked, since path.basename only splits on the running system's own.
+  const isPath = name.includes('/') || name.includes('\\');
+  if (isPath || name === '' || name === '.' || name === '..') {
+    throw new AppError('invalid-input', `${name} is not a plain file name.`);
+  }
+}
+
+/** Returns `name (n).ext`, the name a file is saved under when `name.ext` is taken. */
+function numberedName(fileName: string, number: number): string {
+  if (number === 1) {
+    return fileName;
+  }
+  const extension = path.extname(fileName);
+  return `${fileName.slice(0, fileName.length - extension.length)} (${String(number)})${extension}`;
+}
+
+/** Creates a new file for writing, or returns undefined if the name was taken meanwhile. */
+async function createNewFile(file: string): Promise<FileHandle | undefined> {
+  try {
+    return await open(file, 'wx');
+  } catch (error) {
+    if (systemErrorCode(error) === 'EEXIST') {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Creates the file under the first free name: `name.ext`, then `name (2).ext` and so on. Names
+ * are compared ignoring case, as Windows and the database do, and the file is opened with `wx`,
+ * so another write that takes the name first is never overwritten.
+ */
+async function createFreeFile(folder: string, fileName: string): Promise<[string, FileHandle]> {
+  const taken = new Set((await readdir(folder)).map((name) => name.toLowerCase()));
+  for (let number = 1; ; number += 1) {
+    const candidate = numberedName(fileName, number);
+    const handle = taken.has(candidate.toLowerCase())
+      ? undefined
+      : await createNewFile(path.join(folder, candidate));
+    if (handle !== undefined) {
+      return [candidate, handle];
+    }
+  }
+}
+
+/**
+ * Saves a dropped, pasted or fetched file in `Inbox/<folder>/` (R2), the one place the app writes
+ * inside a Reference root. A name that is taken gets " (2)" and so on; nothing is overwritten. A
+ * file whose content fails part way is removed, so no half-written file is left behind. Returns
+ * the new file's path relative to the root.
+ */
+export async function writeInbox(referenceFolder: string, file: InboxFile): Promise<string> {
+  requireSingleName(file.folderName);
+  requireSingleName(file.fileName);
+  const relDir = `${INBOX_FOLDER_NAME}/${file.folderName}`;
+  const folder = resolveOriginalPath(referenceFolder, relDir);
+  await mkdir(folder, { recursive: true });
+  const [name, handle] = await createFreeFile(folder, file.fileName);
+  try {
+    await pipeline(file.content, handle.createWriteStream());
+  } catch (error) {
+    await handle.close();
+    await rm(path.join(folder, name), { force: true });
+    throw error;
+  }
+  return `${relDir}/${name}`;
 }
