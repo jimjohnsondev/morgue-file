@@ -28,6 +28,28 @@ async function openFromIndex(page: Page, indexUrl: string, label: string): Promi
   await settlePointerAndFocus(page);
 }
 
+/**
+ * Waits until the reader's page strip has drawn every page scrolled into its view. The reader
+ * draws those after the pages on show, as each one is seen, so `data-drawn` on the stage alone
+ * can leave the strip half drawn when the screenshot is taken. The reader only draws strip pages
+ * that are on screen, as frame 8's strip is.
+ */
+async function waitForPageStrip(page: Page): Promise<void> {
+  await expect(async () => {
+    const undrawn = await page.locator('.page-strip').evaluate((strip) => {
+      const view = strip.getBoundingClientRect();
+      return [...strip.querySelectorAll<HTMLCanvasElement>('canvas[data-pdf-page]')].filter(
+        (canvas) => {
+          const box = canvas.getBoundingClientRect();
+          const isSeen = box.right > view.left && box.left < view.right;
+          return isSeen && canvas.dataset.drawn !== 'true';
+        },
+      ).length;
+    });
+    expect(undrawn).toBe(0);
+  }).toPass();
+}
+
 /** Moves the video to a time and waits until that frame is drawn. */
 async function seekVideo(page: Page, seconds: number): Promise<void> {
   await page.locator('[data-video-scrub]').fill(String(seconds));
@@ -92,6 +114,7 @@ test('frame 8: a magazine issue as a two-page spread', async ({ page }) => {
   await page.getByRole('button', { name: 'Go', exact: true }).last().click();
   await expect(page.locator('.reader-nav')).toContainText('Pages 12–13 of 72');
   await expect(page.locator('[data-reader]')).toHaveAttribute('data-drawn', 'true');
+  await waitForPageStrip(page);
   await settlePointerAndFocus(page);
   await waitForFontsAndImages(page);
   await expect(page).toHaveScreenshot('frame-08-magazine-spread.png', SCREENSHOT_OPTIONS);

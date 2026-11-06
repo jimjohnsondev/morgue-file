@@ -12,6 +12,7 @@ import {
   makeReferenceFolder,
   moveFolder,
   startMorgueFile,
+  stopEveryStartedCopy,
   stopMorgueFile,
   TEMP_DIR,
   waitForApp,
@@ -21,6 +22,11 @@ import {
 import type { Page } from '@playwright/test';
 
 const REFERENCE_DIR = path.join(TEMP_DIR, 'Reference tést');
+
+// A test that fails part way must not leave its copy on port 47613 for the next test to reach.
+test.afterEach(async () => {
+  await stopEveryStartedCopy();
+});
 
 /** README First run steps 2–5, with the data choice the test asks for. */
 async function completeSetup(page: Page, chosenDataDir?: string): Promise<void> {

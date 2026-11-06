@@ -57,18 +57,26 @@ export async function waitForApp(): Promise<void> {
   throw new Error(`Morgue File didn't answer at ${APP_URL}.`);
 }
 
+/** Every copy startMorgueFile() started that is still running. */
+const started = new Set<ChildProcess>();
+
 /**
  * README First run step 1: double-clicks Morgue File.cmd. It starts from another working
  * directory, as a shortcut can, and with the browser left closed (the test drives its own).
  */
 export function startMorgueFile(installDir: string): ChildProcess {
   const launcher = path.join(installDir, 'Morgue File.cmd');
-  return spawn('cmd.exe', ['/d', '/s', '/c', `""${launcher}""`], {
+  const child = spawn('cmd.exe', ['/d', '/s', '/c', `""${launcher}""`], {
     cwd: os.tmpdir(),
     env: { ...process.env, MORGUE_NO_BROWSER: '1' },
     windowsVerbatimArguments: true,
     stdio: 'inherit',
   });
+  started.add(child);
+  child.once('exit', () => {
+    started.delete(child);
+  });
+  return child;
 }
 
 /** Waits for a process to end and returns its exit code. */
@@ -103,6 +111,13 @@ export async function stopMorgueFile(child: ChildProcess): Promise<void> {
   }
   await waitForExit(child);
   await waitForAppToStop();
+}
+
+/** Stops every copy a test started and didn't stop, as when the test failed part way. */
+export async function stopEveryStartedCopy(): Promise<void> {
+  for (const child of [...started]) {
+    await stopMorgueFile(child);
+  }
 }
 
 /** The errors Windows gives for a folder something still holds open. */

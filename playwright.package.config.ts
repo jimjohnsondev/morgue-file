@@ -10,7 +10,9 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: true,
   retries: 0,
-  timeout: 180_000,
+  // Expand-Archive alone takes 2.5–3 minutes on the runner (as Extract All would), and the
+  // README steps after it about a minute more.
+  timeout: 360_000,
   reporter: process.env.CI === undefined ? 'list' : [['list'], ['github']],
   use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },
 });
