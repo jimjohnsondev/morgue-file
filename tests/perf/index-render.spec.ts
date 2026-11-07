@@ -88,6 +88,9 @@ function p95(times: readonly number[]): number {
 }
 
 test('R18: any Index page of a 50,000-item archive renders in under 300 ms', async () => {
+  // 18 pages of 21 fetches each don't fit Playwright's default 30 s on a slow runner. This only
+  // gives the test time to finish; the 300 ms budget per page is what passes or fails it.
+  test.setTimeout(120_000);
   const slowest: Record<string, number> = {};
   for (const url of PAGES) {
     const warmUp = await fetch(BASE_URL + url);
