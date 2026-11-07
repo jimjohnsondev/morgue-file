@@ -6,7 +6,6 @@ import {
   findItemsByQuery,
 } from '#core/db/repositories/item-lists.js';
 import { queryToText } from '#core/query/canonical-query.js';
-import { compileQuery } from '#core/query/compile-query.js';
 
 import { countLabel } from '../../views/templates/index-template.js';
 
@@ -23,6 +22,7 @@ import {
   typeChoices,
   withoutPanelTerms,
 } from './filter-choices.js';
+import { compileListQuery, groupCards, groupChoices } from './list-grouping.js';
 import { listHref, PER_PAGE_CHOICES, SIZE_CHOICES } from './list-view.js';
 import { selectionParts } from './selection-model.js';
 import { toThumbCards } from './thumb-cards.js';
@@ -84,6 +84,7 @@ function filterPanelFor(db: Db, spec: ListSpec, view: ListView): FilterPanelMode
     sections: section === undefined ? sectionChoices(db, query) : undefined,
     types: section === undefined ? undefined : typeChoices(section, query),
     ...sharedChoices(db, query),
+    groupings: groupChoices(db, query),
   };
 }
 
@@ -160,7 +161,7 @@ function filterPlace(spec: ListSpec, view: ListView, isSelecting: boolean) {
 
 /** Reads the page of the list the view asks for and builds everything the template shows. */
 export function buildListModel(db: Db, spec: ListSpec, view: ListView): IndexModel {
-  const compiled = compileQuery(spec.query);
+  const compiled = compileListQuery(db, spec.query);
   const counts = countList(db, { spec, compiled, view });
   const { page, lastPage } = counts;
   const items = findItemsByQuery(db, compiled, {
@@ -185,7 +186,7 @@ export function buildListModel(db: Db, spec: ListSpec, view: ListView): IndexMod
     caption: counts.caption,
     panelTitle: counts.panelTitle,
     size: view.size,
-    groups: [{ cards: selection.cards }],
+    groups: groupCards(db, { query: spec.query, compiled, items, cards: selection.cards }),
     emptyText: spec.emptyText,
     emptyHelp: spec.isSearch ? noResultsHelp(spec.query) : spec.emptyHelp,
     toolbar: { ...toolbarFor(spec.address, view), selectHref: selection.selectHref },

@@ -31,6 +31,7 @@ const FilterForm = Type.Object({
   rating: Type.Optional(Type.String()),
   type: Type.Optional(Type.Array(Type.String())),
   collection: Type.Optional(Type.String()),
+  group: Type.Optional(Type.String()),
 });
 
 const SearchQuerystring = Type.Composite([
@@ -69,6 +70,7 @@ function formTerms(form: FilterFormValues): Term[] {
     ['model', chosen(form.model)],
     ['rating', chosen(form.rating)],
     ['collection', chosen(form.collection)],
+    ['group', chosen(form.group)],
   ];
   const terms = picked
     .filter((pick): pick is [FilterKey, string] => pick[1] !== undefined)

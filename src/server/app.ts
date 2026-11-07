@@ -22,6 +22,7 @@ import { registerIndexRoutes } from './routes/pages/index-routes.js';
 import { registerItemRoute } from './routes/pages/item-route.js';
 import { registerModelRoute } from './routes/pages/model-route.js';
 import { registerSearchRoute } from './routes/pages/search-route.js';
+import { registerSearchTipsRoute } from './routes/pages/search-tips-route.js';
 import { registerSettingsPage } from './routes/pages/settings-route.js';
 import { registerSetupPage } from './routes/pages/setup.js';
 import { registerSetupGate } from './routes/setup-gate.js';
@@ -69,6 +70,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerCardListRoutes(app, pageContext);
   registerModelRoute(app, pageContext);
   registerSearchRoute(app, pageContext);
+  registerSearchTipsRoute(app, pageContext);
   registerItemRoute(app, pageContext);
   registerSettingsPage(app, pageContext);
   registerMediaRoutes(app, library);

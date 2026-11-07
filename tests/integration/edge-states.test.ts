@@ -145,6 +145,23 @@ describe('E2: search with no results', () => {
     expect(body).toContain(`href="${withoutHands}">without <code>tag:hands</code>`);
     expect(body).toContain(`href="${withoutRating}">without <code>rating:5</code>`);
     expect(body).toContain('<a href="/search">Clear the search</a>');
+    expect(body).toContain('<a href="/search/tips">search tips</a>');
+  });
+
+  it('links to search tips that write out the query language and the fields a search names', async () => {
+    const body = await getPage('/search/tips');
+    expect(body).toContain('<h1 class="page__title">Search tips</h1>');
+    for (const example of ['tag:hands', 'model:Elena', 'rating:4  rating:3+', 'group:rating']) {
+      expect(body).toContain(example);
+    }
+    expect(body).toContain('<code>rating:</code>');
+    expect(body).toContain('<code>notes:</code>');
+  });
+
+  it('offers no search without a group: term, which only orders the list', async () => {
+    const body = await getPage(searchUrl('tag:nowhere group:rating'));
+    expect(body).toContain('No items match.');
+    expect(body).not.toContain('without <code>group:rating</code>');
   });
 
   it('offers nothing to drop on a search that found something', async () => {

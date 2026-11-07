@@ -113,7 +113,7 @@ export function filterTerm(key: FilterKey, value: string, isNegated = false): Te
   if (key === 'rating' && !RATING_VALUE.test(value)) {
     return { kind: 'word', value: `rating:${value}`, isNegated };
   }
-  const isCaseless = key === 'in' || key === 'sub' || key === 'type';
+  const isCaseless = key === 'in' || key === 'sub' || key === 'type' || key === 'group';
   return { kind: 'filter', key, value: isCaseless ? value.toLowerCase() : value, isNegated };
 }
 

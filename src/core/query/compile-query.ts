@@ -3,8 +3,10 @@
 // every value from the query is a parameter, never pasted into the text. Repositories run it.
 import { AppError } from '#core/errors.js';
 
+import { groupOrder } from './group-order.js';
 import { isTextTerm, textMatch } from './text-match.js';
 
+import type { GroupOrder, Grouping } from './group-order.js';
 import type { Query, Term } from './query-types.js';
 
 /** A condition on the `items` table and the values for its `?` placeholders, in order. */
@@ -13,9 +15,11 @@ export type CompiledQuery = {
   readonly params: readonly (string | number)[];
   /** True when the query keeps to one section (`in:photos`), so lists need not sort by section. */
   readonly isOneSection: boolean;
+  /** How the list is grouped (`group:rating`), if it is (R13). */
+  readonly group?: GroupOrder;
 };
 
-type Fragment = Omit<CompiledQuery, 'isOneSection'>;
+type Fragment = Pick<CompiledQuery, 'where' | 'params'>;
 
 /** The item kinds `type:` accepts by name; anything else is taken as a file extension. */
 const KIND_NAMES: ReadonlySet<string> = new Set(['image', 'video', 'pdf', 'cbz', 'pagefolder']);
@@ -103,6 +107,9 @@ function filterFragment(term: Extract<Term, { kind: 'filter' }>): Fragment {
       return typeFragment(term.value);
     case 'rating':
       return ratingFragment(term.value);
+    case 'group':
+      // Grouping orders a list without narrowing it; compileQuery leaves these terms out.
+      return { where: '1 = 1', params: [] };
   }
 }
 
@@ -136,27 +143,36 @@ function textFragments(query: Query): Fragment[] {
   return [...kept, ...dropped];
 }
 
+/** Says whether a term only groups the list (`group:rating`) rather than narrowing it. */
+function isGroupTerm(term: Term): boolean {
+  return term.kind === 'filter' && term.key === 'group';
+}
+
 /**
  * Compiles a query into one condition: its terms ANDed, each negated where it says so. Filters
- * are joins on indexed columns; full-text search runs only when there are words or phrases.
+ * are joins on indexed columns; full-text search runs only when there are words or phrases. A
+ * `group:` term only orders the list, so it adds no condition; the caller, who can read what
+ * the field is, passes the grouping it names.
  */
-export function compileQuery(query: Query): CompiledQuery {
+export function compileQuery(query: Query, grouping?: Grouping): CompiledQuery {
   const isOneSection = query.terms.some(
     (term) => term.kind === 'filter' && term.key === 'in' && !term.isNegated,
   );
-  if (query.terms.length === 0) {
-    return { where: '1 = 1', params: [], isOneSection };
-  }
   const filterFragments = query.terms
     .filter((term) => !isTextTerm(term))
+    .filter((term) => !isGroupTerm(term))
     .map((term) => {
       const fragment = termFragment(term);
       return term.isNegated ? { ...fragment, where: `NOT (${fragment.where})` } : fragment;
     });
   const fragments = [...filterFragments, ...textFragments(query)];
   return {
-    where: fragments.map((fragment) => `(${fragment.where})`).join(' AND '),
+    where:
+      fragments.length === 0
+        ? '1 = 1'
+        : fragments.map((fragment) => `(${fragment.where})`).join(' AND '),
     params: fragments.flatMap((fragment) => fragment.params),
     isOneSection,
+    ...(grouping !== undefined && { group: groupOrder(grouping) }),
   };
 }

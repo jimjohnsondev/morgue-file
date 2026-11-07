@@ -144,6 +144,9 @@
   --settings-side-width: 260px;
   --settings-fields-min-width: 560px;
   --path-field-width: 320px;
+
+  /* The search tips page (E2's link), which no frame draws: a readable line length. */
+  --tips-page-width: 1200px;
   --color-status-text: #0a5e6b;
   --color-status-border: #0e8fa3;
   --color-editing-row: #fff0f8;

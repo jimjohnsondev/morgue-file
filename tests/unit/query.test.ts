@@ -120,3 +120,32 @@ describe('R24: full-text terms', () => {
     expect(nameWords('Books/Studies in Hands')).toBe('Studies in Hands');
   });
 });
+
+describe('R13: group: terms', () => {
+  it('R13: reads group: as a filter, lowercased, written last among them', () => {
+    expect(parseQuery('GROUP:Rating tag:hands').terms).toEqual([
+      { kind: 'filter', key: 'tag', value: 'hands', isNegated: false },
+      { kind: 'filter', key: 'group', value: 'rating', isNegated: false },
+    ]);
+    expect(queryToText(parseQuery('group:rating hands in:photos'))).toBe(
+      'in:photos group:rating hands',
+    );
+  });
+
+  it('R13: narrows nothing, and orders by the grouping the caller passes', () => {
+    const onlyGroup = compileQuery(parseQuery('group:rating'));
+    expect(onlyGroup.where).toBe('1 = 1');
+    expect(onlyGroup.group).toBeUndefined();
+    const grouped = compileQuery(parseQuery('tag:hands group:rating'), {
+      kind: 'field',
+      key: 'rating',
+      order: 'number',
+    });
+    expect(grouped.params).toEqual(['hands']);
+    expect(grouped.group?.cte?.params).toEqual(['rating']);
+    expect(grouped.group?.columns).toHaveLength(2);
+    expect(compileQuery(parseQuery('group:subcategory'), { kind: 'subcategory' }).group?.cte).toBe(
+      undefined,
+    );
+  });
+});

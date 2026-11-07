@@ -26,6 +26,8 @@ export type FilterPanelModel = {
   readonly ratings: readonly FilterChoice[];
   readonly types: readonly FilterChoice[] | undefined;
   readonly collections: readonly FilterChoice[];
+  /** What the list can be grouped by (R13): Subcategory, then fields such as Rating. */
+  readonly groupings: readonly FilterChoice[];
 };
 
 /** A count in brackets after a choice's name, where the panel has one. */
@@ -82,6 +84,41 @@ function ChoiceList(props: {
         ))}
       </select>
     </div>
+  );
+}
+
+/** The panel's last lists, Collection and Group by, then Apply and Reset. */
+function PanelEnd(props: { readonly model: FilterPanelModel }) {
+  const { model } = props;
+  return (
+    <>
+      {model.collections.length > 0 && (
+        <ChoiceList
+          id="filter-collection"
+          label="Collection"
+          name="collection"
+          anyLabel="Any collection"
+          choices={model.collections}
+        />
+      )}
+      {model.groupings.length > 0 && (
+        <ChoiceList
+          id="filter-group"
+          label="Group by"
+          name="group"
+          anyLabel="No grouping"
+          choices={model.groupings}
+        />
+      )}
+      <div class="filter-panel__actions">
+        <button type="submit" class="button">
+          Apply
+        </button>
+        <a href={model.resetHref} class="button">
+          Reset
+        </a>
+      </div>
+    </>
   );
 }
 
@@ -144,23 +181,7 @@ export function FilterPanel(props: { readonly model: FilterPanelModel }) {
             isInline
           />
         )}
-        {model.collections.length > 0 && (
-          <ChoiceList
-            id="filter-collection"
-            label="Collection"
-            name="collection"
-            anyLabel="Any collection"
-            choices={model.collections}
-          />
-        )}
-        <div class="filter-panel__actions">
-          <button type="submit" class="button">
-            Apply
-          </button>
-          <a href={model.resetHref} class="button">
-            Reset
-          </a>
-        </div>
+        <PanelEnd model={model} />
       </form>
     </aside>
   );

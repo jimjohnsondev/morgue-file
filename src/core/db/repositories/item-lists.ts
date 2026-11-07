@@ -1,5 +1,7 @@
 // The items an Index page lists: one page of a compiled query, its count, and its count per
 // section (docs/ARCHITECTURE.md, Paging and Prev/Next).
+import { SECTION_RANK } from '#core/query/group-order.js';
+
 import { optional } from './sql-values.js';
 
 import type { CompiledQuery } from '#core/query/compile-query.js';
@@ -23,23 +25,41 @@ export type ListedItem = {
   readonly mtimeMs: number;
 };
 
+/** A listed item with the value of the field its list is grouped by (R13), if it is grouped. */
+export type GroupedItem = ListedItem & {
+  readonly groupValue: string | number | undefined;
+};
+
 /** Which page of results to read. */
 export type PageWindow = {
   readonly limit: number;
   readonly offset: number;
 };
 
-/** Photos, then Video, then Library, so mixed search results read by section. */
-const SECTION_RANK = `CASE items.section WHEN 'photos' THEN 1 WHEN 'video' THEN 2 ELSE 3 END`;
-
 /**
  * The columns of every list's order: by section, then oldest first by date added, the order the
  * folders hold them. A list within one section leaves out the section rank, so the
  * items_in_list_order index gives the order and a deep page needn't sort the whole section (R18).
+ * A grouped list puts its groups' columns first.
  */
 function listColumns(query: CompiledQuery): string[] {
   const withinSection = ['items.added_at', 'items.id'];
-  return query.isOneSection ? withinSection : [SECTION_RANK, ...withinSection];
+  const own = query.isOneSection ? withinSection : [SECTION_RANK, ...withinSection];
+  return [...(query.group?.columns ?? []), ...own];
+}
+
+/**
+ * The common table expressions a statement starts with: the grouping's, if it has one, then the
+ * statement's own. Its parameters come before every other, as the text reads.
+ */
+function withTables(query: CompiledQuery, ...own: string[]): string {
+  const tables = [...(query.group?.cte === undefined ? [] : [query.group.cte.sql]), ...own];
+  return tables.length === 0 ? '' : `WITH ${tables.join(', ')}`;
+}
+
+/** The parameters of the grouping's table expression, which go first. */
+function groupParams(query: CompiledQuery): readonly string[] {
+  return query.group?.cte?.params ?? [];
 }
 
 /** The ORDER BY of a list, oldest first, or newest first to look backwards from an item. */
@@ -72,17 +92,19 @@ type ListedItemRow = {
  * One page of the items a query matches, in list order. The page's ids are found first, from
  * the index alone, and only those rows are joined for display.
  */
-export function findItemsByQuery(db: Db, query: CompiledQuery, window: PageWindow): ListedItem[] {
+export function findItemsByQuery(db: Db, query: CompiledQuery, window: PageWindow): GroupedItem[] {
   const rows = db
     .prepare(
-      `WITH page AS (${pageIdsSql(query)})
-       SELECT ${LISTED_COLUMNS}
+      `${withTables(query, `page AS (${pageIdsSql(query)})`)}
+       SELECT ${LISTED_COLUMNS}, ${query.group?.value ?? 'NULL'} AS group_value
        FROM page JOIN items ON items.id = page.id
        LEFT JOIN subcategories ON subcategories.id = items.subcategory_id
        ORDER BY ${listOrder(query)}`,
     )
-    .all(...query.params, window.limit, window.offset) as ListedItemRow[];
-  return rows.map(toListedItem);
+    .all(...groupParams(query), ...query.params, window.limit, window.offset) as (ListedItemRow & {
+    group_value: string | number | null;
+  })[];
+  return rows.map((row) => ({ ...toListedItem(row), groupValue: optional(row.group_value) }));
 }
 
 /** The ids of one page of a query, in list order; its last two placeholders are LIMIT, OFFSET. */
@@ -97,16 +119,19 @@ function pageIdsSql(query: CompiledQuery): string {
  */
 export function explainItemsByQuery(db: Db, query: CompiledQuery): string[] {
   const rows = db
-    .prepare(`EXPLAIN QUERY PLAN ${pageIdsSql(query)}`)
-    .all(...query.params, 96, 0) as { detail: string }[];
+    .prepare(`EXPLAIN QUERY PLAN ${withTables(query)} ${pageIdsSql(query)}`)
+    .all(...groupParams(query), ...query.params, 96, 0) as { detail: string }[];
   return rows.map((row) => row.detail);
 }
 
 /** Every item id a query matches, in list order, for a bulk action on a whole list (R10). */
 export function findItemIdsByQuery(db: Db, query: CompiledQuery): number[] {
   const rows = db
-    .prepare(`SELECT items.id FROM items WHERE ${query.where} ORDER BY ${listOrder(query)}`)
-    .all(...query.params) as { id: number }[];
+    .prepare(
+      `${withTables(query)} SELECT items.id FROM items WHERE ${query.where}
+       ORDER BY ${listOrder(query)}`,
+    )
+    .all(...groupParams(query), ...query.params) as { id: number }[];
   return rows.map((row) => row.id);
 }
 
@@ -127,6 +152,29 @@ export function countItemsBySectionByQuery(db: Db, query: CompiledQuery): Map<Se
     )
     .all(...query.params) as { section: Section; total: number }[];
   return new Map(rows.map((row) => [row.section, row.total]));
+}
+
+/**
+ * How many items a grouped query matches in each of its groups, by group value; items without a
+ * value are counted under undefined. Empty for a list that isn't grouped.
+ */
+export function countItemsByGroupByQuery(
+  db: Db,
+  query: CompiledQuery,
+): Map<string | number | undefined, number> {
+  if (query.group === undefined) {
+    return new Map();
+  }
+  const rows = db
+    .prepare(
+      `${withTables(query)} SELECT ${query.group.value} AS group_value, count(*) AS total
+       FROM items WHERE ${query.where} GROUP BY group_value`,
+    )
+    .all(...groupParams(query), ...query.params) as {
+    group_value: string | number | null;
+    total: number;
+  }[];
+  return new Map(rows.map((row) => [optional(row.group_value), row.total]));
 }
 
 /** Where one item sits in a list: how many come before it, and the items either side. */
@@ -155,11 +203,11 @@ function findNeighbourId(
   const isBefore = place.direction === 'before';
   const row = db
     .prepare(
-      `SELECT items.id FROM items
+      `${withTables(query)} SELECT items.id FROM items
        WHERE (${query.where}) AND ${comparedWithItem(query, isBefore ? '<' : '>')}
        ORDER BY ${listOrder(query, isBefore ? 'DESC' : 'ASC')} LIMIT 1`,
     )
-    .get(...query.params, place.itemId) as { id: number } | undefined;
+    .get(...groupParams(query), ...query.params, place.itemId) as { id: number } | undefined;
   return row?.id;
 }
 
@@ -176,10 +224,10 @@ export function findListPlace(db: Db, query: CompiledQuery, itemId: number): Lis
   }
   const row = db
     .prepare(
-      `SELECT count(*) AS before FROM items
+      `${withTables(query)} SELECT count(*) AS before FROM items
        WHERE (${query.where}) AND ${comparedWithItem(query, '<')}`,
     )
-    .get(...query.params, itemId) as { before: number };
+    .get(...groupParams(query), ...query.params, itemId) as { before: number };
   return {
     position: row.before + 1,
     previousId: findNeighbourId(db, query, { itemId, direction: 'before' }),

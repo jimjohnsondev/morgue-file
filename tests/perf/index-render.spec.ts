@@ -18,7 +18,7 @@ const PERF_DB = path.resolve(import.meta.dirname, 'perf.db');
 const PAGE_BUDGET_MS = 300;
 const RUNS_PER_PAGE = 20;
 
-/** Index pages of every kind, from the first page to the deepest. */
+/** Index pages of every kind, from the first page to the deepest, grouped ones included (R13). */
 const PAGES = [
   '/photos',
   '/photos?page=480',
@@ -35,6 +35,9 @@ const PAGES = [
   '/search?q=perf',
   '/search?q=hands+-tag%3Atag-002',
   '/search?q=model+12',
+  '/search?q=group%3Arating',
+  '/search?q=group%3Asubcategory&page=400',
+  '/search?q=in%3Aphotos+sub%3Afigure+group%3Arating&page=100',
 ];
 
 let server: ChildProcess | undefined;

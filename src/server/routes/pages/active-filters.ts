@@ -81,20 +81,30 @@ export function matchedModelLinks(db: Db, query: Query): TextLink[] {
   }));
 }
 
+/** Where E2's "search tips" link goes: the query language, written out. */
+export const SEARCH_TIPS_PATH = '/search/tips';
+
 /**
  * What a search that found nothing offers (E2): the search again without each term in turn,
- * and a way to start over. A search with one term has nothing to drop but that term.
+ * then ways to start over or learn the query language. A search with one term has nothing to
+ * drop but that term. `group:` terms only order the list, so dropping one would find nothing
+ * more and isn't offered.
  */
 export function noResultsHelp(query: Query): EmptyHelp | undefined {
   if (query.terms.length === 0) {
     return undefined;
   }
+  const without = query.terms.flatMap((term, index) =>
+    term.kind === 'filter' && term.key === 'group'
+      ? []
+      : [{ term: termToText(term), href: searchHref(withoutTerm(query, index)) }],
+  );
   return {
-    without: query.terms.map((term, index) => ({
-      term: termToText(term),
-      href: searchHref(withoutTerm(query, index)),
-    })),
-    links: [{ label: 'Clear the search', href: '/search' }],
+    without,
+    links: [
+      { label: 'Clear the search', href: '/search' },
+      { label: 'search tips', href: SEARCH_TIPS_PATH },
+    ],
   };
 }
 
