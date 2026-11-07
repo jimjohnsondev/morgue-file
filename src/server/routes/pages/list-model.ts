@@ -23,6 +23,7 @@ import {
   typeChoices,
   withoutPanelTerms,
 } from './filter-choices.js';
+import { groupCards, groupChoices, namedGroupingOf } from './list-grouping.js';
 import { listHref, PER_PAGE_CHOICES, SIZE_CHOICES } from './list-view.js';
 import { selectionParts } from './selection-model.js';
 import { toThumbCards } from './thumb-cards.js';
@@ -31,6 +32,7 @@ import type { Db } from '#core/db/connection.js';
 import type { Section } from '#core/db/repositories/items.js';
 import type { CompiledQuery } from '#core/query/compile-query.js';
 import type { Query } from '#core/query/query-types.js';
+import type { NamedGrouping } from './list-grouping.js';
 import type { ListAddress, ListView } from './list-view.js';
 import type { Crumb } from '../../views/parts/breadcrumb.js';
 import type { FilterPanelModel } from '../../views/parts/filter-panel.js';
@@ -72,7 +74,15 @@ function toolbarFor(address: ListAddress, view: ListView): ToolbarModel {
 }
 
 /** The filter panel for a list, with its lists filled in from the library. */
-function filterPanelFor(db: Db, spec: ListSpec, view: ListView): FilterPanelModel {
+function filterPanelFor(
+  db: Db,
+  list: {
+    readonly spec: ListSpec;
+    readonly view: ListView;
+    readonly named: NamedGrouping | undefined;
+  },
+): FilterPanelModel {
+  const { spec, view } = list;
   const { section, query } = spec;
   return {
     baseQuery: queryToText(withoutPanelTerms(query, section !== undefined)),
@@ -84,6 +94,7 @@ function filterPanelFor(db: Db, spec: ListSpec, view: ListView): FilterPanelMode
     sections: section === undefined ? sectionChoices(db, query) : undefined,
     types: section === undefined ? undefined : typeChoices(section, query),
     ...sharedChoices(db, query),
+    groupings: groupChoices(db, query, list.named),
   };
 }
 
@@ -160,7 +171,8 @@ function filterPlace(spec: ListSpec, view: ListView, isSelecting: boolean) {
 
 /** Reads the page of the list the view asks for and builds everything the template shows. */
 export function buildListModel(db: Db, spec: ListSpec, view: ListView): IndexModel {
-  const compiled = compileQuery(spec.query);
+  const named = namedGroupingOf(db, spec.query);
+  const compiled = compileQuery(spec.query, named?.grouping);
   const counts = countList(db, { spec, compiled, view });
   const { page, lastPage } = counts;
   const items = findItemsByQuery(db, compiled, {
@@ -185,12 +197,12 @@ export function buildListModel(db: Db, spec: ListSpec, view: ListView): IndexMod
     caption: counts.caption,
     panelTitle: counts.panelTitle,
     size: view.size,
-    groups: [{ cards: selection.cards }],
+    groups: groupCards(db, { named, compiled, items, cards: selection.cards }),
     emptyText: spec.emptyText,
     emptyHelp: spec.isSearch ? noResultsHelp(spec.query) : spec.emptyHelp,
     toolbar: { ...toolbarFor(spec.address, view), selectHref: selection.selectHref },
     paging: { page, lastPage, hrefFor: (target) => listHref(spec.address, view, { page: target }) },
-    filterPanel: isPanelOpen ? filterPanelFor(db, spec, view) : undefined,
+    filterPanel: isPanelOpen ? filterPanelFor(db, { spec, view, named }) : undefined,
     showFiltersHref,
     activeFilters: spec.isSearch ? activeFilters(db, spec.query) : undefined,
     matchedModels: spec.isSearch ? matchedModelLinks(db, spec.query) : undefined,

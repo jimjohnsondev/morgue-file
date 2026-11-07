@@ -35,6 +35,7 @@ const RESERVED_KEYS: ReadonlySet<string> = new Set([
   'type',
   'rating',
   'unsorted',
+  'group',
 ]);
 
 /** A field the user is adding in Settings. */

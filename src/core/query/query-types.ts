@@ -11,9 +11,13 @@ export const FILTER_KEYS = [
   'collection',
   'type',
   'rating',
+  'group',
 ] as const;
 
-/** A filter the language knows by name. Any other `key:value` is a user-defined field. */
+/**
+ * A filter the language knows by name. Any other `key:value` is a user-defined field. `group:`
+ * is the one that doesn't narrow the list: it gathers it by a field (R13).
+ */
 export type FilterKey = (typeof FILTER_KEYS)[number];
 
 /** One term of a query. Terms are ANDed together; v1 has no OR. */

@@ -6,11 +6,11 @@ import { countItemsByQuery, findListPlace } from '#core/db/repositories/item-lis
 import { findSubcategoryBySlug } from '#core/db/repositories/subcategories.js';
 import { AppError } from '#core/errors.js';
 import { queryToText } from '#core/query/canonical-query.js';
-import { compileQuery } from '#core/query/compile-query.js';
 
 import { searchHref } from './active-filters.js';
 import { SECTION_LABELS } from './filter-choices.js';
 import { groupSpecFor, groupValuePath, groupValueQuery, subcategoryPath } from './group-model.js';
+import { compileListQuery } from './list-grouping.js';
 
 import type { Db } from '#core/db/connection.js';
 import type { GroupSpec } from '#core/db/repositories/field-groups.js';
@@ -189,7 +189,7 @@ export function findListContext(db: Db, query: Query, itemId: number): ListConte
   }
   let compiled;
   try {
-    compiled = compileQuery(query);
+    compiled = compileListQuery(db, query);
   } catch (error) {
     if (error instanceof AppError) {
       return undefined;

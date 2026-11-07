@@ -55,7 +55,7 @@ export function chosenValues(query: Query, key: FilterKey): string[] {
 
 /** The filters a panel has controls for: every filter on a section's page, fewer elsewhere. */
 function panelKeys(hasSection: boolean): ReadonlySet<FilterKey> {
-  const shared: FilterKey[] = ['in', 'tag', 'model', 'rating', 'collection'];
+  const shared: FilterKey[] = ['in', 'tag', 'model', 'rating', 'collection', 'group'];
   return new Set(hasSection ? [...shared, 'sub', 'unsorted', 'type'] : shared);
 }
 

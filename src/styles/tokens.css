@@ -148,6 +148,9 @@
   --color-status-border: #0e8fa3;
   --color-editing-row: #fff0f8;
 
+  /* The search tips page (E2's link), which no frame draws: a readable line length. */
+  --tips-page-width: 1200px;
+
   /* Selection mode, as the frame 13 canvas draws it: the selected card's frame and fill, its
      tick box, the edit-mode title bar's top highlight, and the action panel's fields. */
   --selected-frame: 3px;
