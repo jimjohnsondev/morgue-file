@@ -15,7 +15,7 @@ import { compileQuery } from '#core/query/compile-query.js';
 import { parseQuery } from '#core/query/parse-query.js';
 import { textMatch } from '#core/query/text-match.js';
 
-import { REPRESENTATIVE_SEARCHES } from '../support/search-queries.ts';
+import { REPRESENTATIVE_SEARCHES } from '../support/search-queries.js';
 
 import type { Db } from '#core/db/connection.js';
 

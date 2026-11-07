@@ -25,11 +25,12 @@ function quoted(term: TextTerm, isPrefix: boolean): string {
 
 /**
  * The query's free text as MATCH expressions. Terms are ANDed, as everywhere in the language.
- * The last word matches as a prefix, so results come while the word is still being typed.
+ * The last word that isn't negated matches as a prefix, so results come while it is still being
+ * typed; a negated word excludes only itself, never every word it begins.
  */
 export function textMatch(query: Query): TextMatch {
   const texts = query.terms.filter(isTextTerm);
-  const lastWord = texts.findLast((term) => term.kind === 'word');
+  const lastWord = texts.findLast((term) => term.kind === 'word' && !term.isNegated);
   const expressions = texts.map((term) => ({
     term,
     expression: quoted(term, term === lastWord),

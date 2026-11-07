@@ -3,14 +3,26 @@
 // search's words list the models they find by their fields and tags.
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { addItemsToCollection, insertCollection } from '#core/db/repositories/collections.js';
+import {
+  addItemsToCollection,
+  findCollectionIdByName,
+  insertCollection,
+  removeItemsFromCollection,
+} from '#core/db/repositories/collections.js';
 import { findFieldByKey } from '#core/db/repositories/fields.js';
 import { findItemIdsByQuery } from '#core/db/repositories/item-lists.js';
 import { moveItem } from '#core/db/repositories/items.js';
 import { linkModelToItems, tagModel } from '#core/db/repositories/models.js';
+import { findModelsByText } from '#core/db/repositories/search-rows.js';
 import { tagItems, untagItems } from '#core/db/repositories/tags.js';
 import { removeField, restoreField, setFieldValue } from '#core/fields/fields.js';
-import { fileItems, renameSubcategoryTo } from '#core/filing/subcategory-changes.js';
+import {
+  addSubcategory,
+  fileItems,
+  mapFolder,
+  removeSubcategory,
+  renameSubcategoryTo,
+} from '#core/filing/subcategory-changes.js';
 import { createModel } from '#core/models/models.js';
 import { compileQuery } from '#core/query/compile-query.js';
 import { parseQuery } from '#core/query/parse-query.js';
@@ -117,6 +129,32 @@ describe('R24: search rows follow changes', () => {
     restoreField(db, notes.id, new Date('2026-11-02T00:00:00Z'));
     expect(search('rim')).toEqual([figure(9)]);
     setFieldValue(db, { entity: 'model', entityId: elenaId, key: 'name' }, 'Elena Varga');
+  });
+});
+
+describe('R24: search rows follow removals', () => {
+  it('R24: follows a collection emptied, a value cleared and a new model tag', () => {
+    const { db } = organize;
+    removeItemsFromCollection(db, findCollectionIdByName(db, 'Spring model session')!, [figure(8)]);
+    expect(search('spring')).toEqual([]);
+
+    setFieldValue(db, { entity: 'item', entityId: figure(9), key: 'notes' }, '');
+    expect(search('rim')).toEqual([]);
+    setFieldValue(db, { entity: 'item', entityId: figure(9), key: 'notes' }, 'Strong rim light.');
+
+    tagModel(db, elenaId, 'gesture study');
+    expect(findModelsByText(db, { match: '"gesture"', excluded: [], limit: 12 })).toEqual([
+      { slug: 'elena-varga', name: 'Elena Varga' },
+    ]);
+  });
+
+  it('R24: follows a folder mapped to a new subcategory, and that subcategory removed', () => {
+    const { db } = organize;
+    const studio = addSubcategory(db, { section: 'photos', name: 'Studio', folder: undefined });
+    mapFolder(db, studio, 'Inbox');
+    expect(search('studio')).toEqual([backlitId]);
+    removeSubcategory(db, studio);
+    expect(search('studio')).toEqual([]);
   });
 });
 

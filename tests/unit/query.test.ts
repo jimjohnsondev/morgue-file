@@ -105,7 +105,11 @@ describe('R24: full-text terms', () => {
     expect(compiled.where).toBe(
       '(NOT (items.id IN (SELECT rowid FROM item_search WHERE item_search MATCH ?)))',
     );
-    expect(compiled.params).toEqual(['"drapery"*']);
+    expect(compiled.params).toEqual(['"drapery"']);
+    expect(textMatch(parseQuery('seated -back'))).toEqual({
+      match: '"seated"*',
+      excluded: ['"back"'],
+    });
   });
 
   it('R24: splits file names into words on _ - . and camelCase', () => {

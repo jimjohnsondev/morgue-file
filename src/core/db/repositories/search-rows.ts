@@ -51,8 +51,14 @@ export function rewriteModelSearch(db: Db, modelIds: readonly number[]): void {
  * removed or restored (R38), since a removed field's values are left out of search.
  */
 export function rewriteSearchByField(db: Db, fieldId: number): void {
+  // Only text reaches a search row; numbers, and an item's links and dates, never do.
   const rows = db
-    .prepare('SELECT entity, entity_id FROM field_values WHERE field_id = ?')
+    .prepare(
+      `SELECT field_values.entity, field_values.entity_id FROM field_values
+       JOIN fields ON fields.id = field_values.field_id
+       WHERE field_values.field_id = ? AND field_values.value_text IS NOT NULL
+         AND (fields.entity = 'model' OR fields.type IN ('text', 'longtext', 'picklist'))`,
+    )
     .all(fieldId) as { entity: 'item' | 'model'; entity_id: number }[];
   const itemIds = rows.filter((row) => row.entity === 'item').map((row) => row.entity_id);
   const modelIds = rows.filter((row) => row.entity === 'model').map((row) => row.entity_id);
