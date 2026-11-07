@@ -31,8 +31,13 @@ jobs:
   baseline-guard:
     name: baseline-guard
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
     steps:
       - name: Screenshot baselines change only with the baseline-approved label
+        id: guard
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -54,5 +59,25 @@ jobs:
           echo "Changed baseline files: $changed. Approved label: $approved."
           if [ "$changed" != "0" ] && [ "$approved" = "0" ]; then
             echo "This PR changes screenshot baselines. Jim must add the baseline-approved label."
+            echo "waiting=true" >> "$GITHUB_OUTPUT"
             exit 1
           fi
+      # A comment from github-actions[bot] that mentions Jim makes GitHub email him; actions taken
+      # with his own account never notify him. Once per PR, found by the marker in the comment.
+      - name: Ask Jim to review the screenshots
+        if: failure() && steps.guard.outputs.waiting == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          marker='<!-- baseline-review-request -->'
+          asked=$(gh api --paginate "repos/$REPO/issues/$PR/comments" --jq "[.[] | select(.body | contains(\"$marker\"))] | length" | paste -sd+ | bc)
+          if [ "$asked" != "0" ]; then
+            echo "Already asked on this PR."
+            exit 0
+          fi
+          files=$(gh api --paginate "repos/$REPO/pulls/$PR/files?per_page=100" --jq '.[] | select(.filename | startswith("tests/visual/__screenshots__/")) | "- `" + (.filename | split("/") | last) + "` (" + .status + ")"')
+          body=$(printf '%s\n@%s These screenshots need your review before this PR can merge. Compare them on the **Files changed** tab with the mocks on the design canvas, then add the `baseline-approved` label if they look right.\n\n%s\n' "$marker" "$OWNER" "$files")
+          gh api "repos/$REPO/issues/$PR/comments" -f body="$body" --jq .html_url
