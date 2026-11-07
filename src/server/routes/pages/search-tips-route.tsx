@@ -23,8 +23,10 @@ export function registerSearchTipsRoute(app: FastifyInstance, context: PageConte
       { schema: { querystring: SavedQuerystring } },
       async (request, reply) => {
         const { db } = requireLibrary(context.library);
+        // `group:` groups rather than searches, so a field made before the key was reserved
+        // can't be searched by it and isn't listed. `rating:` does search the Rating field.
         const fields = findFieldsByEntity(db, 'item').filter(
-          (field) => field.removedAt === undefined,
+          (field) => field.removedAt === undefined && field.key !== 'group',
         );
         const html = renderDocument(
           <PageLayout

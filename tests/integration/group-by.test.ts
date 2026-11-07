@@ -3,6 +3,7 @@
 // Item page following the grouped order (R19).
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { insertField } from '#core/db/repositories/fields.js';
 import { addField, setFieldValue } from '#core/fields/fields.js';
 
 import { startOrganizeApp } from '../support/organize-app.js';
@@ -179,5 +180,19 @@ describe('R13: any Index page can group by a field', () => {
     expect(() => addField(organize.db, { entity: 'item', label: 'Group', type: 'text' })).toThrow(
       /can't be used as a field name/,
     );
+  });
+
+  it('R13: leaves a field made before group was reserved off the search tips', async () => {
+    insertField(organize.db, {
+      entity: 'item',
+      key: 'group',
+      label: 'Group',
+      type: 'text',
+      options: [],
+      scopeSubcategoryId: undefined,
+    });
+    const body = (await organize.get('/search/tips')).body;
+    expect(body).toContain('<code>rating:</code>');
+    expect(body).not.toContain('<code>group:</code>');
   });
 });
