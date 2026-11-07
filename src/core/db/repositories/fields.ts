@@ -1,5 +1,6 @@
 // The field definitions and values shared by items and models (docs/ARCHITECTURE.md, Field
 // system). Rules about what a value may be live in #core/fields; this file only stores them.
+import { rewriteItemSearch, rewriteModelSearch, rewriteSearchByField } from './search-rows.js';
 import { optional } from './sql-values.js';
 
 import type { Db } from '../connection.js';
@@ -106,7 +107,22 @@ export function updateFieldOptions(db: Db, id: number, options: readonly string[
 
 /** Marks a field removed at a time, or restores it with undefined. Its values are untouched. */
 export function updateFieldRemovedAt(db: Db, id: number, removedAt: string | undefined): void {
-  db.prepare('UPDATE fields SET removed_at = ? WHERE id = ?').run(removedAt ?? null, id);
+  db.transaction(() => {
+    db.prepare('UPDATE fields SET removed_at = ? WHERE id = ?').run(removedAt ?? null, id);
+    rewriteSearchByField(db, id);
+  })();
+}
+
+/** Rewrites the search row of the item or model whose field value changed. */
+function rewriteSearchOf(
+  db: Db,
+  target: { readonly entity: FieldEntity; readonly entityId: number },
+) {
+  if (target.entity === 'item') {
+    rewriteItemSearch(db, [target.entityId]);
+  } else {
+    rewriteModelSearch(db, [target.entityId]);
+  }
 }
 
 /** Sets one value of one item or model, replacing any value it had. */
@@ -115,18 +131,22 @@ export function upsertFieldValue(
   target: { readonly entity: FieldEntity; readonly entityId: number; readonly fieldId: number },
   value: StoredValue,
 ): void {
-  db.prepare(
+  const upsert = db.prepare(
     `INSERT INTO field_values (entity, entity_id, field_id, value_text, value_num)
      VALUES (?, ?, ?, ?, ?)
      ON CONFLICT (entity, entity_id, field_id)
        DO UPDATE SET value_text = excluded.value_text, value_num = excluded.value_num`,
-  ).run(
-    target.entity,
-    target.entityId,
-    target.fieldId,
-    value.valueText ?? null,
-    value.valueNum ?? null,
   );
+  db.transaction(() => {
+    upsert.run(
+      target.entity,
+      target.entityId,
+      target.fieldId,
+      value.valueText ?? null,
+      value.valueNum ?? null,
+    );
+    rewriteSearchOf(db, target);
+  })();
 }
 
 /** Clears one value of one item or model. */
@@ -134,11 +154,14 @@ export function deleteFieldValue(
   db: Db,
   target: { readonly entity: FieldEntity; readonly entityId: number; readonly fieldId: number },
 ): void {
-  db.prepare('DELETE FROM field_values WHERE entity = ? AND entity_id = ? AND field_id = ?').run(
-    target.entity,
-    target.entityId,
-    target.fieldId,
-  );
+  db.transaction(() => {
+    db.prepare('DELETE FROM field_values WHERE entity = ? AND entity_id = ? AND field_id = ?').run(
+      target.entity,
+      target.entityId,
+      target.fieldId,
+    );
+    rewriteSearchOf(db, target);
+  })();
 }
 
 /** Every stored value of one item or model, removed fields' values included. */

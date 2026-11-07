@@ -73,19 +73,33 @@ type ListedItemRow = {
  * the index alone, and only those rows are joined for display.
  */
 export function findItemsByQuery(db: Db, query: CompiledQuery, window: PageWindow): ListedItem[] {
-  const order = listOrder(query);
   const rows = db
     .prepare(
-      `WITH page AS (
-         SELECT items.id FROM items WHERE ${query.where} ORDER BY ${order} LIMIT ? OFFSET ?
-       )
+      `WITH page AS (${pageIdsSql(query)})
        SELECT ${LISTED_COLUMNS}
        FROM page JOIN items ON items.id = page.id
        LEFT JOIN subcategories ON subcategories.id = items.subcategory_id
-       ORDER BY ${order}`,
+       ORDER BY ${listOrder(query)}`,
     )
     .all(...query.params, window.limit, window.offset) as ListedItemRow[];
   return rows.map(toListedItem);
+}
+
+/** The ids of one page of a query, in list order; its last two placeholders are LIMIT, OFFSET. */
+function pageIdsSql(query: CompiledQuery): string {
+  return `SELECT items.id FROM items WHERE ${query.where} ORDER BY ${listOrder(query)}
+    LIMIT ? OFFSET ?`;
+}
+
+/**
+ * How SQLite plans to find one page of a query: one line per step. Snapshot tests of these catch
+ * a lost index before the perf timings do (docs/ARCHITECTURE.md, Search).
+ */
+export function explainItemsByQuery(db: Db, query: CompiledQuery): string[] {
+  const rows = db
+    .prepare(`EXPLAIN QUERY PLAN ${pageIdsSql(query)}`)
+    .all(...query.params, 96, 0) as { detail: string }[];
+  return rows.map((row) => row.detail);
 }
 
 /** Every item id a query matches, in list order, for a bulk action on a whole list (R10). */

@@ -1,4 +1,6 @@
 // Collections: flat, hand-made groups of items. An item can sit in many (R9).
+import { rewriteItemSearch } from './search-rows.js';
+
 import type { Db } from '../connection.js';
 
 /** A collection and how many items it holds. */
@@ -35,6 +37,7 @@ export function addItemsToCollection(
     for (const itemId of items.itemIds) {
       addOne.run(collectionId, itemId, collectionId, items.addedAt);
     }
+    rewriteItemSearch(db, items.itemIds);
   })();
 }
 
@@ -55,6 +58,7 @@ export function removeItemsFromCollection(
     for (const itemId of itemIds) {
       removed += removeOne.run(collectionId, itemId).changes;
     }
+    rewriteItemSearch(db, itemIds);
     return removed;
   })();
 }

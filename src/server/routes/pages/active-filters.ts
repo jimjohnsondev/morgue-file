@@ -1,7 +1,10 @@
-// The search page's echo of its query: the caption with counts per section, and one removable
-// chip per term, whose [x] link is the query without that term (frame 4, E2).
+// The search page's echo of its query: the caption with counts per section, one removable chip
+// per term, whose [x] link is the query without that term (frame 4, E2), and the models its
+// words found.
 import { findModelNames } from '#core/db/repositories/archive-counts.js';
+import { findModelsByText } from '#core/db/repositories/search-rows.js';
 import { queryToText, termToText, withoutTerm } from '#core/query/canonical-query.js';
+import { textMatch } from '#core/query/text-match.js';
 
 import { formatCount } from '../../views/format.js';
 import { countLabel } from '../../views/templates/index-template.js';
@@ -11,7 +14,10 @@ import { SECTION_LABELS } from './filter-choices.js';
 import type { Db } from '#core/db/connection.js';
 import type { Section } from '#core/db/repositories/items.js';
 import type { Query, Term } from '#core/query/query-types.js';
-import type { ActiveFilter, EmptyHelp } from '../../views/templates/index-template.js';
+import type { ActiveFilter, EmptyHelp, TextLink } from '../../views/templates/index-template.js';
+
+/** How many models the line above a search's items names at most. */
+const MATCHED_MODEL_LIMIT = 12;
 
 /** The search page for a query. */
 export function searchHref(query: Query): string {
@@ -58,6 +64,21 @@ export function activeFilters(
     removeHref: searchHref(withoutTerm(query, index)),
   }));
   return { filters, clearHref: '/search' };
+}
+
+/**
+ * The models whose fields or tags match the search's words and phrases, linking to their
+ * profiles (docs/ARCHITECTURE.md, Search). A search without free text lists none.
+ */
+export function matchedModelLinks(db: Db, query: Query): TextLink[] {
+  const { match, excluded } = textMatch(query);
+  if (match === undefined) {
+    return [];
+  }
+  return findModelsByText(db, { match, excluded, limit: MATCHED_MODEL_LIMIT }).map((model) => ({
+    label: model.name,
+    href: `/models/${encodeURIComponent(model.slug)}`,
+  }));
 }
 
 /**

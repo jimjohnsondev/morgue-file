@@ -1,5 +1,6 @@
 // Models: their profile rows, model tags, portraits, and the items they appear in (R14–R17).
 // A model's name and other details are field values; see #core/fields.
+import { rewriteItemSearch, rewriteModelSearch } from './search-rows.js';
 import { optional } from './sql-values.js';
 import { requireTagName } from './tags.js';
 
@@ -57,6 +58,7 @@ export function tagModel(db: Db, modelId: number, tagName: string): void {
       `INSERT INTO model_tag_links (model_id, model_tag_id)
        SELECT ?, id FROM model_tags WHERE name = ? ON CONFLICT DO NOTHING`,
     ).run(modelId, tagName);
+    rewriteModelSearch(db, [modelId]);
   })();
 }
 
@@ -93,6 +95,7 @@ export function linkModelToItems(
     for (const itemId of link.itemIds) {
       linkOne.run({ itemId, modelId, from, to });
     }
+    rewriteItemSearch(db, link.itemIds);
   })();
 }
 

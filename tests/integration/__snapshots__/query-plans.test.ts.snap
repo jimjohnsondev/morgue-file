@@ -1,0 +1,202 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`R24: query plans > R24: plans "" on its indexes 1`] = `
+[
+  "SCAN items USING COVERING INDEX items_in_list_order",
+  "USE TEMP B-TREE FOR ORDER BY",
+]
+`;
+
+exports[`R24: query plans > R24: plans ""perf 01234"" on its indexes 1`] = `
+[
+  "SEARCH items USING INTEGER PRIMARY KEY (rowid=?)",
+  "LIST SUBQUERY 1",
+  "SCAN item_search VIRTUAL TABLE INDEX 0:M6",
+  "USE TEMP B-TREE FOR ORDER BY",
+]
+`;
+
+exports[`R24: query plans > R24: plans "figure" on its indexes 1`] = `
+[
+  "SEARCH items USING INTEGER PRIMARY KEY (rowid=?)",
+  "LIST SUBQUERY 1",
+  "SCAN item_search VIRTUAL TABLE INDEX 0:M6",
+  "USE TEMP B-TREE FOR ORDER BY",
+]
+`;
+
+exports[`R24: query plans > R24: plans "hands -tag:tag-002" on its indexes 1`] = `
+[
+  "SEARCH items USING INTEGER PRIMARY KEY (rowid=?)",
+  "LIST SUBQUERY 2",
+  "SCAN item_search VIRTUAL TABLE INDEX 0:M6",
+  "LIST SUBQUERY 1",
+  "SEARCH tags USING COVERING INDEX sqlite_autoindex_tags_1 (name=?)",
+  "SEARCH item_tags USING COVERING INDEX item_tags_by_tag (tag_id=?)",
+  "CREATE BLOOM FILTER",
+  "USE TEMP B-TREE FOR ORDER BY",
+]
+`;
+
+exports[`R24: query plans > R24: plans "in:library -sub:books" on its indexes 1`] = `
+[
+  "SEARCH items USING INDEX items_in_list_order (section=?)",
+  "LIST SUBQUERY 1",
+  "SCAN subcategories USING COVERING INDEX sqlite_autoindex_subcategories_1",
+  "CREATE BLOOM FILTER",
+]
+`;
+
+exports[`R24: query plans > R24: plans "in:library model:Model" on its indexes 1`] = `
+[
+  "SEARCH items USING COVERING INDEX items_in_list_order (section=?)",
+  "LIST SUBQUERY 2",
+  "SEARCH field_values USING PRIMARY KEY (entity=?)",
+  "SCALAR SUBQUERY 1",
+  "SEARCH fields USING COVERING INDEX sqlite_autoindex_fields_1 (entity=? AND key=?)",
+  "SEARCH item_models USING COVERING INDEX item_models_by_model (model_id=?)",
+  "CREATE BLOOM FILTER",
+]
+`;
+
+exports[`R24: query plans > R24: plans "in:photos -tag:tag-001 perf_4" on its indexes 1`] = `
+[
+  "SEARCH items USING COVERING INDEX items_in_list_order (section=?)",
+  "LIST SUBQUERY 1",
+  "SEARCH tags USING COVERING INDEX sqlite_autoindex_tags_1 (name=?)",
+  "SEARCH item_tags USING COVERING INDEX item_tags_by_tag (tag_id=?)",
+  "CREATE BLOOM FILTER",
+  "LIST SUBQUERY 2",
+  "SCAN item_search VIRTUAL TABLE INDEX 0:M6",
+  "CREATE BLOOM FILTER",
+]
+`;
+
+exports[`R24: query plans > R24: plans "in:photos sub:figure" on its indexes 1`] = `
+[
+  "SEARCH items USING INDEX items_in_list_order (section=?)",
+  "LIST SUBQUERY 1",
+  "SCAN subcategories USING COVERING INDEX sqlite_autoindex_subcategories_1",
+  "CREATE BLOOM FILTER",
+]
+`;
+
+exports[`R24: query plans > R24: plans "in:photos sub:portrait type:jpg" on its indexes 1`] = `
+[
+  "SEARCH items USING INDEX items_in_list_order (section=?)",
+  "LIST SUBQUERY 1",
+  "SCAN subcategories USING COVERING INDEX sqlite_autoindex_subcategories_1",
+  "CREATE BLOOM FILTER",
+]
+`;
+
+exports[`R24: query plans > R24: plans "in:photos" on its indexes 1`] = `
+[
+  "SEARCH items USING COVERING INDEX items_in_list_order (section=?)",
+]
+`;
+
+exports[`R24: query plans > R24: plans "in:video poses rating:4+" on its indexes 1`] = `
+[
+  "SEARCH items USING COVERING INDEX items_in_list_order (section=?)",
+  "LIST SUBQUERY 2",
+  "SEARCH field_values USING COVERING INDEX field_values_by_field (field_id=? AND value_num>?)",
+  "SCALAR SUBQUERY 1",
+  "SEARCH fields USING INDEX sqlite_autoindex_fields_1 (entity=? AND key=?)",
+  "CREATE BLOOM FILTER",
+  "LIST SUBQUERY 3",
+  "SCAN item_search VIRTUAL TABLE INDEX 0:M6",
+  "CREATE BLOOM FILTER",
+]
+`;
+
+exports[`R24: query plans > R24: plans "model 12" on its indexes 1`] = `
+[
+  "SEARCH items USING INTEGER PRIMARY KEY (rowid=?)",
+  "LIST SUBQUERY 1",
+  "SCAN item_search VIRTUAL TABLE INDEX 0:M6",
+  "USE TEMP B-TREE FOR ORDER BY",
+]
+`;
+
+exports[`R24: query plans > R24: plans "model:"Model 12"" on its indexes 1`] = `
+[
+  "SEARCH items USING INTEGER PRIMARY KEY (rowid=?)",
+  "LIST SUBQUERY 2",
+  "SEARCH field_values USING PRIMARY KEY (entity=?)",
+  "SCALAR SUBQUERY 1",
+  "SEARCH fields USING COVERING INDEX sqlite_autoindex_fields_1 (entity=? AND key=?)",
+  "SEARCH item_models USING COVERING INDEX item_models_by_model (model_id=?)",
+  "USE TEMP B-TREE FOR ORDER BY",
+]
+`;
+
+exports[`R24: query plans > R24: plans "perf" on its indexes 1`] = `
+[
+  "SEARCH items USING INTEGER PRIMARY KEY (rowid=?)",
+  "LIST SUBQUERY 1",
+  "SCAN item_search VIRTUAL TABLE INDEX 0:M6",
+  "USE TEMP B-TREE FOR ORDER BY",
+]
+`;
+
+exports[`R24: query plans > R24: plans "perf_49" on its indexes 1`] = `
+[
+  "SEARCH items USING INTEGER PRIMARY KEY (rowid=?)",
+  "LIST SUBQUERY 1",
+  "SCAN item_search VIRTUAL TABLE INDEX 0:M6",
+  "USE TEMP B-TREE FOR ORDER BY",
+]
+`;
+
+exports[`R24: query plans > R24: plans "rating:5" on its indexes 1`] = `
+[
+  "SEARCH items USING INTEGER PRIMARY KEY (rowid=?)",
+  "LIST SUBQUERY 2",
+  "SEARCH field_values USING COVERING INDEX field_values_by_field (field_id=? AND value_num=?)",
+  "SCALAR SUBQUERY 1",
+  "SEARCH fields USING INDEX sqlite_autoindex_fields_1 (entity=? AND key=?)",
+  "USE TEMP B-TREE FOR ORDER BY",
+]
+`;
+
+exports[`R24: query plans > R24: plans "tag:tag-007" on its indexes 1`] = `
+[
+  "SEARCH items USING INTEGER PRIMARY KEY (rowid=?)",
+  "LIST SUBQUERY 1",
+  "SEARCH tags USING COVERING INDEX sqlite_autoindex_tags_1 (name=?)",
+  "SEARCH item_tags USING COVERING INDEX item_tags_by_tag (tag_id=?)",
+  "USE TEMP B-TREE FOR ORDER BY",
+]
+`;
+
+exports[`R24: query plans > R24: plans "tag:tag-010 rating:3+" on its indexes 1`] = `
+[
+  "SEARCH items USING INTEGER PRIMARY KEY (rowid=?)",
+  "LIST SUBQUERY 1",
+  "SEARCH tags USING COVERING INDEX sqlite_autoindex_tags_1 (name=?)",
+  "SEARCH item_tags USING COVERING INDEX item_tags_by_tag (tag_id=?)",
+  "LIST SUBQUERY 3",
+  "SEARCH field_values USING COVERING INDEX field_values_by_field (field_id=? AND value_num>?)",
+  "SCALAR SUBQUERY 2",
+  "SEARCH fields USING INDEX sqlite_autoindex_fields_1 (entity=? AND key=?)",
+  "CREATE BLOOM FILTER",
+  "USE TEMP B-TREE FOR ORDER BY",
+]
+`;
+
+exports[`R24: query plans > R24: plans "tag-150" on its indexes 1`] = `
+[
+  "SEARCH items USING INTEGER PRIMARY KEY (rowid=?)",
+  "LIST SUBQUERY 1",
+  "SCAN item_search VIRTUAL TABLE INDEX 0:M6",
+  "USE TEMP B-TREE FOR ORDER BY",
+]
+`;
+
+exports[`R24: query plans > R24: plans "type:pdf" on its indexes 1`] = `
+[
+  "SCAN items",
+  "USE TEMP B-TREE FOR ORDER BY",
+]
+`;
