@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.10.0...v1.11.0) (2026-11-07)
+
+
+### Features
+
+* full-text search over items and models, with model links above results ([#49](https://github.com/jimjohnsondev/morgue-file/issues/49)) ([25cd8b5](https://github.com/jimjohnsondev/morgue-file/commit/25cd8b55e7b3b2de9aaeb2da63e2472fc0ff7716))
+
 ## [1.10.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.9.0...v1.10.0) (2026-11-07)
 
 
