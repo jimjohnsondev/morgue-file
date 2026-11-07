@@ -10,7 +10,12 @@ import { compileQuery } from '#core/query/compile-query.js';
 
 import { countLabel } from '../../views/templates/index-template.js';
 
-import { activeFilters, noResultsHelp, searchCaption } from './active-filters.js';
+import {
+  activeFilters,
+  matchedModelLinks,
+  noResultsHelp,
+  searchCaption,
+} from './active-filters.js';
 import {
   sectionChoices,
   sharedChoices,
@@ -188,6 +193,7 @@ export function buildListModel(db: Db, spec: ListSpec, view: ListView): IndexMod
     filterPanel: isPanelOpen ? filterPanelFor(db, spec, view) : undefined,
     showFiltersHref,
     activeFilters: spec.isSearch ? activeFilters(db, spec.query) : undefined,
+    matchedModels: spec.isSearch ? matchedModelLinks(db, spec.query) : undefined,
     selection: selection.panel,
   };
 }

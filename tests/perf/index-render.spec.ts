@@ -32,6 +32,9 @@ const PAGES = [
   '/search?q=tag%3Atag-010+rating%3A3%2B',
   '/search?q=model%3A%22Model+12%22',
   '/search?q=in%3Aphotos+-tag%3Atag-001+perf_4',
+  '/search?q=perf',
+  '/search?q=hands+-tag%3Atag-002',
+  '/search?q=model+12',
 ];
 
 let server: ChildProcess | undefined;

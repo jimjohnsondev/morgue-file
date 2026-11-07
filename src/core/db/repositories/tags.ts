@@ -1,6 +1,8 @@
 // Free-form item tags (R10). Names are unique ignoring case, so "Hands" and "hands" are one tag.
 import { AppError } from '#core/errors.js';
 
+import { rewriteItemSearch } from './search-rows.js';
+
 import type { Db } from '../connection.js';
 
 /** Returns the id of the tag with this name, creating the tag if it's new. */
@@ -21,6 +23,7 @@ export function tagItems(db: Db, itemIds: readonly number[], tagName: string): v
     for (const itemId of itemIds) {
       tagOne.run(itemId, tagId);
     }
+    rewriteItemSearch(db, itemIds);
   })();
 }
 
@@ -37,6 +40,7 @@ export function untagItems(db: Db, itemIds: readonly number[], tagName: string):
     for (const itemId of itemIds) {
       untagged += untagOne.run(itemId, tagName).changes;
     }
+    rewriteItemSearch(db, itemIds);
     return untagged;
   })();
 }

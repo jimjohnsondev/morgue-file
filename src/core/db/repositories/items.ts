@@ -1,5 +1,6 @@
 // Items: one row per original file or page folder. Items are never deleted; a file that goes away
 // gets missing_since instead.
+import { rewriteItemSearch } from './search-rows.js';
 import { optional } from './sql-values.js';
 
 import type { Db } from '../connection.js';
@@ -127,6 +128,14 @@ const MAPPED_FOR_ROW = mappedSubcategorySql({
 
 /** Adds an item, filed by the folder mappings that hold it, and returns its id. */
 export function insertItem(db: Db, item: NewItem): number {
+  return db.transaction(() => {
+    const itemId = insertItemRow(db, item);
+    rewriteItemSearch(db, [itemId]);
+    return itemId;
+  })();
+}
+
+function insertItemRow(db: Db, item: NewItem): number {
   const result = db
     .prepare(
       `INSERT INTO items (root_id, rel_path, kind, section, subcategory_id, size, mtime, width,
@@ -167,12 +176,15 @@ export type ItemMove = {
  * again by the folder mappings that hold its new path.
  */
 export function moveItem(db: Db, move: ItemMove): void {
-  db.prepare(
-    `UPDATE items SET rel_path = ?, size = ?, mtime = ?, missing_since = NULL,
-       subcategory_id = CASE WHEN subcategory_manual = 1 THEN subcategory_id
-         ELSE ${MAPPED_FOR_NEW_PATH} END
-     WHERE id = ?`,
-  ).run(move.relPath, move.size, move.mtimeMs, move.relPath, move.id);
+  db.transaction(() => {
+    db.prepare(
+      `UPDATE items SET rel_path = ?, size = ?, mtime = ?, missing_since = NULL,
+         subcategory_id = CASE WHEN subcategory_manual = 1 THEN subcategory_id
+           ELSE ${MAPPED_FOR_NEW_PATH} END
+       WHERE id = ?`,
+    ).run(move.relPath, move.size, move.mtimeMs, move.relPath, move.id);
+    rewriteItemSearch(db, [move.id]);
+  })();
 }
 
 /** Returns an item by id, or undefined if there is none. */
@@ -218,6 +230,7 @@ export function fileItemsByHand(
     for (const itemId of itemIds) {
       fileOne.run(subcategoryId ?? null, itemId);
     }
+    rewriteItemSearch(db, itemIds);
   })();
 }
 
@@ -226,12 +239,25 @@ export function fileItemsByHand(
  * Returns how many items it looked at.
  */
 export function refileItemsByMappings(db: Db, rootId: number): number {
-  const result = db
-    .prepare(
-      `UPDATE items SET subcategory_id = ${MAPPED_FOR_ROW} WHERE root_id = ? AND subcategory_manual = 0`,
-    )
-    .run(rootId);
-  return result.changes;
+  return db.transaction(() => {
+    const refiled = db
+      .prepare(
+        `SELECT id FROM items WHERE root_id = ? AND subcategory_manual = 0
+           AND subcategory_id IS NOT ${MAPPED_FOR_ROW}`,
+      )
+      .all(rootId) as { id: number }[];
+    const result = db
+      .prepare(
+        `UPDATE items SET subcategory_id = ${MAPPED_FOR_ROW} WHERE root_id = ? AND subcategory_manual = 0`,
+      )
+      .run(rootId);
+    // Only the items whose subcategory changed have a search row to rewrite.
+    rewriteItemSearch(
+      db,
+      refiled.map((row) => row.id),
+    );
+    return result.changes;
+  })();
 }
 
 function toItem(row: ItemRow): Item {

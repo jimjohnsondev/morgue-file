@@ -8,8 +8,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { LIBRARY_FILE_NAME, openDatabase } from '#core/db/connection.js';
 import { BACKUPS_FOLDER_NAME, openLibrary } from '#core/db/library.js';
 import { KEPT_BACKUPS, migrate, readMigrations } from '#core/db/migrations.js';
+import { findItemIdsByQuery } from '#core/db/repositories/item-lists.js';
 import { findRootById, REFERENCE_ROOT_ID } from '#core/db/repositories/roots.js';
 import { readSchemaVersion } from '#core/db/repositories/schema.js';
+import { findModelsByText } from '#core/db/repositories/search-rows.js';
+import { compileQuery } from '#core/query/compile-query.js';
+import { parseQuery } from '#core/query/parse-query.js';
 
 import type { Migration } from '#core/db/migrations.js';
 
@@ -162,5 +166,56 @@ describe('the migrations folder', () => {
     writeFileSync(path.join(folder, '001_first.sql'), '');
     writeFileSync(path.join(folder, '003_third.sql'), '');
     expect(() => readMigrations(folder)).toThrow(/003_third\.sql should be number 2/);
+  });
+});
+
+/**
+ * A library at schema 2, as versions 1.0.0 to 1.10.0 left it, written with plain SQL since
+ * today's repositories would also write the search rows that schema 2 lacks.
+ */
+function makeSchemaTwoLibrary(): ReturnType<typeof openDatabase> {
+  const db = openRaw();
+  const options = { backupsDir: backupsDir(), appVersion: '1.10.0', now: new Date() };
+  migrate(db, options, readMigrations().slice(0, 2));
+  db.exec(`
+    INSERT INTO roots (id, path, label, status) VALUES (1, 'C:\\Reference', 'Reference', 'online');
+    INSERT INTO items (id, root_id, rel_path, kind, section, size, mtime, added_at)
+    VALUES (1, 1, 'Figure/seatedBacklit_017.jpg', 'image', 'photos', 1, 1, '2026-10-31'),
+      (2, 1, 'Inbox/Études_002.jpg', 'image', 'photos', 1, 1, '2026-10-31');
+    INSERT INTO tags (id, name) VALUES (1, 'contrapposto');
+    INSERT INTO item_tags (item_id, tag_id) VALUES (2, 1);
+    INSERT INTO collections (id, name, created_at) VALUES (1, 'Gouache palettes', '2026-10-31');
+    INSERT INTO collection_items (collection_id, item_id, position, added_at)
+    VALUES (1, 1, 1, '2026-10-31');
+    INSERT INTO field_values (entity, entity_id, field_id, value_text)
+    SELECT 'item', 1, id, 'Strong rim light.' FROM fields WHERE entity = 'item' AND key = 'notes';
+    INSERT INTO models (id, slug) VALUES (1, 'elena-varga');
+    INSERT INTO field_values (entity, entity_id, field_id, value_text)
+    SELECT 'model', 1, id, 'Elena Varga' FROM fields WHERE entity = 'model' AND key = 'name';
+    INSERT INTO item_models (item_id, model_id) VALUES (2, 1);
+  `);
+  return db;
+}
+
+describe('R24: migrating a released library to full-text search', () => {
+  it('R24: backs it up, then fills the search rows from what it already holds', () => {
+    const db = makeSchemaTwoLibrary();
+    const now = new Date('2026-11-07T10:00:00.000Z');
+    expect(migrate(db, { backupsDir: backupsDir(), appVersion: '1.11.0', now })).toEqual([3]);
+    expect(readdirSync(backupsDir())).toEqual(['library-1.11.0-2026-11-07T10-00-00-000Z.db']);
+
+    function search(text: string): number[] {
+      return findItemIdsByQuery(db, compileQuery(parseQuery(text)));
+    }
+    expect(search('backlit')).toEqual([1]);
+    expect(search('etudes')).toEqual([2]);
+    expect(search('contrapposto')).toEqual([2]);
+    expect(search('gouache')).toEqual([1]);
+    expect(search('rim')).toEqual([1]);
+    expect(search('varga')).toEqual([2]);
+    expect(findModelsByText(db, { match: '"elena"', excluded: [], limit: 12 })).toEqual([
+      { slug: 'elena-varga', name: 'Elena Varga' },
+    ]);
+    db.close();
   });
 });

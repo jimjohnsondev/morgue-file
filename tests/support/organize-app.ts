@@ -7,6 +7,7 @@ import path from 'node:path';
 
 import { refileItemsByMappings } from '#core/db/repositories/items.js';
 import { REFERENCE_ROOT_ID } from '#core/db/repositories/roots.js';
+import { rewriteItemSearch } from '#core/db/repositories/search-rows.js';
 import {
   findSubcategoryBySlug,
   insertFolderMapping,
@@ -131,6 +132,7 @@ export async function startOrganizeApp(): Promise<OrganizeApp> {
       library.db.exec(
         'DELETE FROM collection_items; DELETE FROM collections; DELETE FROM item_tags',
       );
+      rewriteItemSearch(library.db, [...seeded.figureIds, seeded.bookId]);
       tagItems(library.db, seeded.figureIds.slice(0, 5), 'foreshortened');
       tagItems(library.db, seeded.figureIds.slice(0, 2), 'four-limbs');
     },

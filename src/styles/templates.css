@@ -235,3 +235,8 @@
 .thumb-card .caption:empty::before {
   content: '\00a0';
 }
+
+.matched-models {
+  margin: 0;
+  font-size: var(--text-table);
+}

@@ -75,6 +75,8 @@ export type IndexModel = {
   readonly filterPanel: FilterPanelModel | undefined;
   readonly showFiltersHref: string | undefined;
   readonly activeFilters: { filters: readonly ActiveFilter[]; clearHref: string } | undefined;
+  /** The models a search's words found by their fields or tags, as profile links. */
+  readonly matchedModels?: readonly TextLink[] | undefined;
   /** The action panel, while the list is in selection mode (frame 13). */
   readonly selection?: SelectionPanelModel | undefined;
 };
@@ -118,6 +120,21 @@ function Toolbar(props: { readonly model: IndexModel }) {
       </span>
       {paging && <Pager {...paging} />}
     </div>
+  );
+}
+
+/** "Models: Elena Varga · …", one line of profile links above a search's items. */
+function MatchedModels(props: { readonly links: readonly TextLink[] }) {
+  return (
+    <p class="matched-models">
+      <b>Models:</b>{' '}
+      {props.links.map((link, index) => (
+        <Fragment key={link.href}>
+          {index > 0 && ' · '}
+          <a href={link.href}>{link.label}</a>
+        </Fragment>
+      ))}
+    </p>
   );
 }
 
@@ -237,6 +254,9 @@ export function IndexTemplate(props: { readonly model: IndexModel }) {
         <span class="caption">{model.caption}</span>
       </div>
       {model.activeFilters && <ActiveFilters active={model.activeFilters} />}
+      {model.matchedModels && model.matchedModels.length > 0 && (
+        <MatchedModels links={model.matchedModels} />
+      )}
       {model.selection && <SelectionPanel model={model.selection} />}
       <div class="index-page__body">
         {model.filterPanel && <FilterPanel model={model.filterPanel} />}

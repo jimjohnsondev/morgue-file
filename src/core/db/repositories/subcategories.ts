@@ -3,6 +3,7 @@
 import { AppError } from '#core/errors.js';
 import { slugify } from '#core/slug.js';
 
+import { rewriteItemSearch } from './search-rows.js';
 import { optional } from './sql-values.js';
 
 import type { Db } from '../connection.js';
@@ -93,7 +94,18 @@ export function renameSubcategory(db: Db, id: number, name: string): void {
   if (sameSlug !== undefined && sameSlug.id !== id) {
     throw new AppError('invalid-input', `There is already a subcategory called "${name}".`);
   }
-  db.prepare('UPDATE subcategories SET name = ?, slug = ? WHERE id = ?').run(name, slug, id);
+  db.transaction(() => {
+    db.prepare('UPDATE subcategories SET name = ?, slug = ? WHERE id = ?').run(name, slug, id);
+    rewriteItemSearch(db, findItemIdsBySubcategory(db, id));
+  })();
+}
+
+/** The ids of the items filed in a subcategory, whose search rows hold its name. */
+function findItemIdsBySubcategory(db: Db, id: number): number[] {
+  const rows = db.prepare('SELECT id FROM items WHERE subcategory_id = ?').all(id) as {
+    id: number;
+  }[];
+  return rows.map((row) => row.id);
 }
 
 /**
@@ -102,8 +114,12 @@ export function renameSubcategory(db: Db, id: number, name: string): void {
  * by hand, so a mapping that still covers them can file them again.
  */
 export function deleteSubcategory(db: Db, id: number): void {
-  db.prepare('UPDATE items SET subcategory_manual = 0 WHERE subcategory_id = ?').run(id);
-  db.prepare('DELETE FROM subcategories WHERE id = ?').run(id);
+  db.transaction(() => {
+    const itemIds = findItemIdsBySubcategory(db, id);
+    db.prepare('UPDATE items SET subcategory_manual = 0 WHERE subcategory_id = ?').run(id);
+    db.prepare('DELETE FROM subcategories WHERE id = ?').run(id);
+    rewriteItemSearch(db, itemIds);
+  })();
 }
 
 /** How many items each subcategory holds, missing ones left out, by subcategory id. */

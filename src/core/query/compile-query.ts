@@ -3,6 +3,8 @@
 // every value from the query is a parameter, never pasted into the text. Repositories run it.
 import { AppError } from '#core/errors.js';
 
+import { isTextTerm, textMatch } from './text-match.js';
+
 import type { Query, Term } from './query-types.js';
 
 /** A condition on the `items` table and the values for its `?` placeholders, in order. */
@@ -104,29 +106,40 @@ function filterFragment(term: Extract<Term, { kind: 'filter' }>): Fragment {
   }
 }
 
-/**
- * The condition for one term. Words and phrases match the file path until full-text search
- * arrives with the search grammar (build plan PR 15).
- */
-function termFragment(term: Term): Fragment {
-  switch (term.kind) {
-    case 'filter':
-      return filterFragment(term);
-    case 'field':
-      return {
-        where: itemFieldSql(`field_values.value_text LIKE ? ESCAPE '\\'`),
-        params: [term.key, `%${escapeLike(term.value)}%`],
-      };
-    case 'word':
-    case 'phrase':
-      return {
-        where: `items.rel_path LIKE ? ESCAPE '\\'`,
-        params: [`%${escapeLike(term.value)}%`],
-      };
+/** The condition for a filter or a user-defined field. */
+function termFragment(term: Exclude<Term, { kind: 'word' | 'phrase' }>): Fragment {
+  if (term.kind === 'filter') {
+    return filterFragment(term);
   }
+  return {
+    where: itemFieldSql(`field_values.value_text LIKE ? ESCAPE '\\'`),
+    params: [term.key, `%${escapeLike(term.value)}%`],
+  };
 }
 
-/** Compiles a query into one condition: its terms ANDed, each negated where it says so. */
+/** Items whose search row matches a full-text expression. */
+function matchFragment(expression: string): Fragment {
+  return {
+    where: 'items.id IN (SELECT rowid FROM item_search WHERE item_search MATCH ?)',
+    params: [expression],
+  };
+}
+
+/** The free text's conditions: one match for its words and phrases, one exclusion per negated. */
+function textFragments(query: Query): Fragment[] {
+  const { match, excluded } = textMatch(query);
+  const kept = match === undefined ? [] : [matchFragment(match)];
+  const dropped = excluded.map((expression) => {
+    const fragment = matchFragment(expression);
+    return { ...fragment, where: `NOT (${fragment.where})` };
+  });
+  return [...kept, ...dropped];
+}
+
+/**
+ * Compiles a query into one condition: its terms ANDed, each negated where it says so. Filters
+ * are joins on indexed columns; full-text search runs only when there are words or phrases.
+ */
 export function compileQuery(query: Query): CompiledQuery {
   const isOneSection = query.terms.some(
     (term) => term.kind === 'filter' && term.key === 'in' && !term.isNegated,
@@ -134,10 +147,13 @@ export function compileQuery(query: Query): CompiledQuery {
   if (query.terms.length === 0) {
     return { where: '1 = 1', params: [], isOneSection };
   }
-  const fragments = query.terms.map((term) => {
-    const fragment = termFragment(term);
-    return term.isNegated ? { ...fragment, where: `NOT (${fragment.where})` } : fragment;
-  });
+  const filterFragments = query.terms
+    .filter((term) => !isTextTerm(term))
+    .map((term) => {
+      const fragment = termFragment(term);
+      return term.isNegated ? { ...fragment, where: `NOT (${fragment.where})` } : fragment;
+    });
+  const fragments = [...filterFragments, ...textFragments(query)];
   return {
     where: fragments.map((fragment) => `(${fragment.where})`).join(' AND '),
     params: fragments.flatMap((fragment) => fragment.params),

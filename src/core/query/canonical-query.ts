@@ -41,11 +41,18 @@ export function termToText(term: Term): string {
   }
 }
 
-/** Orders terms canonically: by kind, then key, then text. Repeated terms are kept once. */
+/**
+ * Orders terms canonically: by kind, then key, then text. Words keep the order they were typed
+ * in, since the last one matches as a prefix (`hands foresh` is not `foresh hands`). Repeated
+ * terms are kept once.
+ */
 export function canonicalOrder(terms: readonly Term[]): Term[] {
   const sorted = [...terms].sort((left, right) => {
     const byRank = rankOf(left) - rankOf(right);
-    return byRank === 0 ? termToText(left).localeCompare(termToText(right)) : byRank;
+    if (byRank !== 0 || left.kind === 'word') {
+      return byRank;
+    }
+    return termToText(left).localeCompare(termToText(right));
   });
   const seen = new Set<string>();
   return sorted.filter((term) => {
