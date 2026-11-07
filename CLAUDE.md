@@ -94,6 +94,13 @@ green ones.
 
 ## When to stop and ask Jim
 
+**How to reach him:** add the `needs-jim` label to the PR the problem is on, or open an issue with
+that label when there's no PR (for example, 1.0 is out). First write what you need from him in the
+PR or issue: what happened, what you tried, and exactly what he should do. The label makes
+`notify-jim.yml` mention him from `github-actions[bot]`, which GitHub emails him. Pushes from a
+scheduled run don't reach him. A PR waiting only for `baseline-approved` needs nothing from you:
+`baseline-guard` asks him itself.
+
 - The design gate (after PR 10): post built frames 1–12 and E1–E6 next to the mocks and wait.
 - Anything that needs admin rights, a token or a secret.
 - A screenshot baseline must change (he adds `baseline-approved`).

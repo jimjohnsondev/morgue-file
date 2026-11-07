@@ -1,0 +1,31 @@
+# Emails Jim when the build needs him: adding the needs-jim label to an issue or PR makes
+# github-actions[bot] post a comment that mentions him. GitHub notifies him about a bot's mention,
+# but never about anything done with his own account, which is what the build runs use.
+name: notify-jim
+
+on:
+  issues:
+    types: [labeled]
+  pull_request_target:
+    types: [labeled]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  notify:
+    if: github.event.label.name == 'needs-jim'
+    runs-on: ubuntu-latest
+    steps:
+      # No checkout: this workflow never runs code from a PR.
+      - name: Mention Jim
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          TITLE: ${{ github.event.issue.title || github.event.pull_request.title }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          body=$(printf '@%s The build needs you here: **%s**. The details are in the description and the latest comment above.\n' "$OWNER" "$TITLE")
+          gh api "repos/$REPO/issues/$NUMBER/comments" -f body="$body" --jq .html_url
