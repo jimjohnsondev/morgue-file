@@ -182,6 +182,7 @@ describe('R13: any Index page can group by a field', () => {
     );
   });
 
+  // Keep this test last: the group field it adds stays in the library the whole file shares.
   it('R13: leaves a field made before group was reserved off the search tips', async () => {
     insertField(organize.db, {
       entity: 'item',
