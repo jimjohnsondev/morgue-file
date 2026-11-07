@@ -1,12 +1,14 @@
 // The Item page's details panel (frames 5, 7, 8): the item's facts, its tags, models and
-// collections as chips, then its other fields. It folds to a thin edge (frame 6). The editing
-// controls are drawn as the frames show them and come alive with the editing PRs (13, 14, 17, 18).
+// collections as chips, then its other fields. It folds to a thin edge (frame 6). Filing (PR 13),
+// tags and collections (PR 14) are edited in place; the model and field controls are drawn as the
+// frames show them and come alive with PRs 17 and 18.
+import { AddTag, AddToCollection, ChipGroup } from './details-chips.js';
 import { FieldText } from './field-text.js';
 import { ApiForm, EditButton, EditView, HiddenLabel, SaveOrCancel } from './inline-edit.js';
 import { PendingAction } from './pending-action.js';
 
 import type { FieldType } from '#core/db/repositories/fields.js';
-import type { ComponentChildren } from 'preact';
+import type { CollectionAdding, DetailChip } from './details-chips.js';
 
 /** One row of the facts table. A link, a rating or a pending edit action may go with the text. */
 export type FactRow = {
@@ -31,13 +33,6 @@ export type FilingForm = {
   readonly current: string;
 };
 
-/** A chip linking somewhere, such as a model, with a note after it ("pages 12–19"). */
-export type DetailChip = {
-  readonly label: string;
-  readonly href?: string;
-  readonly note?: { readonly text: string; readonly href: string };
-};
-
 /** One of the item's own fields (notes, source URL…), rendered by its type (R11). */
 export type FieldRow = {
   readonly key: string;
@@ -54,6 +49,9 @@ export type DetailsModel = {
   /** "add model", or "add model to pages 12–13" in the reader. */
   readonly addModelLabel: string;
   readonly collections: readonly DetailChip[];
+  /** Where Add tag posts (R10). */
+  readonly tagAction: string;
+  readonly collectionAdding: CollectionAdding;
   readonly fields: readonly FieldRow[];
   readonly hideHref: string;
 };
@@ -114,42 +112,6 @@ function FactValue(props: { readonly row: FactRow }) {
         </>
       )}
     </td>
-  );
-}
-
-/** One group of chips under its heading, with what to show when there are none. */
-function ChipGroup(props: {
-  readonly title: string;
-  readonly chips: readonly DetailChip[];
-  readonly removeName: (label: string) => string;
-  readonly addLabel?: string;
-  readonly children?: ComponentChildren;
-}) {
-  const { chips, addLabel } = props;
-  return (
-    <div class="details-group">
-      <h3 class="details-group__title">{props.title}</h3>
-      <div class="details-group__chips">
-        {chips.length === 0 && addLabel !== undefined && (
-          <span class="details-group__none">None · </span>
-        )}
-        {chips.map((chip) => (
-          <span key={chip.label} class="chip">
-            <span>
-              {chip.href === undefined ? chip.label : <a href={chip.href}>{chip.label}</a>}
-              {chip.note && (
-                <>
-                  , <a href={chip.note.href}>{chip.note.text}</a>
-                </>
-              )}
-            </span>
-            <PendingAction label="x" name={props.removeName(chip.label)} />
-          </span>
-        ))}
-        {addLabel !== undefined && <PendingAction label={addLabel} />}
-      </div>
-      {props.children}
-    </div>
   );
 }
 
@@ -215,27 +177,21 @@ export function DetailsPanel(props: { readonly model: DetailsModel }) {
           </tbody>
         </table>
         <ChipGroup title="Tags" chips={model.tags} removeName={(tag) => `Remove tag ${tag}`}>
-          <div class="details-add">
-            <label for="add-tag" class="caption">
-              Add tag
-            </label>
-            <input id="add-tag" class="field details-add__field" disabled />
-            <button type="button" class="button" disabled>
-              Add
-            </button>
-          </div>
+          <AddTag action={model.tagAction} />
         </ChipGroup>
         <ChipGroup
           title="Models"
           chips={model.models}
           removeName={(name) => `Remove model ${name}`}
-          addLabel={model.addModelLabel}
+          add={<PendingAction label={model.addModelLabel} />}
         />
         <ChipGroup
           title="Collections"
           chips={model.collections}
           removeName={(name) => `Remove from ${name}`}
-          addLabel="add to collection"
+          {...(model.collectionAdding.choices.length > 0 && {
+            add: <AddToCollection adding={model.collectionAdding} />,
+          })}
         />
         <FieldsTable fields={model.fields} />
         <span class="caption">

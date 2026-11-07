@@ -88,6 +88,14 @@ export function findItemsByQuery(db: Db, query: CompiledQuery, window: PageWindo
   return rows.map(toListedItem);
 }
 
+/** Every item id a query matches, in list order, for a bulk action on a whole list (R10). */
+export function findItemIdsByQuery(db: Db, query: CompiledQuery): number[] {
+  const rows = db
+    .prepare(`SELECT items.id FROM items WHERE ${query.where} ORDER BY ${listOrder(query)}`)
+    .all(...query.params) as { id: number }[];
+  return rows.map((row) => row.id);
+}
+
 /** How many items a query matches. */
 export function countItemsByQuery(db: Db, query: CompiledQuery): number {
   const row = db

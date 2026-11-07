@@ -2,8 +2,8 @@
 // in one transaction and files items again by the folder mappings it leaves, so a page drawn
 // after it already shows every item where it now belongs.
 import {
-  findItemById,
   fileItemsByHand,
+  findSectionsByItemIds,
   refileItemsByMappings,
 } from '#core/db/repositories/items.js';
 import { findAllRoots } from '#core/db/repositories/roots.js';
@@ -123,19 +123,32 @@ export function removeSubcategory(db: Db, id: number): void {
 }
 
 /**
- * Files one item by hand into a subcategory of its own section, or into Unsorted when none is
- * given. Later scans and mapping changes leave it there (R5).
+ * Files items by hand into a subcategory of their own section, or into Unsorted when none is
+ * given, in one transaction. Later scans and mapping changes leave them there (R5). The item
+ * page files one; the selection's action panel files many (R10). If any item is of another
+ * section, none is filed.
  */
-export function fileItem(db: Db, itemId: number, subcategoryId: number | undefined): void {
-  const item = findItemById(db, itemId);
-  if (item === undefined) {
-    throw new AppError('not-found', `No item ${String(itemId)}.`);
+export function fileItems(
+  db: Db,
+  itemIds: readonly number[],
+  subcategoryId: number | undefined,
+): void {
+  const sections = findSectionsByItemIds(db, itemIds);
+  const missing = itemIds.find((itemId) => !sections.has(itemId));
+  if (missing !== undefined) {
+    throw new AppError('not-found', `No item ${String(missing)}.`);
   }
-  if (
-    subcategoryId !== undefined &&
-    requireSubcategory(db, subcategoryId).section !== item.section
-  ) {
-    throw new AppError('invalid-input', 'An item can only be filed in its own section.');
+  if (subcategoryId !== undefined) {
+    const subcategory = requireSubcategory(db, subcategoryId);
+    const strays = itemIds.filter((itemId) => sections.get(itemId) !== subcategory.section);
+    if (strays.length > 0) {
+      throw new AppError(
+        'invalid-input',
+        itemIds.length === 1
+          ? 'An item can only be filed in its own section.'
+          : `${String(strays.length)} of the ${String(itemIds.length)} selected items are in another section, so they can't go in ${subcategory.name}.`,
+      );
+    }
   }
-  fileItemsByHand(db, [itemId], subcategoryId);
+  fileItemsByHand(db, itemIds, subcategoryId);
 }

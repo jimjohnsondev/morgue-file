@@ -2,13 +2,7 @@
 // which a plain form post can't carry. The page reloads once the change is saved, so it shows
 // the archive as it now is; a refusal shows beside the form in the server's own words.
 
-const NO_SERVER_MESSAGE =
-  "Morgue File isn't answering. Start it again with its shortcut, then reload this page.";
-
-/** Reads the per-launch token the server put in the page's meta tag. */
-function readToken(): string {
-  return document.querySelector<HTMLMetaElement>('meta[name="morgue-token"]')?.content ?? '';
-}
+import { sendToApi } from './api-request.js';
 
 /** The form's fields as JSON text values; empty ones are left out, as optional. */
 function readFields(form: HTMLFormElement): Record<string, string> {
@@ -21,37 +15,16 @@ function readFields(form: HTMLFormElement): Record<string, string> {
   return fields;
 }
 
-/** The server's reason for a refusal, or a general one if its answer isn't JSON. */
-async function readRefusal(response: Response): Promise<string> {
-  const fallback = 'That change could not be saved. Check the values and try again.';
-  try {
-    const answer = (await response.json()) as { message?: string };
-    return answer.message ?? fallback;
-  } catch {
-    // Not JSON (a proxy's page, say): the server answered, so don't say it is gone.
-    return fallback;
-  }
-}
-
 /** Sends a form and returns undefined once saved, or the message to show if it wasn't. */
 async function sendForm(form: HTMLFormElement): Promise<string | undefined> {
-  const method = form.dataset.apiMethod ?? 'POST';
+  const method = form.dataset.apiMethod === 'DELETE' ? 'DELETE' : 'POST';
   const fields = readFields(form);
   const hasBody = method === 'POST' && Object.keys(fields).length > 0;
-  try {
-    const response = await fetch(form.dataset.apiForm ?? '', {
-      method,
-      headers: {
-        'x-morgue-token': readToken(),
-        ...(hasBody && { 'content-type': 'application/json' }),
-      },
-      ...(hasBody && { body: JSON.stringify(fields) }),
-    });
-    return response.ok ? undefined : await readRefusal(response);
-  } catch {
-    // No answer at all: most likely the "Morgue File server" window was closed.
-    return NO_SERVER_MESSAGE;
-  }
+  const sent = await sendToApi(form.dataset.apiForm ?? '', {
+    method,
+    ...(hasBody && { body: fields }),
+  });
+  return sent.isSaved ? undefined : sent.message;
 }
 
 /** Shows the server's refusal beside the form that was refused. */

@@ -38,6 +38,43 @@ export function addItemsToCollection(
   })();
 }
 
+/**
+ * Takes items out of a collection in one transaction and returns how many were in it. The files
+ * stay where they are (R9).
+ */
+export function removeItemsFromCollection(
+  db: Db,
+  collectionId: number,
+  itemIds: readonly number[],
+): number {
+  const removeOne = db.prepare(
+    'DELETE FROM collection_items WHERE collection_id = ? AND item_id = ?',
+  );
+  return db.transaction(() => {
+    let removed = 0;
+    for (const itemId of itemIds) {
+      removed += removeOne.run(collectionId, itemId).changes;
+    }
+    return removed;
+  })();
+}
+
+/** A collection's id and name, if there is one with this id. */
+export function findCollectionById(
+  db: Db,
+  id: number,
+): { readonly id: number; readonly name: string } | undefined {
+  return db.prepare('SELECT id, name FROM collections WHERE id = ?').get(id) as
+    { id: number; name: string } | undefined;
+}
+
+/** The id of the collection with this name, ignoring case, if there is one. */
+export function findCollectionIdByName(db: Db, name: string): number | undefined {
+  const row = db.prepare('SELECT id FROM collections WHERE name = ? COLLATE NOCASE').get(name) as
+    { id: number } | undefined;
+  return row?.id;
+}
+
 /** Every collection with its size, oldest first. */
 export function findCollectionSummaries(db: Db): CollectionSummary[] {
   const rows = db

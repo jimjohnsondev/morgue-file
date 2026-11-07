@@ -6,11 +6,13 @@ import { formatCount } from '../format.js';
 import { Breadcrumb } from '../parts/breadcrumb.js';
 import { FilterPanel } from '../parts/filter-panel.js';
 import { Pager } from '../parts/pager.js';
+import { SelectionPanel } from '../parts/selection-panel.js';
 import { ThumbGrid } from '../parts/thumb-grid.js';
 
 import type { SquareSizeName } from '#core/jobs/thumbnail-files.js';
 import type { Crumb } from '../parts/breadcrumb.js';
 import type { FilterPanelModel } from '../parts/filter-panel.js';
+import type { SelectionPanelModel } from '../parts/selection-panel.js';
 import type { ThumbCard } from '../parts/thumb-grid.js';
 import type { ComponentChildren } from 'preact';
 
@@ -50,6 +52,8 @@ export type ToolbarModel = {
   readonly perPage: readonly { label: string; href: string; isCurrent: boolean }[] | undefined;
   /** Plain text in place of the choices, for grouped lists ("Group by: Year"). */
   readonly note?: string;
+  /** "Select items to tag", on lists whose items can be selected (frame 1). */
+  readonly selectHref?: string | undefined;
 };
 
 /** Everything an Index page shows. */
@@ -71,6 +75,8 @@ export type IndexModel = {
   readonly filterPanel: FilterPanelModel | undefined;
   readonly showFiltersHref: string | undefined;
   readonly activeFilters: { filters: readonly ActiveFilter[]; clearHref: string } | undefined;
+  /** The action panel, while the list is in selection mode (frame 13). */
+  readonly selection?: SelectionPanelModel | undefined;
 };
 
 /** Small · Medium · Large and 48 · 96 · 192, the current one in bold. */
@@ -104,6 +110,11 @@ function Toolbar(props: { readonly model: IndexModel }) {
           </span>
         )}
         {toolbar.note !== undefined && <span class="list-toolbar__choice">{toolbar.note}</span>}
+        {toolbar.selectHref !== undefined && (
+          <span class="list-toolbar__choice">
+            <a href={toolbar.selectHref}>Select items to tag</a>
+          </span>
+        )}
       </span>
       {paging && <Pager {...paging} />}
     </div>
@@ -195,7 +206,11 @@ function GridPanel(props: { readonly model: IndexModel }) {
                 {group.heading} <span class="caption">· {group.caption}</span>
               </h3>
             )}
-            <ThumbGrid cards={group.cards} size={model.size} />
+            <ThumbGrid
+              cards={group.cards}
+              size={model.size}
+              isSelecting={model.selection !== undefined}
+            />
           </section>
         ))}
         {model.paging && (
@@ -222,6 +237,7 @@ export function IndexTemplate(props: { readonly model: IndexModel }) {
         <span class="caption">{model.caption}</span>
       </div>
       {model.activeFilters && <ActiveFilters active={model.activeFilters} />}
+      {model.selection && <SelectionPanel model={model.selection} />}
       <div class="index-page__body">
         {model.filterPanel && <FilterPanel model={model.filterPanel} />}
         <GridPanel model={model} />
