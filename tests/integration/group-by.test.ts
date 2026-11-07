@@ -3,7 +3,7 @@
 // Item page following the grouped order (R19).
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { setFieldValue } from '#core/fields/fields.js';
+import { addField, setFieldValue } from '#core/fields/fields.js';
 
 import { startOrganizeApp } from '../support/organize-app.js';
 
@@ -42,6 +42,19 @@ beforeAll(async () => {
   // figure_0201 to figure_0250 are rated 5, figure_0101 to figure_0110 rated 3, the rest not.
   rate(organize.figureIds.slice(200), 5);
   rate(organize.figureIds.slice(100, 110), 3);
+  // A text field whose values differ only in case, and a date field, on the first three photos.
+  addField(organize.db, { entity: 'item', label: 'Studio', type: 'text' });
+  addField(organize.db, { entity: 'item', label: 'Shot on', type: 'date' });
+  const values: [string, string][] = [
+    ['North', '2023-05-01'],
+    ['north', '2021-02-01'],
+    ['North', '2023-01-01'],
+  ];
+  for (const [index, [studio, shotOn]] of values.entries()) {
+    const entityId = organize.figureIds[index]!;
+    setFieldValue(organize.db, { entity: 'item', entityId, key: 'studio' }, studio);
+    setFieldValue(organize.db, { entity: 'item', entityId, key: 'shot_on' }, shotOn);
+  }
 });
 
 afterAll(async () => {
@@ -137,5 +150,34 @@ describe('R13: any Index page can group by a field', () => {
     const fromParam = new URLSearchParams({ from }).toString();
     expect(body).toContain(`href="/item/${String(nextId)}?${fromParam}" rel="next"`);
     expect(body).toContain(`href="/item/${String(previousId)}?${fromParam}" rel="prev"`);
+  });
+
+  it('R13: groups text by value, keeping values that differ only in case in two unbroken groups', async () => {
+    const body = (await organize.get(searchUrl('in:photos sub:figure group:studio'))).body;
+    expect(headingsOf(body)).toEqual([
+      'Studio: North · 2 items',
+      'Studio: north · 1 item',
+      'No studio · 247 items',
+    ]);
+    expect(namesOf(body).slice(0, 3)).toEqual([
+      'figure_0001.jpg',
+      'figure_0003.jpg',
+      'figure_0002.jpg',
+    ]);
+  });
+
+  it('R13: groups dates by year, newest first', async () => {
+    const body = (await organize.get(searchUrl('in:photos sub:figure group:shot_on'))).body;
+    expect(headingsOf(body)).toEqual([
+      'Shot on: 2023 · 2 items',
+      'Shot on: 2021 · 1 item',
+      'No shot on · 247 items',
+    ]);
+  });
+
+  it('R13: keeps group as a search word no field can take', () => {
+    expect(() => addField(organize.db, { entity: 'item', label: 'Group', type: 'text' })).toThrow(
+      /can't be used as a field name/,
+    );
   });
 });

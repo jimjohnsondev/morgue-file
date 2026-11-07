@@ -33,7 +33,7 @@ const ORDER_BY_TYPE: Readonly<Partial<Record<Field['type'], 'text' | 'number' | 
 };
 
 /** A grouping the list asked for, with the name its headings use. */
-type NamedGrouping = { readonly grouping: Grouping; readonly label: string };
+export type NamedGrouping = { readonly grouping: Grouping; readonly label: string };
 
 /** The ids of the subcategories a query's `sub:` terms name, in any section. */
 function chosenSubcategoryIds(db: Db, query: Query): Set<number> {
@@ -65,7 +65,7 @@ function isWithinSubcategory(query: Query): boolean {
 }
 
 /** The grouping a query's last `group:` term names, if the list can be grouped that way. */
-function namedGroupingOf(db: Db, query: Query): NamedGrouping | undefined {
+export function namedGroupingOf(db: Db, query: Query): NamedGrouping | undefined {
   const key = chosenValues(query, 'group').at(-1);
   if (key === BY_SUBCATEGORY) {
     return isWithinSubcategory(query)
@@ -85,8 +85,11 @@ export function compileListQuery(db: Db, query: Query): CompiledQuery {
 }
 
 /** The Group by list's choices: Subcategory where the list spans several, then each field. */
-export function groupChoices(db: Db, query: Query): FilterChoice[] {
-  const named = namedGroupingOf(db, query);
+export function groupChoices(
+  db: Db,
+  query: Query,
+  named: NamedGrouping | undefined,
+): FilterChoice[] {
   const chosenValue = named?.grouping.kind === 'field' ? named.grouping.key : BY_SUBCATEGORY;
   const offered = groupableFields(db, query).map((field) => [field.key, field.label] as const);
   const all = isWithinSubcategory(query)
@@ -120,29 +123,33 @@ function groupHeading(named: NamedGrouping, first: GroupedItem): string {
 export function groupCards(
   db: Db,
   list: {
-    readonly query: Query;
+    readonly named: NamedGrouping | undefined;
     readonly compiled: CompiledQuery;
     readonly items: readonly GroupedItem[];
     readonly cards: readonly ThumbCard[];
   },
 ): CardGroup[] {
-  const named = namedGroupingOf(db, list.query);
+  const { named } = list;
   if (named === undefined) {
     return [{ cards: list.cards }];
   }
   const counts = countItemsByGroupByQuery(db, list.compiled);
-  const groups: { heading: string; caption: string; cards: ThumbCard[] }[] = [];
-  let previous: GroupedItem | undefined;
+  const runs: { first: GroupedItem; cards: ThumbCard[] }[] = [];
   for (const [index, item] of list.items.entries()) {
     const card = list.cards[index];
-    const current = groups.at(-1);
-    if (card !== undefined && current !== undefined && previous?.groupValue === item.groupValue) {
-      current.cards.push(card);
-    } else if (card !== undefined) {
-      const caption = countLabel(counts.get(item.groupValue) ?? 0, 'item');
-      groups.push({ heading: groupHeading(named, item), caption, cards: [card] });
+    if (card === undefined) {
+      continue;
     }
-    previous = item;
+    const current = runs.at(-1);
+    if (current !== undefined && current.first.groupValue === item.groupValue) {
+      current.cards.push(card);
+    } else {
+      runs.push({ first: item, cards: [card] });
+    }
   }
-  return groups;
+  return runs.map((run) => ({
+    heading: groupHeading(named, run.first),
+    caption: countLabel(counts.get(run.first.groupValue) ?? 0, 'item'),
+    cards: run.cards,
+  }));
 }

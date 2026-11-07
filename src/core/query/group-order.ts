@@ -53,20 +53,23 @@ const BY_SUBCATEGORY: GroupOrder = {
   value: `items.section || ':' || coalesce(items.subcategory_id, 'unsorted')`,
 };
 
-/** A field's group value, and the key that sorts it ascending, for each kind of order. */
-function fieldParts(order: 'text' | 'number' | 'year'): { value: string; sortKey: string } {
+/**
+ * A field's group value, and the ascending keys that sort it, for each kind of order. Text sorts
+ * ignoring case, then by its exact spelling, so "Vogue" and "vogue" stay two unbroken groups.
+ */
+function fieldParts(order: 'text' | 'number' | 'year'): { value: string; sortKeys: string[] } {
   switch (order) {
     case 'text': {
       const value = fieldValue('value_text');
-      return { value, sortKey: `coalesce(lower(${value}), '')` };
+      return { value, sortKeys: [`coalesce(lower(${value}), '')`, `coalesce(${value}, '')`] };
     }
     case 'number': {
       const value = fieldValue('value_num');
-      return { value, sortKey: `coalesce(-${value}, 0)` };
+      return { value, sortKeys: [`coalesce(-${value}, 0)`] };
     }
     case 'year': {
       const value = `substr(${fieldValue('value_text')}, 1, 4)`;
-      return { value, sortKey: `coalesce(-CAST(${value} AS INTEGER), 0)` };
+      return { value, sortKeys: [`coalesce(-CAST(${value} AS INTEGER), 0)`] };
     }
   }
 }
@@ -76,10 +79,10 @@ export function groupOrder(grouping: Grouping): GroupOrder {
   if (grouping.kind === 'subcategory') {
     return BY_SUBCATEGORY;
   }
-  const { value, sortKey } = fieldParts(grouping.order);
+  const { value, sortKeys } = fieldParts(grouping.order);
   return {
     cte: { sql: FIELD_CTE, params: [grouping.key] },
-    columns: [`${value} IS NULL`, sortKey],
+    columns: [`${value} IS NULL`, ...sortKeys],
     value,
   };
 }
