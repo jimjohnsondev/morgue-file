@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.9.0...v1.10.0) (2026-11-07)
+
+
+### Features
+
+* collections, tags with autocomplete, selection and the bulk action panel ([#45](https://github.com/jimjohnsondev/morgue-file/issues/45)) ([6242e27](https://github.com/jimjohnsondev/morgue-file/commit/6242e27bad1ddf4b44f1581f88dd401c0bbf6036))
+
 ## [1.9.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.8.0...v1.9.0) (2026-11-06)
 
 
