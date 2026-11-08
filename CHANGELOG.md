@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.13.0...v1.14.0) (2026-11-08)
+
+
+### Features
+
+* small page-strip pictures for CBZ files and page folders, and the R21 timing test ([#57](https://github.com/jimjohnsondev/morgue-file/issues/57)) ([efc062c](https://github.com/jimjohnsondev/morgue-file/commit/efc062c4bc0ff0e1c7c8fb7b3fde65bd07563d3f))
+
 ## [1.13.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.12.0...v1.13.0) (2026-11-08)
 
 
