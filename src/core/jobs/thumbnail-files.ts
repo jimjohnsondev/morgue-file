@@ -26,7 +26,7 @@ export const DEFAULT_COVER: ThumbnailSize = { width: 320, height: 464 };
 /**
  * A page of the reader's strip (R21) is shown at 46×60, the --page-strip-* sizes in tokens.css.
  * These are made each time the browser asks, not kept in the cache: their address carries the
- * original's time, so the browser keeps them until the file changes.
+ * original's time and size, so the browser keeps them until the file changes.
  */
 export const PAGE_STRIP_SIZE: ThumbnailSize = { width: 92, height: 120 };
 

@@ -83,7 +83,7 @@ async function sendOriginal(
  * Reads from a publication's pages. A publication that is gone or on an offline drive is refused
  * as not found, like a missing original, rather than failing as an internal error.
  */
-async function readPageOrRefuse<Page>(
+async function readPublicationOrRefuse<Page>(
   original: PagedOriginal,
   read: (original: PagedOriginal) => Promise<Page>,
 ): Promise<Page> {
@@ -136,7 +136,7 @@ function registerPageRoute(app: FastifyInstance, library: LibraryRuntime | undef
     .get('/media/page/:id/:page', { schema: { params: PageParams } }, async (request, reply) => {
       const { db } = requireLibrary(library);
       const original = requirePagedOriginal(db, request.params.id);
-      const page = await readPageOrRefuse(original, (paged) =>
+      const page = await readPublicationOrRefuse(original, (paged) =>
         readPublicationPage(paged, request.params.page),
       );
       return reply
@@ -159,7 +159,7 @@ function registerPageStripRoute(app: FastifyInstance, library: LibraryRuntime | 
       async (request, reply) => {
         const { db } = requireLibrary(library);
         const original = requirePagedOriginal(db, request.params.id);
-        const webp = await readPageOrRefuse(original, (paged) =>
+        const webp = await readPublicationOrRefuse(original, (paged) =>
           makePageStripPicture(paged, request.params.page),
         );
         return reply.type('image/webp').header('cache-control', STRIP_CACHING).send(webp);

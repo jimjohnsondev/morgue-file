@@ -126,7 +126,7 @@ function idOf(relPath: string): string {
 describe('R21: the strip shows small page pictures for CBZ files and page folders', () => {
   it('links each strip page to its small picture, versioned by the file time', async () => {
     const body = (await get(`/item/${idOf('Books/Zip Book.cbz')}`)).body;
-    const version = String(Date.parse('2026-10-01T00:00:00Z'));
+    const version = `${String(Date.parse('2026-10-01T00:00:00Z'))}-1000`;
     const id = idOf('Books/Zip Book.cbz');
     expect(body).toContain(`src="/media/page-strip/${id}/1?v=${version}"`);
     expect(body).toContain(`src="/media/page-strip/${id}/2?v=${version}"`);

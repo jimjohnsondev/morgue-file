@@ -68,6 +68,8 @@ async function timeFirstPage(page: Page, itemUrl: string): Promise<number> {
 }
 
 test('R21: a 300-page PDF shows its first page in under 2 s', async ({ page }) => {
+  // The PDF's page count may still be waiting for indexing and its thumbnail job.
+  test.setTimeout(180_000);
   const itemUrl = await findLongPdf(page);
   await page.addInitScript(noteFirstPageDrawn);
   const times: number[] = [];

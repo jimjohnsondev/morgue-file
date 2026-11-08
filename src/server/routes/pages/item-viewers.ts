@@ -59,7 +59,7 @@ function readerModel(source: ViewerSource, frame: ViewerFrame): PageReaderModel 
     src:
       item.kind === 'pdf' ? `/media/original/${String(item.id)}` : `/media/page/${String(item.id)}`,
     stripPictureSrc: (page) =>
-      `/media/page-strip/${String(item.id)}/${String(page)}?v=${String(item.mtimeMs)}`,
+      `/media/page-strip/${String(item.id)}/${String(page)}?v=${String(item.mtimeMs)}-${String(item.size)}`,
     pageCount,
     shownPages,
     shownLabel:
