@@ -43,6 +43,8 @@ beforeAll(async () => {
   // figure_0201 to figure_0250 are rated 5, figure_0101 to figure_0110 rated 3, the rest not.
   rate(organize.figureIds.slice(200), 5);
   rate(organize.figureIds.slice(100, 110), 3);
+  // The book sits outside every figure list, so a group count that ignored the list would show.
+  rate([organize.bookId], 5);
   // A text field whose values differ only in case, and a date field, on the first three photos.
   addField(organize.db, { entity: 'item', label: 'Studio', type: 'text' });
   addField(organize.db, { entity: 'item', label: 'Shot on', type: 'date' });
@@ -56,6 +58,7 @@ beforeAll(async () => {
     setFieldValue(organize.db, { entity: 'item', entityId, key: 'studio' }, studio);
     setFieldValue(organize.db, { entity: 'item', entityId, key: 'shot_on' }, shotOn);
   }
+  setFieldValue(organize.db, { entity: 'item', entityId: organize.bookId, key: 'studio' }, 'North');
 });
 
 afterAll(async () => {
@@ -164,6 +167,17 @@ describe('R13: any Index page can group by a field', () => {
       'figure_0001.jpg',
       'figure_0003.jpg',
       'figure_0002.jpg',
+    ]);
+  });
+
+  it('R13: counts only the items the list holds in each group heading', async () => {
+    // Tags figure_0001 to figure_0005 foreshortened; the book's North is not among them.
+    organize.reset();
+    const body = (await organize.get(searchUrl('tag:foreshortened group:studio'))).body;
+    expect(headingsOf(body)).toEqual([
+      'Studio: North · 2 items',
+      'Studio: north · 1 item',
+      'No studio · 2 items',
     ]);
   });
 

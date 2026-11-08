@@ -43,9 +43,11 @@ export type PageWindow = {
  * A grouped list puts its groups' columns first.
  */
 function listColumns(query: CompiledQuery): string[] {
+  const groupColumns = query.group?.columns ?? [];
   const withinSection = ['items.added_at', 'items.id'];
-  const own = query.isOneSection ? withinSection : [SECTION_RANK, ...withinSection];
-  return [...(query.group?.columns ?? []), ...own];
+  // A grouping that already sorts by section (by subcategory) needs no second section rank.
+  const isSorted = query.isOneSection || groupColumns.includes(SECTION_RANK);
+  return [...groupColumns, ...(isSorted ? withinSection : [SECTION_RANK, ...withinSection])];
 }
 
 /**
@@ -173,7 +175,7 @@ export function countItemsByGroupByQuery(
   const rows = db
     .prepare(
       `${withTables(query)} SELECT ${query.group.value} AS group_value, count(*) AS total
-       FROM items WHERE ${query.where} GROUP BY group_value`,
+       FROM items WHERE ${query.where} GROUP BY ${query.group.countedBy}`,
     )
     .all(...groupParams(query), ...query.params) as GroupCountRow[];
   return new Map(rows.map((row) => [optional(row.group_value), row.total]));
