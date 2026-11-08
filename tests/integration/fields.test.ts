@@ -1,9 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { findFieldById } from '#core/db/repositories/fields.js';
 import { findSubcategoryBySlug } from '#core/db/repositories/subcategories.js';
 import {
   addField,
   keyFromLabel,
+  listRestorableFields,
+  listSettingsFields,
+  moveField,
+  purgeExpiredFields,
   readFieldValues,
   removeField,
   renameField,
@@ -35,6 +40,11 @@ function profileLabels(modelId: number): string[] {
   return readFieldValues(db, { entity: 'model', entityId: modelId }).map(
     (entry) => entry.field.label,
   );
+}
+
+/** The labels of the models' Settings table, in order. */
+function settingsLabels(): string[] {
+  return listSettingsFields(db, 'model').map((field) => field.label);
 }
 
 /** One field's value on a model's profile. */
@@ -171,6 +181,41 @@ describe('managing fields', () => {
     }).toThrow(/more than 30 days/);
     restoreField(db, field.id, new Date('2026-10-31T00:00:00Z'));
     expect(profileValue(elena, 'sessions')).toBe(6);
+  });
+
+  it('R38: a field removed more than 30 days ago is deleted with its values when purged', () => {
+    const elena = createModel(db, 'Elena Varga');
+    const sessions = addField(db, { entity: 'model', label: 'Sessions', type: 'number' });
+    const agency = addField(db, { entity: 'model', label: 'Agency', type: 'link' });
+    setFieldValue(db, { entity: 'model', entityId: elena, key: 'sessions' }, 6);
+    removeField(db, sessions.id, new Date('2026-10-01T00:00:00Z'));
+    removeField(db, agency.id, new Date('2026-10-20T00:00:00Z'));
+    const now = new Date('2026-11-05T00:00:00Z');
+    expect(listRestorableFields(db, 'model', now).map((entry) => entry.field.label)).toEqual([
+      'Agency',
+    ]);
+
+    expect(purgeExpiredFields(db, now)).toBe(1);
+    expect(findFieldById(db, sessions.id)).toBeUndefined();
+    const values = db
+      .prepare('SELECT COUNT(*) AS count FROM field_values WHERE field_id = ?')
+      .get(sessions.id) as { count: number };
+    expect(values.count).toBe(0);
+    // The one removed 16 days ago stays restorable, and a new Sessions field can be made.
+    restoreField(db, agency.id, now);
+    addField(db, { entity: 'model', label: 'Sessions', type: 'number' });
+    expect(profileLabels(elena)).toEqual(['Name', 'Bio', 'Agency', 'Sessions']);
+  });
+
+  it('moves a field past its neighbour in Settings, but never above a model’s Name', () => {
+    const agency = addField(db, { entity: 'model', label: 'Agency', type: 'link' });
+    moveField(db, agency.id, 'up');
+    expect(settingsLabels()).toEqual(['Name', 'Agency', 'Bio']);
+    moveField(db, agency.id, 'up');
+    expect(settingsLabels()).toEqual(['Name', 'Agency', 'Bio']);
+    moveField(db, agency.id, 'down');
+    moveField(db, agency.id, 'down');
+    expect(settingsLabels()).toEqual(['Name', 'Bio', 'Agency']);
   });
 
   it('shows a field limited to one subcategory only on that subcategory’s items', () => {

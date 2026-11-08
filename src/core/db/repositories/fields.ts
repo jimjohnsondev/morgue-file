@@ -105,6 +105,23 @@ export function updateFieldOptions(db: Db, id: number, options: readonly string[
   db.prepare('UPDATE fields SET options = ? WHERE id = ?').run(JSON.stringify(options), id);
 }
 
+/** Swaps the display order of two fields. */
+export function swapFieldPositions(db: Db, first: Field, second: Field): void {
+  const setPosition = db.prepare('UPDATE fields SET position = ? WHERE id = ?');
+  db.transaction(() => {
+    setPosition.run(second.position, first.id);
+    setPosition.run(first.position, second.id);
+  })();
+}
+
+/**
+ * Deletes the fields removed before a time, with their values (the foreign key cascades). Their
+ * values were already left out of every search row when they were removed, so none changes.
+ */
+export function deleteFieldsRemovedBefore(db: Db, cutoff: string): number {
+  return db.prepare('DELETE FROM fields WHERE removed_at < ?').run(cutoff).changes;
+}
+
 /** Marks a field removed at a time, or restores it with undefined. Its values are untouched. */
 export function updateFieldRemovedAt(db: Db, id: number, removedAt: string | undefined): void {
   db.transaction(() => {

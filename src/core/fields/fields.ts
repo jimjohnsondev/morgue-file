@@ -2,12 +2,14 @@
 // and reading and writing their values. Templates show whatever this returns, so a new field
 // needs no code (R11, R14).
 import {
+  deleteFieldsRemovedBefore,
   deleteFieldValue,
   findFieldById,
   findFieldByKey,
   findFieldsByEntity,
   findFieldValuesByEntity,
   insertField,
+  swapFieldPositions,
   updateFieldLabel,
   updateFieldOptions,
   updateFieldRemovedAt,
@@ -25,6 +27,11 @@ import type { FieldValue } from './field-values.js';
 /** How long a removed field can be restored with its values (R38). */
 export const RESTORE_DAYS = 30;
 
+const RESTORE_MS = RESTORE_DAYS * 24 * 60 * 60 * 1000;
+
+/** The key of the one field a model can't do without: every profile is titled by it. */
+export const MODEL_NAME_KEY = 'name';
+
 /** Search words a field key can't take, or `key:x` would be ambiguous (docs/ARCHITECTURE.md). */
 const RESERVED_KEYS: ReadonlySet<string> = new Set([
   'tag',
@@ -37,6 +44,9 @@ const RESERVED_KEYS: ReadonlySet<string> = new Set([
   'unsorted',
   'group',
 ]);
+
+/** Which way a field moves in its table. */
+export type FieldMove = 'up' | 'down';
 
 /** A field the user is adding in Settings. */
 export type FieldDraft = {
@@ -82,7 +92,14 @@ export function addField(db: Db, draft: FieldDraft): Field {
   if (key === '' || RESERVED_KEYS.has(key)) {
     throw new AppError('invalid-input', `"${label}" can't be used as a field name.`);
   }
-  if (findFieldByKey(db, draft.entity, key) !== undefined) {
+  const existing = findFieldByKey(db, draft.entity, key);
+  if (existing?.removedAt !== undefined) {
+    throw new AppError(
+      'invalid-input',
+      `"${existing.label}" was removed and can still be restored, so it can't be added again yet.`,
+    );
+  }
+  if (existing !== undefined) {
     throw new AppError('invalid-input', `There is already a field called "${label}".`);
   }
   const options = draft.type === 'picklist' ? (draft.options ?? []) : [];
@@ -122,7 +139,7 @@ export function setPicklistChoices(db: Db, fieldId: number, choices: readonly st
  */
 export function removeField(db: Db, fieldId: number, now: Date): void {
   const field = requireField(db, fieldId);
-  if (field.entity === 'model' && field.key === 'name') {
+  if (isModelName(field)) {
     throw new AppError('invalid-input', 'The Name field can be renamed but not removed.');
   }
   if (field.removedAt === undefined) {
@@ -136,14 +153,71 @@ export function restoreField(db: Db, fieldId: number, now: Date): void {
   if (field.removedAt === undefined) {
     return;
   }
-  const ageMs = now.getTime() - Date.parse(field.removedAt);
-  if (ageMs > RESTORE_DAYS * 24 * 60 * 60 * 1000) {
+  if (restoreDeadline(field.removedAt) < now) {
     throw new AppError(
       'invalid-input',
       `${field.label} was removed more than ${String(RESTORE_DAYS)} days ago.`,
     );
   }
   updateFieldRemovedAt(db, fieldId, undefined);
+}
+
+/** Whether a field is a model's Name, which stays first and can't be removed. */
+export function isModelName(field: Field): boolean {
+  return field.entity === 'model' && field.key === MODEL_NAME_KEY;
+}
+
+/** The last moment a field removed at this time can be restored. */
+export function restoreDeadline(removedAt: string): Date {
+  return new Date(Date.parse(removedAt) + RESTORE_MS);
+}
+
+/** The fields Settings lists for an entity: shown everywhere, not limited to one subcategory. */
+export function listSettingsFields(db: Db, entity: FieldEntity): Field[] {
+  return listFields(db, { entity }).filter((field) => field.scopeSubcategoryId === undefined);
+}
+
+/** A removed field and the last moment it can be restored. */
+export type RestorableField = {
+  readonly field: Field;
+  readonly restoreUntil: Date;
+};
+
+/** The fields removed from an entity that can still be restored, soonest to expire first. */
+export function listRestorableFields(db: Db, entity: FieldEntity, now: Date): RestorableField[] {
+  return findFieldsByEntity(db, entity)
+    .flatMap((field) =>
+      field.removedAt === undefined
+        ? []
+        : [{ field, restoreUntil: restoreDeadline(field.removedAt) }],
+    )
+    .filter((entry) => entry.restoreUntil >= now)
+    .sort((first, second) => first.restoreUntil.getTime() - second.restoreUntil.getTime());
+}
+
+/**
+ * Moves a field one place up or down its Settings table, swapping it with its neighbour. A
+ * model's Name stays first, and a field already at an end stays where it is.
+ */
+export function moveField(db: Db, fieldId: number, move: FieldMove): void {
+  const field = requireField(db, fieldId);
+  const fields = listSettingsFields(db, field.entity);
+  const index = fields.findIndex((candidate) => candidate.id === fieldId);
+  if (index === -1) {
+    throw new AppError('invalid-input', `${field.label} isn't listed in Settings.`);
+  }
+  const neighbour = fields[move === 'up' ? index - 1 : index + 1];
+  if (neighbour !== undefined && !isModelName(field) && !isModelName(neighbour)) {
+    swapFieldPositions(db, field, neighbour);
+  }
+}
+
+/**
+ * Deletes, with their values, the fields removed more than 30 days ago, as R38 promises. The
+ * library runs it each time it opens; until then such a field is neither listed nor restorable.
+ */
+export function purgeExpiredFields(db: Db, now: Date): number {
+  return deleteFieldsRemovedBefore(db, new Date(now.getTime() - RESTORE_MS).toISOString());
 }
 
 /** Every field an item or model shows, with its value, in order. */
