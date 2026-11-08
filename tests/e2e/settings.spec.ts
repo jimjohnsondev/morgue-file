@@ -60,10 +60,11 @@ test('R5: [move] on the item page files the item by hand, and E6’s "file it no
   await expect(page.getByRole('row', { name: /Subcategory/ })).toContainText('Figure');
   await page.getByRole('button', { name: 'move', exact: true }).click();
   await page.getByLabel('Subcategory').selectOption({ label: 'Cloth' });
-  await page
+  // Saving reloads the page; wait for it, since the open form's own choice already reads Cloth.
+  const save = page
     .getByRole('form', { name: 'File this item' })
-    .getByRole('button', { name: 'Save', exact: true })
-    .click();
+    .getByRole('button', { name: 'Save', exact: true });
+  await Promise.all([page.waitForEvent('load'), save.click()]);
   await expect(page.getByRole('row', { name: /Subcategory/ })).toContainText('Cloth');
 
   await page.goto(`${page.url().split('?')[0]!}#filing`);
