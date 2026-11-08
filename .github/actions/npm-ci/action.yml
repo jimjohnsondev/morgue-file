@@ -52,26 +52,32 @@ runs:
     # copy that fails the check is ignored, and npm ci downloads ffmpeg as if the cache missed;
     # it stays bad until someone deletes the entry, since a hit is never saved over.
     - name: Check and use the cached binary
+      id: cached
       if: steps.ffmpeg-cache.outputs.cache-hit == 'true'
       shell: bash
       env:
         CHECKSUMS: ${{ steps.ffmpeg.outputs.checksums }}
-        CACHE_KEY: ffmpeg-static-${{ runner.os }}-${{ runner.arch }}-${{ steps.ffmpeg.outputs.version }}
+        CACHE_KEY: ${{ steps.ffmpeg-cache.outputs.cache-primary-key }}
       run: |
         if (cd ~/ffmpeg-static && sha256sum --check --strict --quiet <<< "$CHECKSUMS"); then
           echo "FFMPEG_BIN=$USERPROFILE\\ffmpeg-static\\ffmpeg.exe" >> "$GITHUB_ENV"
+          echo "used=true" >> "$GITHUB_OUTPUT"
         else
           echo "::warning::The cached ffmpeg doesn't match its pinned hashes, so it's downloaded instead. Delete the entry: gh cache delete $CACHE_KEY"
         fi
     - run: npm ci
       shell: bash
-    # Checked before it's saved too, so a tampered download fails here rather than being cached.
-    - name: Check and keep the downloaded binary for the cache
-      if: steps.ffmpeg.outputs.version != '' && steps.ffmpeg-cache.outputs.cache-hit != 'true'
+    # Whenever npm ci downloaded ffmpeg, the download is checked too, so a tampered one fails here.
+    # Only a real miss is copied for the cache; a hit is never saved over.
+    - name: Check the downloaded binary, and keep it for the cache
+      if: steps.ffmpeg.outputs.version != '' && steps.cached.outputs.used != 'true'
       shell: bash
       env:
         CHECKSUMS: ${{ steps.ffmpeg.outputs.checksums }}
+        CACHE_HIT: ${{ steps.ffmpeg-cache.outputs.cache-hit }}
       run: |
         (cd node_modules/ffmpeg-static && sha256sum --check --strict <<< "$CHECKSUMS")
-        mkdir -p ~/ffmpeg-static
-        cp node_modules/ffmpeg-static/ffmpeg.exe node_modules/ffmpeg-static/ffmpeg.exe.LICENSE ~/ffmpeg-static/
+        if [ "$CACHE_HIT" != 'true' ]; then
+          mkdir -p ~/ffmpeg-static
+          cp node_modules/ffmpeg-static/ffmpeg.exe node_modules/ffmpeg-static/ffmpeg.exe.LICENSE ~/ffmpeg-static/
+        fi
