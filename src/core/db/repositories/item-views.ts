@@ -21,6 +21,34 @@ function toItemView(row: ItemViewRow): ItemView {
   };
 }
 
+/** The newest view's id and item, if any view is kept. */
+function findLatestItemView(db: Db): { id: number; itemId: number } | undefined {
+  const row = db
+    .prepare('SELECT id, item_id FROM item_views ORDER BY viewed_at DESC, id DESC LIMIT 1')
+    .get() as { id: number; item_id: number } | undefined;
+  return row && { id: row.id, itemId: row.item_id };
+}
+
+/** Moves one view on to a later time and position, keeping its position if the new one has none. */
+function moveItemViewOn(db: Db, viewId: number, view: ItemView): void {
+  db.prepare(
+    'UPDATE item_views SET viewed_at = ?, position = coalesce(?, position) WHERE id = ?',
+  ).run(view.viewedAt, view.position ?? null, viewId);
+}
+
+/** Adds a view, then drops any beyond the newest 200. */
+function insertItemView(db: Db, view: ItemView): void {
+  db.prepare('INSERT INTO item_views (item_id, viewed_at, position) VALUES (?, ?, ?)').run(
+    view.itemId,
+    view.viewedAt,
+    view.position ?? null,
+  );
+  db.prepare(
+    `DELETE FROM item_views WHERE id NOT IN (
+       SELECT id FROM item_views ORDER BY viewed_at DESC, id DESC LIMIT ?)`,
+  ).run(KEPT_VIEWS);
+}
+
 /**
  * Records a view and drops any beyond the newest 200. A view of the item viewed last replaces that
  * view instead, keeping its position if the new one has none: turning a reader's pages or pausing
@@ -28,24 +56,12 @@ function toItemView(row: ItemViewRow): ItemView {
  */
 export function recordItemView(db: Db, view: ItemView): void {
   db.transaction(() => {
-    const latest = db
-      .prepare('SELECT id, item_id FROM item_views ORDER BY viewed_at DESC, id DESC LIMIT 1')
-      .get() as { id: number; item_id: number } | undefined;
-    if (latest?.item_id === view.itemId) {
-      db.prepare(
-        'UPDATE item_views SET viewed_at = ?, position = coalesce(?, position) WHERE id = ?',
-      ).run(view.viewedAt, view.position ?? null, latest.id);
-      return;
+    const latest = findLatestItemView(db);
+    if (latest?.itemId === view.itemId) {
+      moveItemViewOn(db, latest.id, view);
+    } else {
+      insertItemView(db, view);
     }
-    db.prepare('INSERT INTO item_views (item_id, viewed_at, position) VALUES (?, ?, ?)').run(
-      view.itemId,
-      view.viewedAt,
-      view.position ?? null,
-    );
-    db.prepare(
-      `DELETE FROM item_views WHERE id NOT IN (
-         SELECT id FROM item_views ORDER BY viewed_at DESC, id DESC LIMIT ?)`,
-    ).run(KEPT_VIEWS);
   })();
 }
 

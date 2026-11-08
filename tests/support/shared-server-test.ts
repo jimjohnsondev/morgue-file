@@ -1,9 +1,10 @@
-// Playwright's test and expect for specs on the shared e2e server. Every item they open would
-// otherwise add to the viewing history (R35), and Home's first strip, frame 12 and the Home specs
-// draw the history seed.json gives that server. So in these specs the page answers its own
-// history writes without sending them; tests/e2e/viewing-history.spec.ts records them on a server
-// of its own. The writes are stopped in the page rather than with a route, since Playwright
-// doesn't see the one a page sends as it is left (a keepalive fetch).
+// Playwright's test and expect for every e2e and visual spec except the history and perf ones.
+// On the shared e2e server, every item a spec opens would otherwise add to the viewing history
+// (R35), and Home's first strip, frame 12 and the Home specs draw the history seed.json gives
+// that server. So in these specs the page answers its own history writes without sending them;
+// tests/e2e/viewing-history.spec.ts records them on a server of its own. The writes are stopped
+// in the page rather than with a route, since Playwright doesn't see the one a page sends as it
+// is left (a keepalive fetch).
 import { test as base } from '@playwright/test';
 
 export { expect } from '@playwright/test';
