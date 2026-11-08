@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.14.0...v1.15.0) (2026-11-08)
+
+
+### Features
+
+* link photos, videos and Library items to models from the action panel and item page ([#59](https://github.com/jimjohnsondev/morgue-file/issues/59)) ([d8e7249](https://github.com/jimjohnsondev/morgue-file/commit/d8e724946b18e445390c8ab0b54972a7a98112fa))
+
 ## [1.14.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.13.0...v1.14.0) (2026-11-08)
 
 
