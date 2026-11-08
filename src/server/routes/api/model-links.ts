@@ -3,6 +3,7 @@
 // these with the token; nothing here opens a dialog (R37).
 import { Type } from '@sinclair/typebox';
 
+import { AppError } from '#core/errors.js';
 import { linkSelectionToModel, unlinkItemFromModel } from '#core/models/model-links.js';
 
 import { requireLibrary } from '../require-library.js';
@@ -35,6 +36,18 @@ const LinkPagesQuery = Type.Object({
   from: Type.Optional(ID),
   to: Type.Optional(ID),
 });
+
+/** The page range a DELETE names: none, or both ends in order; half or reversed is refused. */
+function linkPages(query: { readonly from?: number; readonly to?: number }) {
+  const { from, to } = query;
+  if (from === undefined && to === undefined) {
+    return {};
+  }
+  if (from === undefined || to === undefined || from > to) {
+    throw new AppError('invalid-input', 'A page range needs both from and to, from first.');
+  }
+  return { pages: [from, to] as const };
+}
 
 /** What the form chose: a model in its list, or a new one with the name typed. */
 function modelChoice(fields: { readonly model: string; readonly name?: string }): ModelChoice {
@@ -71,11 +84,10 @@ export function registerModelLinkApi(
     '/api/items/:id/models/:model',
     { schema: { params: ItemModelParams, querystring: LinkPagesQuery } },
     async (request, reply) => {
-      const { from, to } = request.query;
       unlinkItemFromModel(requireLibrary(library).db, {
         itemId: request.params.id,
         modelId: request.params.model,
-        ...(from !== undefined && to !== undefined && { pages: [from, to] as const }),
+        ...linkPages(request.query),
       });
       return reply.code(204).send();
     },

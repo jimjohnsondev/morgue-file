@@ -157,7 +157,7 @@ test('R15: a page of photos is linked to a new model in one action, then one is 
   // This server has no models yet, so "New model…" is the only choice and its name field shows.
   const nameField = panel.getByLabel("New model's name");
   await expect(panel.getByLabel('Model', { exact: true })).toHaveValue('new');
-  await nameField.fill('Mara Quill');
+  await nameField.fill('Elena Varga');
   const modelForm = panel.getByRole('form', { name: 'Link the selected items to a model' });
   await clickAndReload(page, modelForm.getByRole('button', { name: 'Add' }));
   await expect(panel.getByRole('status')).toHaveText('Linked 24 items to the model.');
@@ -165,17 +165,17 @@ test('R15: a page of photos is linked to a new model in one action, then one is 
   await page.goto(`${server!.url}/photos/figure`);
   await page.locator('.thumb-card .thumb').nth(2).click();
   const models = page.locator('.details-group', { hasText: 'Models' });
-  await expect(models.locator('.chip', { hasText: 'Mara Quill' })).toBeVisible();
-  await models.getByRole('button', { name: 'Remove model Mara Quill' }).click();
-  await expect(models.locator('.chip', { hasText: 'Mara Quill' })).toHaveCount(0);
+  await expect(models.locator('.chip', { hasText: 'Elena Varga' })).toBeVisible();
+  await models.getByRole('button', { name: 'Remove model Elena Varga' }).click();
+  await expect(models.locator('.chip', { hasText: 'Elena Varga' })).toHaveCount(0);
   await models.getByRole('button', { name: 'add model' }).click();
   const choice = models.getByLabel('Model', { exact: true });
   await choice.selectOption({ label: 'New model…' });
   await expect(models.getByLabel("New model's name")).toBeFocused();
-  await choice.selectOption({ label: 'Mara Quill' });
+  await choice.selectOption({ label: 'Elena Varga' });
   await expect(models.getByLabel("New model's name")).toBeHidden();
   await models.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(models.locator('.chip', { hasText: 'Mara Quill' })).toBeVisible();
+  await expect(models.locator('.chip', { hasText: 'Elena Varga' })).toBeVisible();
 });
 
 test('R5: Move to subcategory files the selection by hand, and it leaves the list', async ({

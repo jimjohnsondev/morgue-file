@@ -71,10 +71,10 @@ describe('R15: tag photos, videos and Library items with models; bulk-tag a sele
     const response = await organize.send('POST', '/api/selection/model', {
       selection: { itemIds: organize.figureIds.slice(0, 3) },
       model: 'new',
-      name: '  Mara Quill ',
+      name: '  Modèle Deux ',
     });
     const { modelId } = response.json<{ modelId: number }>();
-    expect(findModelBySlug(organize.db, 'mara-quill')?.id).toBe(modelId);
+    expect(findModelBySlug(organize.db, 'modele-deux')?.id).toBe(modelId);
     expect(findItemIdsByModel(organize.db, modelId)).toEqual(organize.figureIds.slice(0, 3));
   });
 
@@ -88,6 +88,16 @@ describe('R15: tag photos, videos and Library items with models; bulk-tag a sele
       expect(response.statusCode).toBe(400);
     }
     expect(findItemIdsByModel(organize.db, elenaId)).toEqual([]);
+  });
+
+  it('refuses a DELETE naming half a page range, or a reversed one', async () => {
+    const itemId = organize.figureIds[0]!;
+    await organize.send('POST', `/api/items/${String(itemId)}/models`, { model: String(elenaId) });
+    for (const pages of ['?from=12', '?to=19', '?from=19&to=12']) {
+      const url = `/api/items/${String(itemId)}/models/${String(elenaId)}${pages}`;
+      expect((await organize.send('DELETE', url)).statusCode).toBe(400);
+    }
+    expect(findItemIdsByModel(organize.db, elenaId)).toEqual([itemId]);
   });
 
   it('refuses a model that does not exist, and an item that does not exist', async () => {

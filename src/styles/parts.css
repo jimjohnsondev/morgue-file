@@ -101,7 +101,8 @@
   outline: 2px solid var(--color-cyan);
 }
 
-/* The new model's name, beside a model list while "New model…" is chosen. */
+/* The new model's name, beside a model list while "New model…" is chosen. It is as wide as the
+   panel's new collection name on purpose, so the two "or new" fields line up. */
 .model-choice__name {
   width: var(--collection-name-width);
 }
