@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.13.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.12.0...v1.13.0) (2026-11-08)
+
+
+### Features
+
+* remember viewing history and reopen items from Home at their time or page ([#53](https://github.com/jimjohnsondev/morgue-file/issues/53)) ([e8bf432](https://github.com/jimjohnsondev/morgue-file/commit/e8bf432ac6b2644da3004425f40f0f971c741bea))
+
+
+### Bug Fixes
+
+* bring grouped and full-text search pages back under the R18 budget ([#55](https://github.com/jimjohnsondev/morgue-file/issues/55)) ([003fe8b](https://github.com/jimjohnsondev/morgue-file/commit/003fe8bea56ae306721f8150d4b12c8e6a6f8d3b))
+* keep subcategory-grouped pages under the R18 budget, and test group counts ([#56](https://github.com/jimjohnsondev/morgue-file/issues/56)) ([86570db](https://github.com/jimjohnsondev/morgue-file/commit/86570dbcd67da17026f62c1184c1b8c15a148186))
+
 ## [1.12.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.11.0...v1.12.0) (2026-11-07)
 
 
