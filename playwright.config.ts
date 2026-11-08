@@ -41,6 +41,8 @@ export default defineConfig({
     {
       name: 'perf',
       testMatch: 'perf/**/*.spec.ts',
+      // One spec at a time: timed specs that share the runner's cores slow each other down.
+      workers: 1,
       use: { ...devices['Desktop Chrome'] },
     },
   ],

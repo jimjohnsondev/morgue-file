@@ -1,7 +1,7 @@
 // The page reader for Library items (frame 8, R21): one page or a two-page spread on the viewer
 // gray, links through the spreads, a single or spread toggle, jump-to-page, and a strip of every
-// page. CBZ files and page folders show page pictures; PDFs are drawn by src/client/reader.ts
-// with pdf.js, onto the canvases this leaves for them.
+// page. CBZ files and page folders show page pictures, with small ones in the strip; PDFs are
+// drawn by src/client/reader.ts with pdf.js, onto the canvases this leaves for them.
 import { ViewerPanel } from './viewers.js';
 
 import type { ViewerFrame } from './viewers.js';
@@ -16,6 +16,8 @@ export type PageReaderModel = ViewerFrame & {
   readonly source: 'pdf' | 'pictures';
   /** The original for pdf.js, or the page pictures' address before the page number. */
   readonly src: string;
+  /** The strip's small picture of a page; only page pictures have them. */
+  readonly stripPictureSrc: (page: number) => string;
   readonly pageCount: number;
   /** The pages on show: one, or a spread of two. */
   readonly shownPages: readonly number[];
@@ -68,12 +70,15 @@ function ReaderPage(props: {
       />
     );
   }
+  if (variant === 'strip') {
+    return <img class={className} src={model.stripPictureSrc(page)} alt="" loading="lazy" />;
+  }
   return (
     <img
       class={className}
       src={`${model.src}/${String(page)}`}
-      alt={variant === 'stage' ? `Page ${String(page)}` : ''}
-      loading={variant === 'strip' ? 'lazy' : 'eager'}
+      alt={`Page ${String(page)}`}
+      loading="eager"
     />
   );
 }

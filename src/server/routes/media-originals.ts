@@ -1,6 +1,7 @@
 // GET /media/original/<id> streams an item's original, untouched and with HTTP Range support, and
-// GET /media/page/<id>/<n> one page picture of a CBZ or page folder (docs/ARCHITECTURE.md,
-// Thumbnails and media). Routes take item ids only, never paths.
+// GET /media/page/<id>/<n> one page picture of a CBZ or page folder, and
+// GET /media/page-strip/<id>/<n> that page's small picture for the reader's strip
+// (docs/ARCHITECTURE.md, Thumbnails and media). Routes take item ids only, never paths.
 import { Type } from '@sinclair/typebox';
 
 import { statOriginal, streamOriginal } from '#core/archive/originals.js';
@@ -8,12 +9,13 @@ import { readPublicationPage } from '#core/archive/publication-pages.js';
 import { findItemById } from '#core/db/repositories/items.js';
 import { findRootById } from '#core/db/repositories/roots.js';
 import { AppError } from '#core/errors.js';
+import { makePageStripPicture } from '#core/jobs/workers/thumb-pages.js';
 
 import { parseRangeHeader } from './byte-range.js';
 import { mediaTypeOf } from './media-types.js';
 import { requireLibrary } from './require-library.js';
 
-import type { PagedOriginal, PagePicture } from '#core/archive/publication-pages.js';
+import type { PagedOriginal } from '#core/archive/publication-pages.js';
 import type { Db } from '#core/db/connection.js';
 import type { Item } from '#core/db/repositories/items.js';
 import type { LibraryRuntime } from '../library-runtime.js';
@@ -25,6 +27,12 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
  * copy; the time in Last-Modified lets it.
  */
 const ORIGINAL_CACHING = 'no-cache';
+
+/**
+ * The strip's page pictures are addressed with the original's time (`?v=`), so a changed file
+ * gets a new address and the browser can keep each one for good.
+ */
+const STRIP_CACHING = 'public, max-age=31536000, immutable';
 
 /** An item and the folder of the root it sits under. */
 type ItemOnDisk = { readonly item: Item; readonly rootPath: string };
@@ -72,18 +80,30 @@ async function sendOriginal(
 }
 
 /**
- * Reads one page picture. A publication that is gone or on an offline drive is refused as not
- * found, like a missing original, rather than failing as an internal error.
+ * Reads from a publication's pages. A publication that is gone or on an offline drive is refused
+ * as not found, like a missing original, rather than failing as an internal error.
  */
-async function readPageOrRefuse(original: PagedOriginal, pageNumber: number): Promise<PagePicture> {
+async function readPublicationOrRefuse<Page>(
+  original: PagedOriginal,
+  read: (original: PagedOriginal) => Promise<Page>,
+): Promise<Page> {
   try {
-    return await readPublicationPage(original, pageNumber);
+    return await read(original);
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
     }
     throw new AppError('not-found', `${original.relPath} can't be opened right now.`);
   }
+}
+
+/** The CBZ or page folder an item is, refusing any other kind: only they have page pictures. */
+function requirePagedOriginal(db: Db, itemId: number): PagedOriginal {
+  const { item, rootPath } = requireItemOnDisk(db, itemId);
+  if (item.kind !== 'cbz' && item.kind !== 'pagefolder') {
+    throw new AppError('not-found', 'Only CBZ files and page folders have page pictures.');
+  }
+  return { kind: item.kind, rootPath, relPath: item.relPath };
 }
 
 /** Registers GET /media/original/:id: the original file, for the image, video and PDF viewers. */
@@ -115,19 +135,36 @@ function registerPageRoute(app: FastifyInstance, library: LibraryRuntime | undef
     .withTypeProvider<TypeBoxTypeProvider>()
     .get('/media/page/:id/:page', { schema: { params: PageParams } }, async (request, reply) => {
       const { db } = requireLibrary(library);
-      const { item, rootPath } = requireItemOnDisk(db, request.params.id);
-      if (item.kind !== 'cbz' && item.kind !== 'pagefolder') {
-        throw new AppError('not-found', 'Only CBZ files and page folders have page pictures.');
-      }
-      const page = await readPageOrRefuse(
-        { kind: item.kind, rootPath, relPath: item.relPath },
-        request.params.page,
+      const original = requirePagedOriginal(db, request.params.id);
+      const page = await readPublicationOrRefuse(original, (paged) =>
+        readPublicationPage(paged, request.params.page),
       );
       return reply
         .type(mediaTypeOf(page.fileName))
         .header('cache-control', ORIGINAL_CACHING)
         .send(page.bytes);
     });
+}
+
+/**
+ * Registers GET /media/page-strip/:id/:page: a page's small picture for the reader's strip (R21),
+ * made from the page each time it's asked for and kept by the browser.
+ */
+function registerPageStripRoute(app: FastifyInstance, library: LibraryRuntime | undefined): void {
+  app
+    .withTypeProvider<TypeBoxTypeProvider>()
+    .get(
+      '/media/page-strip/:id/:page',
+      { schema: { params: PageParams } },
+      async (request, reply) => {
+        const { db } = requireLibrary(library);
+        const original = requirePagedOriginal(db, request.params.id);
+        const webp = await readPublicationOrRefuse(original, (paged) =>
+          makePageStripPicture(paged, request.params.page),
+        );
+        return reply.type('image/webp').header('cache-control', STRIP_CACHING).send(webp);
+      },
+    );
 }
 
 /** Registers the routes that serve originals and page pictures to the viewers. */
@@ -137,4 +174,5 @@ export function registerOriginalRoutes(
 ): void {
   registerOriginalRoute(app, library);
   registerPageRoute(app, library);
+  registerPageStripRoute(app, library);
 }
