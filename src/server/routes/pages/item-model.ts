@@ -32,7 +32,7 @@ import type { Query } from '#core/query/query-types.js';
 import type { IssueOf } from './item-details.js';
 import type { ItemView } from './item-view.js';
 import type { Crumb } from '../../views/parts/breadcrumb.js';
-import type { ItemModel, ListNavModel } from '../../views/templates/item-template.js';
+import type { ItemModel, ListNavModel, ViewerModel } from '../../views/templates/item-template.js';
 
 /** An Item page's model, with the page title and the section whose tab it sits under. */
 export type ItemPage = {
@@ -146,6 +146,21 @@ function listNavFor(
   };
 }
 
+/**
+ * Where the viewer opens, for the viewing history (R35): the first page on show in the reader, or
+ * the video time it starts at. A photo, or an original that can't be opened, has none.
+ */
+function positionOnShow(viewer: ViewerModel, view: ItemView): number | undefined {
+  switch (viewer.kind) {
+    case 'reader':
+      return viewer.shownPages[0];
+    case 'video':
+      return view.startSeconds ?? 0;
+    default:
+      return undefined;
+  }
+}
+
 /** Reads an item and builds its page (R19), or refuses an id that doesn't exist. */
 export function buildItemPage(db: Db, itemId: number, view: ItemView): ItemPage {
   const filed = readFiledItem(db, itemId);
@@ -165,6 +180,7 @@ export function buildItemPage(db: Db, itemId: number, view: ItemView): ItemPage 
     title: itemLabel(item),
     section: item.section,
     model: {
+      history: { itemId: item.id, position: positionOnShow(viewer, view) },
       breadcrumb: itemCrumbs(filed),
       listNav: listNavFor(db, item.id, { query, view }),
       viewer,

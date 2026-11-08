@@ -2,8 +2,7 @@
 // Ctrl+A, then tagged with suggestions as you type, put into collections, moved between them
 // and filed, all from the action panel on the page (frame 13), with no dialog or new window.
 // Runs on a small state server of its own, since it changes tags and collections.
-import { expect, test } from '@playwright/test';
-
+import { expect, test } from '../support/shared-server-test.js';
 import { startStateServerProcess, stopStateServer } from '../support/state-server-process.js';
 
 import type { StateServer } from '../support/state-server-process.js';

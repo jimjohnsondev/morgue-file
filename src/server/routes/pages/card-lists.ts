@@ -134,7 +134,24 @@ function viewedCaption(item: ListedItem, position: number | undefined): string {
   return `${itemPlace(item)} · ${reached}`;
 }
 
-/** Cards for the items viewed last, newest first, each once, with where the viewer got to. */
+/**
+ * The link back into an item at the place its viewer got to: the video time, or the reader's page
+ * (R35). Times are kept to hundredths, as the player shows them.
+ */
+function viewedHref(item: ListedItem, position: number | undefined): string {
+  const path = `/item/${String(item.id)}`;
+  if (position === undefined || item.section === 'photos') {
+    return path;
+  }
+  return item.section === 'video'
+    ? `${path}?t=${String(Math.round(position * 100) / 100)}`
+    : `${path}?page=${String(Math.max(1, Math.round(position)))}`;
+}
+
+/**
+ * Cards for the items viewed last, newest first, each once, with where the viewer got to. Each
+ * card reopens its item there (R35).
+ */
 export function recentlyViewedCards(db: Db, limit: number): ThumbCard[] {
   const views = findRecentlyViewedItems(db, limit);
   const positions = new Map(views.map((view) => [view.itemId, view.position]));
@@ -147,6 +164,7 @@ export function recentlyViewedCards(db: Db, limit: number): ThumbCard[] {
     fromQuery: undefined,
     caption: 'where',
     detailsFor: (item) => viewedCaption(item, positions.get(item.id)),
+    hrefFor: (item) => viewedHref(item, positions.get(item.id)),
   });
 }
 

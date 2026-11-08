@@ -2,7 +2,7 @@
 // no results (E2), and the drop outline and its notice (E6). E1 and E3-E5 need a library in
 // another state; tests/integration/edge-states.test.ts draws those. Dropping a file saves it, so
 // drops are tested in ingest.spec.ts, on a server of their own.
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/shared-server-test.js';
 
 import type { Page } from '@playwright/test';
 

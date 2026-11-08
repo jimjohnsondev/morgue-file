@@ -138,6 +138,28 @@ function enableSettings(video: HTMLVideoElement): void {
   });
 }
 
+/**
+ * Starts the video at the time Home's history reopened it at (R35), once the browser knows its
+ * length; a page with no start time plays from 0:00.
+ */
+function startAtHistoryTime(video: HTMLVideoElement): void {
+  const start = Number(video.dataset.start);
+  if (video.dataset.start === undefined || !Number.isFinite(start)) {
+    return;
+  }
+  if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+    video.currentTime = start;
+    return;
+  }
+  video.addEventListener(
+    'loadedmetadata',
+    () => {
+      video.currentTime = start;
+    },
+    { once: true },
+  );
+}
+
 /** Wires every control of one player. */
 function enablePlayer(player: Player): void {
   const { video, scrub } = player;
@@ -156,6 +178,7 @@ function enablePlayer(player: Player): void {
     video.currentTime = Number(scrub.value);
   });
   enableSettings(video);
+  startAtHistoryTime(video);
   onPageKeys({
     ',': actions.back,
     '.': actions.forward,

@@ -1,8 +1,7 @@
 // R36 and R37 in a browser: Settings' tables are edited in place, with no dialog, and the item
 // page's [move] files an item by hand. Runs on a small state server of its own, since it changes
 // the library's subcategories.
-import { expect, test } from '@playwright/test';
-
+import { expect, test } from '../support/shared-server-test.js';
 import { startStateServerProcess, stopStateServer } from '../support/state-server-process.js';
 
 import type { StateServer } from '../support/state-server-process.js';
@@ -61,10 +60,11 @@ test('R5: [move] on the item page files the item by hand, and E6’s "file it no
   await expect(page.getByRole('row', { name: /Subcategory/ })).toContainText('Figure');
   await page.getByRole('button', { name: 'move', exact: true }).click();
   await page.getByLabel('Subcategory').selectOption({ label: 'Cloth' });
-  await page
+  // Saving reloads the page; wait for it, since the open form's own choice already reads Cloth.
+  const save = page
     .getByRole('form', { name: 'File this item' })
-    .getByRole('button', { name: 'Save', exact: true })
-    .click();
+    .getByRole('button', { name: 'Save', exact: true });
+  await Promise.all([page.waitForEvent('load'), save.click()]);
   await expect(page.getByRole('row', { name: /Subcategory/ })).toContainText('Cloth');
 
   await page.goto(`${page.url().split('?')[0]!}#filing`);

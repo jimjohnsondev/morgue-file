@@ -1,6 +1,6 @@
 // R13 in a browser on the fixture archive: the filter panel's Group by gathers Figure by rating,
 // and E2's "search tips" opens the query language.
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/shared-server-test.js';
 
 test('R13: Group by in the filter panel gathers a list under one heading per value', async ({
   page,

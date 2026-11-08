@@ -1,6 +1,6 @@
 // The gate build's Model profile and Home frames render from the fixture archive (build plan
 // row 9): frames 10 and 12, with the design brief's sample content (R16, R34).
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/shared-server-test.js';
 
 test('frame 10: Elena Varga, with a Photos and a Library strip and no Video strip', async ({
   page,

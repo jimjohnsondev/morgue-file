@@ -1,8 +1,6 @@
 // The design gate's edge states E1–E6 (docs/DESIGN-BRIEF.md, Edge states). E2 and E6 are
 // captured on the shared server; E1 and E3–E5 each need a library in another state, so they
 // start a small server of their own (tests/support/start-state-server.ts).
-import { expect, test } from '@playwright/test';
-
 import {
   freezeClock,
   openWhenSettled,
@@ -10,6 +8,7 @@ import {
   settlePointerAndFocus,
   waitForFontsAndImages,
 } from '../support/screenshots.js';
+import { expect, test } from '../support/shared-server-test.js';
 import { startStateServerProcess, stopStateServer } from '../support/state-server-process.js';
 
 import type { StateServer } from '../support/state-server-process.js';

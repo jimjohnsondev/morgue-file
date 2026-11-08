@@ -27,8 +27,18 @@ export type ListNavModel = {
 export type ViewerModel =
   ImageViewerModel | VideoPlayerModel | PageReaderModel | UnavailableViewerModel;
 
+/**
+ * What client/view-history.ts records when the page opens (R35): the item, and the page on show
+ * or the video time it starts at. A photo has no position.
+ */
+export type HistoryEntryModel = {
+  readonly itemId: number;
+  readonly position: number | undefined;
+};
+
 /** Everything an Item page shows. */
 export type ItemModel = {
+  readonly history: HistoryEntryModel;
   readonly breadcrumb: readonly Crumb[];
   readonly listNav: ListNavModel | undefined;
   readonly viewer: ViewerModel;
@@ -88,7 +98,13 @@ export function ItemTemplate(props: { readonly model: ItemModel }) {
   const { model } = props;
   const isFolded = model.details.kind === 'folded';
   return (
-    <div class="item-page">
+    <div
+      class="item-page"
+      data-history-item={String(model.history.itemId)}
+      data-history-position={
+        model.history.position === undefined ? undefined : String(model.history.position)
+      }
+    >
       <div class="item-page__heading">
         <Breadcrumb crumbs={model.breadcrumb} />
         {model.listNav && <ListNav nav={model.listNav} />}

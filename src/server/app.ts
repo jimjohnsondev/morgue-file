@@ -5,6 +5,7 @@ import Fastify from 'fastify';
 
 import { loadPageAssets } from './assets.js';
 import { registerErrorHandler } from './error-handler.js';
+import { registerHistoryApi } from './routes/api/history.js';
 import { registerIndexingApi } from './routes/api/indexing.js';
 import { registerIngestApi } from './routes/api/ingest.js';
 import { registerOrganizeApi } from './routes/api/organize.js';
@@ -77,6 +78,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerOriginalRoutes(app, library);
   registerEventsRoute(app, library);
   registerIndexingApi(app, library);
+  registerHistoryApi(app, library);
   registerIngestApi(app, library);
   registerSubcategoryApi(app, library);
   registerOrganizeApi(app, library);
