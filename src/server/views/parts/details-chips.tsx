@@ -1,6 +1,6 @@
 // The chip groups of the Item page's details panel (frames 5, 7, 8): tags, models and
-// collections, each chip with its [x], then the way to add one. Tags and collections are edited
-// in place (R9, R10, R37); the models' controls are drawn until model tagging arrives (PR 17).
+// collections, each chip with its [x], then the way to add one. All three are edited in place
+// (R9, R10, R15, R37), except a model on the reader's pages, which waits for page ranges (R17).
 import {
   ApiAction,
   ApiForm,
@@ -9,8 +9,10 @@ import {
   HiddenLabel,
   SaveOrCancel,
 } from './inline-edit.js';
+import { ModelChoiceFields } from './model-choice.js';
 import { PendingAction } from './pending-action.js';
 
+import type { ModelOption } from './model-choice.js';
 import type { ComponentChildren } from 'preact';
 
 /** A chip linking somewhere, such as a model, with a note after it ("pages 12–19"). */
@@ -30,6 +32,17 @@ export type CollectionAdding = {
   readonly action: string;
   readonly choices: readonly { readonly value: string; readonly label: string }[];
 };
+
+/** The id of the "add model" form, opened in place of its link. */
+const ADD_MODEL_FORM_ID = 'add-model';
+
+/**
+ * How the item page adds a model: a form listing the models the item isn't linked to yet (R15),
+ * or, in the reader, "add model to pages 12–13" drawn until page ranges arrive (R17, PR 21).
+ */
+export type ModelAdding =
+  | { readonly action: string; readonly models: readonly ModelOption[] }
+  | { readonly pendingLabel: string };
 
 /** A chip's [x]: a DELETE once its edit is built, else drawn but doing nothing yet. */
 function RemoveChip(props: { readonly chip: DetailChip; readonly name: string }) {
@@ -120,6 +133,26 @@ export function AddToCollection(props: { readonly adding: CollectionAdding }) {
             </option>
           ))}
         </select>{' '}
+        <SaveOrCancel saveLabel="Add" />
+      </ApiForm>
+    </>
+  );
+}
+
+/** "add model", which opens a list of the models the item isn't linked to, and "New model…". */
+export function AddModel(props: { readonly adding: ModelAdding }) {
+  const { adding } = props;
+  if ('pendingLabel' in adding) {
+    return <PendingAction label={adding.pendingLabel} />;
+  }
+  return (
+    <>
+      <EditView formId={ADD_MODEL_FORM_ID}>
+        <EditButton formId={ADD_MODEL_FORM_ID} label="add model" />
+      </EditView>
+      <ApiForm action={adding.action} editId={ADD_MODEL_FORM_ID} label="Link a model">
+        <HiddenLabel for="add-model-choice">Model</HiddenLabel>
+        <ModelChoiceFields id="add-model-choice" models={adding.models} />{' '}
         <SaveOrCancel saveLabel="Add" />
       </ApiForm>
     </>

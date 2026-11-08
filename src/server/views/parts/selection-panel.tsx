@@ -1,7 +1,10 @@
 // The action panel above the grid in selection mode (frame 13): choose what is selected, then
-// tag it, add it to a collection or a new one, or move it to a subcategory, all in place on the
-// page (R10, R37). client/selection.ts keeps the count and tick boxes current, and
-// client/bulk-actions.ts sends each form with what is selected.
+// tag it, link it to a model, add it to a collection or a new one, or move it to a subcategory,
+// all in place on the page (R10, R15, R37). client/selection.ts keeps the count and tick boxes
+// current, and client/bulk-actions.ts sends each form with what is selected.
+import { ModelChoiceFields } from './model-choice.js';
+
+import type { ModelOption } from './model-choice.js';
 import type { ComponentChildren } from 'preact';
 
 /** A choice in a select list: what it sends, and what it says. */
@@ -26,7 +29,7 @@ export type SelectionPanelModel = {
   readonly total: number;
   /** "all 1,236 in Figure", or "all 38 results". */
   readonly allLabel: string;
-  readonly models: readonly string[];
+  readonly models: readonly ModelOption[];
   readonly collections: readonly Choice[];
   /** The collection this page lists, which its items can be taken out of. */
   readonly currentCollection: Choice | undefined;
@@ -170,8 +173,8 @@ function TagGroup() {
   );
 }
 
-/** Model: drawn as frame 13 shows it, working once model tagging arrives (PR 17, R15). */
-function ModelGroup(props: { readonly models: readonly string[] }) {
+/** Model: links the selection to a model in the list, or to a new one (R15). */
+function ModelGroup(props: { readonly models: readonly ModelOption[] }) {
   return (
     <Group
       label={
@@ -180,17 +183,12 @@ function ModelGroup(props: { readonly models: readonly string[] }) {
         </label>
       }
     >
-      <span class="selection-form">
-        <select id="selection-model" class="field" disabled>
-          {props.models.map((name) => (
-            <option key={name}>{name}</option>
-          ))}
-          <option>New model…</option>
-        </select>
-        <button type="button" class="button" disabled>
+      <BulkForm label="Link the selected items to a model">
+        <ModelChoiceFields id="selection-model" models={props.models} />
+        <BulkButton action="/api/selection/model" done="Linked {items} to the model.">
           Add
-        </button>
-      </span>
+        </BulkButton>
+      </BulkForm>
     </Group>
   );
 }

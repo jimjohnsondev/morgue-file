@@ -67,7 +67,7 @@ function panelFor(db: Db, list: { spec: ListSpec; view: ListView; total: number 
     allLabel: spec.isSearch
       ? `all ${formatCount(total)} results`
       : `all ${formatCount(total)} in ${spec.title}`,
-    models: findModelNames(db).map((model) => model.name),
+    models: findModelNames(db).map((model) => ({ value: String(model.id), label: model.name })),
     collections: findCollectionSummaries(db).map((collection) => ({
       value: String(collection.id),
       label: collection.name,

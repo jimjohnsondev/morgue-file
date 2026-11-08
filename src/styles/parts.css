@@ -101,6 +101,11 @@
   outline: 2px solid var(--color-cyan);
 }
 
+/* The new model's name, beside a model list while "New model…" is chosen. */
+.model-choice__name {
+  width: var(--collection-name-width);
+}
+
 .notice {
   margin: var(--space-2) 0;
   padding: var(--space-2) var(--space-3);
