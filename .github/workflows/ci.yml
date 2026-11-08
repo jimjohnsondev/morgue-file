@@ -25,7 +25,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      - uses: ./.github/actions/npm-ci
       - run: npm run format:check
       - run: npm run lint
       - run: npm run check:readme
@@ -40,7 +40,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      - uses: ./.github/actions/npm-ci
       - run: npm test
 
   e2e:

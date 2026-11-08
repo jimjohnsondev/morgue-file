@@ -1,0 +1,37 @@
+# npm ci with ffmpeg-static's binary cached. Its install script downloads the binary from GitHub's
+# release servers, and when those answered 504 every job failed before a test ran (PR 57). On a
+# cache hit, FFMPEG_BIN points ffmpeg-static at the cached copy, so the install script finds it and
+# skips the download. On a miss, npm ci downloads it once and the copy below is saved for next time.
+# Windows runners only, like the jobs that use it: the binary is ffmpeg.exe.
+name: npm-ci
+description: Install dependencies, with ffmpeg-static's binary cached
+runs:
+  using: composite
+  steps:
+    - name: Read the locked ffmpeg-static version
+      id: ffmpeg
+      shell: bash
+      run: |
+        version=$(node -p "require('./package-lock.json').packages['node_modules/ffmpeg-static'].version")
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+    # The version fixes the binary's release tag, so it is the whole key.
+    - name: Cache the ffmpeg binary
+      id: ffmpeg-cache
+      uses: actions/cache@v4
+      with:
+        path: ~\ffmpeg-static
+        key: ffmpeg-static-${{ runner.os }}-${{ steps.ffmpeg.outputs.version }}
+    # FFMPEG_BIN stays set for the rest of the job, so the fixture generator, the server and
+    # package-win.ts (which copies ffmpeg.exe and ffmpeg.exe.LICENSE) all use the cached copy.
+    - name: Use the cached binary
+      if: steps.ffmpeg-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: echo "FFMPEG_BIN=$USERPROFILE\\ffmpeg-static\\ffmpeg.exe" >> "$GITHUB_ENV"
+    - run: npm ci
+      shell: bash
+    - name: Keep the downloaded binary for the cache
+      if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        mkdir -p ~/ffmpeg-static
+        cp node_modules/ffmpeg-static/ffmpeg.exe node_modules/ffmpeg-static/ffmpeg.exe.LICENSE ~/ffmpeg-static/

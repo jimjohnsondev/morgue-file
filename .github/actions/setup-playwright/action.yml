@@ -1,5 +1,6 @@
-# Shared steps for the Playwright jobs: Node from .nvmrc, dependencies, Chromium, the fixture
-# archive (restored from the cache, or made on a miss), and a build.
+# Shared steps for the Playwright jobs: Node from .nvmrc, dependencies (through npm-ci, which
+# caches ffmpeg), Chromium, the fixture archive (restored from the cache, or made on a miss), and
+# a build.
 # Windows runners only: the browser cache path below is Playwright's Windows default.
 name: setup-playwright
 description: Install dependencies and Chromium, then build the app
@@ -10,8 +11,7 @@ runs:
       with:
         node-version-file: .nvmrc
         cache: npm
-    - run: npm ci
-      shell: bash
+    - uses: ./.github/actions/npm-ci
     - name: Cache Playwright browsers
       uses: actions/cache@v4
       with:

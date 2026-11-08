@@ -43,7 +43,7 @@ morgue-file/
   .claude/agents/     code-reviewer.md, the review agent every PR runs before opening
   .github/
     workflows/        ci.yml, pr-checks.yml, release.yml, build.yml, update-baselines.yml, dependabot-automerge.yml
-    actions/          setup-playwright/ (shared steps for the Playwright jobs)
+    actions/          setup-playwright/ (shared steps for the Playwright jobs), npm-ci/ (npm ci with ffmpeg cached)
     dependabot.yml
     pull_request_template.md
   docs/
@@ -475,6 +475,7 @@ As built in PR 2:
 - The jobs are split across two workflows. `ci.yml` runs `lint-typecheck`, `unit`, `e2e`, `visual` and `perf` on `windows-2025` for every push to a PR. `pr-checks.yml` runs `pr-title` and `baseline-guard` on Linux and also re-runs when the title or labels change. Keeping them apart means adding a label never re-runs, or skips, the build and test jobs; GitHub can count a skipped required job as passing.
 - `perf` got its first test in PR 7. `visual` got its specs in the design gate's baseline PR; `update-baselines.yml` still passes `--pass-with-no-tests`, so it can run on a branch that has none.
 - The Playwright jobs share a composite action, `.github/actions/setup-playwright`: Node from `.nvmrc`, `npm ci`, a cached Chromium, then `npm run build`. Tests run the built server on port 47690.
+- Every job installs through `.github/actions/npm-ci`. `ffmpeg-static`'s install script downloads its binary from GitHub's release servers, and when those answered 504 no job could install (PR 57). The action caches `ffmpeg.exe` and its license under `~\ffmpeg-static`, keyed by the locked `ffmpeg-static` version. On a hit it sets `FFMPEG_BIN` for the rest of the job, so the install script skips the download and everything that loads `ffmpeg-static` gets the cached path. On a miss, `npm ci` downloads it as before and the action saves the copy.
 - `update-baselines.yml` runs in two jobs so `RELEASE_TOKEN` never shares a workspace with the branch's own code. `render` installs, builds and updates the screenshots on Windows with no secrets, then uploads them. `push` makes a fresh Linux checkout, runs nothing from the branch, and commits them with `RELEASE_TOKEN`, with git hooks and global config turned off. A push made with `GITHUB_TOKEN` wouldn't start CI on the new commit. It fails on `main`. It adds and changes baselines; a deleted screenshot test leaves its old PNG for the PR to remove by hand.
 - `baseline-guard` lists the PR's files, including the old path of a rename, through the paginated REST API, and fails if it can't list them all, so a large baseline PR can't slip through.
 - `ci.yml` has no `merge_group` trigger on purpose: the repo has no merge queue.
