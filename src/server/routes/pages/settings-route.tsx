@@ -40,7 +40,7 @@ export function registerSettingsPage(app: FastifyInstance, context: PageContext)
           status={readPageStatus(context, { url: request.url, savedId: request.query.saved })}
         >
           <SettingsTemplate
-            model={buildSettingsModel(db)}
+            model={buildSettingsModel(db, new Date())}
             folderHint={{ placeholder: folderPlaceholder(db) }}
           />
         </PageLayout>,

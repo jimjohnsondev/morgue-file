@@ -1,7 +1,6 @@
 // Builds the Settings page (frame 15): the fields on items and models, the subcategories of each
 // section with their mapped folders, and the watched folders (R36).
 import { INBOX_FOLDER_NAME } from '#core/archive/originals.js';
-import { findFieldsByEntity } from '#core/db/repositories/fields.js';
 import {
   countKeptItems,
   countKeptItemsUnder,
@@ -13,6 +12,7 @@ import {
   findAllSubcategories,
   findFolderMappings,
 } from '#core/db/repositories/subcategories.js';
+import { isModelName, listRestorableFields, listSettingsFields } from '#core/fields/fields.js';
 import { showRootFolder } from '#core/filing/folder-paths.js';
 
 import { SECTION_LABELS } from './filter-choices.js';
@@ -33,17 +33,34 @@ const TYPE_NAMES: Readonly<Record<Field['type'], string>> = {
   picklist: 'pick-list',
 };
 
-/** The key of the one field a model can't do without. */
-const REQUIRED_MODEL_FIELD = 'name';
-
 /** One row of a fields table. */
 export type FieldSetting = {
+  readonly id: number;
   readonly key: string;
   readonly label: string;
   /** "long text", "number, 1 to 5", "pick-list: Short, Long, Both". */
   readonly typeName: string;
+  /** A pick-list's choices, for its edit-choices form; empty for other types. */
+  readonly choices: readonly string[];
   readonly isPicklist: boolean;
+  /** A model's Name: it stays first and can't be removed. */
   readonly isRequired: boolean;
+  readonly canMoveUp: boolean;
+  readonly canMoveDown: boolean;
+};
+
+/** A removed field that can still be restored with its values (R38). */
+export type RemovedFieldSetting = {
+  readonly id: number;
+  readonly label: string;
+  /** The last moment it can be restored, as an ISO time. */
+  readonly restoreUntil: string;
+};
+
+/** One fields table: its rows, then the removed fields that can be restored. */
+export type FieldTableSettings = {
+  readonly fields: readonly FieldSetting[];
+  readonly removed: readonly RemovedFieldSetting[];
 };
 
 /** A folder mapped to a subcategory, by its full path. */
@@ -81,8 +98,8 @@ export type WatchedFolderSetting = {
 
 /** Everything the Settings page shows. */
 export type SettingsModel = {
-  readonly itemFields: readonly FieldSetting[];
-  readonly modelFields: readonly FieldSetting[];
+  readonly itemFields: FieldTableSettings;
+  readonly modelFields: FieldTableSettings;
   readonly sections: readonly SectionSettings[];
   readonly folders: readonly WatchedFolderSetting[];
 };
@@ -90,23 +107,39 @@ export type SettingsModel = {
 /** Names a field's type as the fields table reads it. */
 function typeNameOf(field: Field): string {
   if (field.type === 'picklist') {
-    return `pick-list: ${field.options.join(', ')}`;
+    return field.options.length === 0
+      ? 'pick-list, no choices yet'
+      : `pick-list: ${field.options.join(', ')}`;
   }
   // The rating is the one number with a fixed range (1 to 5, R11).
   return field.key === 'rating' ? 'number, 1 to 5' : TYPE_NAMES[field.type];
 }
 
-/** The fields an entity shows on every page: not removed, and not limited to one subcategory. */
-function fieldSettings(db: Db, entity: FieldEntity): FieldSetting[] {
-  return findFieldsByEntity(db, entity)
-    .filter((field) => field.removedAt === undefined && field.scopeSubcategoryId === undefined)
-    .map((field) => ({
+/**
+ * An entity's fields table: the fields it shows on every page (not those limited to one
+ * subcategory), then the removed ones that can still be restored.
+ */
+function fieldTableSettings(db: Db, entity: FieldEntity, now: Date): FieldTableSettings {
+  const fields = listSettingsFields(db, entity);
+  const firstMovable = fields.findIndex((field) => !isModelName(field));
+  return {
+    fields: fields.map((field, index) => ({
+      id: field.id,
       key: field.key,
       label: field.label,
       typeName: typeNameOf(field),
+      choices: field.options,
       isPicklist: field.type === 'picklist',
-      isRequired: entity === 'model' && field.key === REQUIRED_MODEL_FIELD,
-    }));
+      isRequired: isModelName(field),
+      canMoveUp: !isModelName(field) && index > firstMovable,
+      canMoveDown: !isModelName(field) && index < fields.length - 1,
+    })),
+    removed: listRestorableFields(db, entity, now).map(({ field, restoreUntil }) => ({
+      id: field.id,
+      label: field.label,
+      restoreUntil: restoreUntil.toISOString(),
+    })),
+  };
 }
 
 /** The folders mapped to one subcategory, by their full paths. */
@@ -168,12 +201,12 @@ function folderSettings(db: Db, roots: readonly Root[]): WatchedFolderSetting[] 
   });
 }
 
-/** Builds the Settings page from the library. */
-export function buildSettingsModel(db: Db): SettingsModel {
+/** Builds the Settings page from the library, as it stands at this time. */
+export function buildSettingsModel(db: Db, now: Date): SettingsModel {
   const roots = findAllRoots(db);
   return {
-    itemFields: fieldSettings(db, 'item'),
-    modelFields: fieldSettings(db, 'model'),
+    itemFields: fieldTableSettings(db, 'item', now),
+    modelFields: fieldTableSettings(db, 'model', now),
     sections: sectionSettings(db, roots),
     folders: folderSettings(db, roots),
   };

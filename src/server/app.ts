@@ -5,6 +5,7 @@ import Fastify from 'fastify';
 
 import { loadPageAssets } from './assets.js';
 import { registerErrorHandler } from './error-handler.js';
+import { registerFieldApi } from './routes/api/fields.js';
 import { registerHistoryApi } from './routes/api/history.js';
 import { registerIndexingApi } from './routes/api/indexing.js';
 import { registerIngestApi } from './routes/api/ingest.js';
@@ -84,6 +85,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerSubcategoryApi(app, library);
   registerOrganizeApi(app, library);
   registerModelLinkApi(app, library);
+  registerFieldApi(app, library);
   registerWatchedFolderApi(app, { homeDir: config.homeDir, install, library });
 
   return app;

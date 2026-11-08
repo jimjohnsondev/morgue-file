@@ -4,7 +4,7 @@ import { isReferenceFolderPresent, writeInbox } from '#core/archive/originals.js
 import { findItemByPath } from '#core/db/repositories/items.js';
 import { findRootById, REFERENCE_ROOT_ID } from '#core/db/repositories/roots.js';
 import { AppError } from '#core/errors.js';
-import { setFieldValue } from '#core/fields/fields.js';
+import { hasField, setFieldValue } from '#core/fields/fields.js';
 import { parentFolder, scanFolder } from '#core/indexer/scanner.js';
 import { queueThumbnail } from '#core/jobs/thumbnail-jobs.js';
 
@@ -108,7 +108,8 @@ export async function ingestFile(context: IngestContext, file: IncomingFile): Pr
       priority: INGEST_PRIORITY,
       now: now.toISOString(),
     });
-    if (sourceUrl !== undefined) {
+    // Settings can remove the Source URL field; the file is saved all the same.
+    if (sourceUrl !== undefined && hasField(db, { entity: 'item' }, SOURCE_URL_FIELD_KEY)) {
       setFieldValue(
         db,
         { entity: 'item', entityId: item.id, key: SOURCE_URL_FIELD_KEY },

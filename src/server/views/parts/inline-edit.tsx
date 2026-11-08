@@ -33,6 +33,8 @@ export type ApiFormProps = {
   readonly method?: 'POST' | 'DELETE';
   /** An inline form opened by an EditButton has its id and starts hidden. */
   readonly editId?: string;
+  /** The id of a form that shows from the start, for fields in other cells to name it. */
+  readonly id?: string;
   readonly label?: string;
   readonly children: ComponentChildren;
 };
@@ -41,7 +43,7 @@ export type ApiFormProps = {
 export function ApiForm(props: ApiFormProps) {
   return (
     <form
-      id={props.editId}
+      id={props.editId ?? props.id}
       class="inline-form"
       data-api-form={props.action}
       data-api-method={props.method ?? 'POST'}

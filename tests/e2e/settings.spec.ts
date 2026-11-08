@@ -70,3 +70,33 @@ test('R5: [move] on the item page files the item by hand, and E6’s "file it no
   await page.goto(`${page.url().split('?')[0]!}#filing`);
   await expect(page.getByLabel('Subcategory')).toBeVisible();
 });
+
+test('R36: a model field is added, renamed, removed and restored from the Fields table', async ({
+  page,
+}) => {
+  page.on('dialog', () => {
+    throw new Error('Settings opened a dialog (R37).');
+  });
+  await page.goto(`${server!.url}/settings`);
+  const fields = page.getByRole('region', { name: 'Fields' });
+  await fields.getByLabel('New model field name').fill('Agency');
+  await fields.getByLabel('Type').last().selectOption({ label: 'link' });
+  await fields.getByRole('button', { name: 'Add field' }).last().click();
+  await expect(fields.getByRole('rowheader', { name: 'Agency', exact: true })).toBeVisible();
+
+  await fields.getByRole('button', { name: 'Rename Agency' }).click();
+  const nameField = fields.getByLabel('New name for Agency');
+  await expect(nameField).toBeFocused();
+  await nameField.fill('Agency link');
+  await nameField.press('Enter');
+  await expect(fields.getByRole('rowheader', { name: 'Agency link', exact: true })).toBeVisible();
+
+  await fields.getByRole('button', { name: 'Move Agency link up' }).click();
+  await expect(fields.getByRole('button', { name: 'Move Agency link down' })).toBeVisible();
+
+  await fields.getByRole('button', { name: 'Remove Agency link' }).click();
+  await expect(fields.getByText('Removed: Agency link, restorable until')).toBeVisible();
+  await fields.getByRole('button', { name: 'Restore Agency link' }).click();
+  await expect(fields.getByRole('rowheader', { name: 'Agency link', exact: true })).toBeVisible();
+  await expect(fields.getByText('Removed:')).toBeHidden();
+});
