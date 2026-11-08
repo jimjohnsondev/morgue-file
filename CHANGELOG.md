@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.15.0...v1.16.0) (2026-11-08)
+
+
+### Features
+
+* add, rename, reorder, remove and restore fields from Settings ([#62](https://github.com/jimjohnsondev/morgue-file/issues/62)) ([7da94b8](https://github.com/jimjohnsondev/morgue-file/commit/7da94b89fcfe72833f224f4756656e562921c62f))
+
 ## [1.15.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.14.0...v1.15.0) (2026-11-08)
 
 
