@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.11.0...v1.12.0) (2026-11-07)
+
+
+### Features
+
+* group any Index page by a field or subcategory, and link E2 to search tips ([#51](https://github.com/jimjohnsondev/morgue-file/issues/51)) ([fbc4860](https://github.com/jimjohnsondev/morgue-file/commit/fbc4860153b8de855c0a9cbff8b1c47cfc1c5aca))
+
 ## [1.11.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.10.0...v1.11.0) (2026-11-07)
 
 
