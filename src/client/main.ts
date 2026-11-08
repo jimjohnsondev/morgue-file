@@ -23,3 +23,4 @@ import './api-forms.js';
 import './selection.js';
 import './bulk-actions.js';
 import './tag-suggest.js';
+import './model-choice.js';

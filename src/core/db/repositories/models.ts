@@ -99,6 +99,36 @@ export function linkModelToItems(
   })();
 }
 
+/**
+ * Takes one link between an item and a model away: the whole-item link, or the one over a page
+ * range. Returns how many links went (0 or 1).
+ */
+export function unlinkModelFromItem(
+  db: Db,
+  link: { readonly itemId: number; readonly modelId: number; readonly pages?: PageRange },
+): number {
+  return db.transaction(() => {
+    const result = db
+      .prepare(
+        `DELETE FROM item_models WHERE item_id = @itemId AND model_id = @modelId
+           AND page_from IS @from AND page_to IS @to`,
+      )
+      .run({
+        itemId: link.itemId,
+        modelId: link.modelId,
+        from: link.pages?.[0] ?? null,
+        to: link.pages?.[1] ?? null,
+      });
+    rewriteItemSearch(db, [link.itemId]);
+    return result.changes;
+  })();
+}
+
+/** Says whether there is a model with this id, so a link to a removed one is refused. */
+export function isModelId(db: Db, modelId: number): boolean {
+  return db.prepare('SELECT 1 FROM models WHERE id = ?').get(modelId) !== undefined;
+}
+
 /** The ids of the items a model appears in, each once, in id order. */
 export function findItemIdsByModel(db: Db, modelId: number): number[] {
   const rows = db
@@ -109,6 +139,7 @@ export function findItemIdsByModel(db: Db, modelId: number): number[] {
 
 /** A model linked to an item, for the chips on the Item page, with the pages they appear on. */
 export type ItemModelLink = {
+  readonly modelId: number;
   readonly slug: string;
   readonly name: string;
   /** Undefined when the model appears in the whole item. */
@@ -119,7 +150,7 @@ export type ItemModelLink = {
 export function findModelLinksByItem(db: Db, itemId: number): ItemModelLink[] {
   const rows = db
     .prepare(
-      `SELECT models.slug, field_values.value_text AS name, item_models.page_from,
+      `SELECT models.id, models.slug, field_values.value_text AS name, item_models.page_from,
          item_models.page_to
        FROM item_models
        JOIN models ON models.id = item_models.model_id
@@ -129,12 +160,14 @@ export function findModelLinksByItem(db: Db, itemId: number): ItemModelLink[] {
        ORDER BY field_values.value_text COLLATE NOCASE, item_models.page_from`,
     )
     .all(itemId) as {
+    id: number;
     slug: string;
     name: string;
     page_from: number | null;
     page_to: number | null;
   }[];
   return rows.map((row) => ({
+    modelId: row.id,
     slug: row.slug,
     name: row.name,
     pages:

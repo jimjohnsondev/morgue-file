@@ -1,5 +1,7 @@
 // Builds the details panel of an Item page (frames 5, 7, 8): facts by kind, chips for tags,
-// models and collections, and the item's own fields as the fields table holds them (R11).
+// models and collections with their edit controls, and the item's own fields as the fields table
+// holds them (R11).
+import { findModelNames } from '#core/db/repositories/archive-counts.js';
 import {
   findCollectionsByItem,
   findCollectionSummaries,
@@ -22,6 +24,7 @@ import { itemPageHref } from './item-view.js';
 
 import type { Db } from '#core/db/connection.js';
 import type { Item } from '#core/db/repositories/items.js';
+import type { ItemModelLink } from '#core/db/repositories/models.js';
 import type { Subcategory } from '#core/db/repositories/subcategories.js';
 import type { FieldWithValue } from '#core/fields/fields.js';
 import type { ItemView } from './item-view.js';
@@ -182,12 +185,25 @@ function tagChips(db: Db, itemId: number) {
   }));
 }
 
-/** Builds the details panel for one item. */
-export function buildDetailsModel(db: Db, source: DetailsSource): DetailsModel {
+/** The model chips' [x]: a DELETE of that one link, naming its pages if it has a range. */
+function unlinkAction(itemId: number, link: ItemModelLink): string {
+  const action = `/api/items/${String(itemId)}/models/${String(link.modelId)}`;
+  return link.pages === undefined
+    ? action
+    : `${action}?from=${String(link.pages[0])}&to=${String(link.pages[1])}`;
+}
+
+/**
+ * The item's models as chips, each [x] unlinking it, and how to add one (R15): a list of the
+ * models it isn't linked to as a whole, or, in the reader, the pages on show (R17, PR 21).
+ */
+function modelParts(db: Db, source: DetailsSource) {
   const { item, view, shownPages } = source;
-  const models = findModelLinksByItem(db, item.id).map((link) => ({
+  const links = findModelLinksByItem(db, item.id);
+  const models = links.map((link) => ({
     label: link.name,
     href: `/models/${encodeURIComponent(link.slug)}`,
+    removeAction: unlinkAction(item.id, link),
     ...(link.pages !== undefined && {
       note: {
         text: formatPages(...link.pages),
@@ -196,15 +212,32 @@ export function buildDetailsModel(db: Db, source: DetailsSource): DetailsModel {
     }),
   }));
   const [firstShown, lastShown] = [shownPages?.[0], shownPages?.at(-1)];
+  if (firstShown !== undefined && lastShown !== undefined) {
+    return {
+      models,
+      modelAdding: { pendingLabel: `add model to ${formatPages(firstShown, lastShown)}` },
+    };
+  }
+  const linkedWhole = new Set(
+    links.filter((link) => link.pages === undefined).map((link) => link.modelId),
+  );
+  const choices = findModelNames(db)
+    .filter((model) => !linkedWhole.has(model.id))
+    .map((model) => ({ value: String(model.id), label: model.name }));
+  return {
+    models,
+    modelAdding: { action: `/api/items/${String(item.id)}/models`, models: choices },
+  };
+}
+
+/** Builds the details panel for one item. */
+export function buildDetailsModel(db: Db, source: DetailsSource): DetailsModel {
+  const { item, view } = source;
   return {
     facts: factRows(db, source),
     tags: tagChips(db, item.id),
     tagAction: `/api/items/${String(item.id)}/tags`,
-    models,
-    addModelLabel:
-      firstShown === undefined || lastShown === undefined
-        ? 'add model'
-        : `add model to ${formatPages(firstShown, lastShown)}`,
+    ...modelParts(db, source),
     ...collectionParts(db, item.id),
     fields: fieldRows(source),
     hideHref: itemPageHref(item.id, view, { isDetailsHidden: true }),

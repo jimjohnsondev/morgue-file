@@ -40,7 +40,7 @@ export function selectedItemIds(db: Db, selection: Selection): number[] {
 }
 
 /** How many items an action changed, for the panel's "Tagged 31 items" line. */
-type BulkResult = { readonly itemCount: number };
+export type BulkResult = { readonly itemCount: number };
 
 /** Adds a tag to every selected item, making the tag if it's new (R10). */
 export function tagSelection(db: Db, selection: Selection, tagName: string): BulkResult {

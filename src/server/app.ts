@@ -8,6 +8,7 @@ import { registerErrorHandler } from './error-handler.js';
 import { registerHistoryApi } from './routes/api/history.js';
 import { registerIndexingApi } from './routes/api/indexing.js';
 import { registerIngestApi } from './routes/api/ingest.js';
+import { registerModelLinkApi } from './routes/api/model-links.js';
 import { registerOrganizeApi } from './routes/api/organize.js';
 import { registerSetupApi } from './routes/api/setup.js';
 import { registerSubcategoryApi } from './routes/api/subcategories.js';
@@ -82,6 +83,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerIngestApi(app, library);
   registerSubcategoryApi(app, library);
   registerOrganizeApi(app, library);
+  registerModelLinkApi(app, library);
   registerWatchedFolderApi(app, { homeDir: config.homeDir, install, library });
 
   return app;

@@ -1,14 +1,14 @@
 // The Item page's details panel (frames 5, 7, 8): the item's facts, its tags, models and
 // collections as chips, then its other fields. It folds to a thin edge (frame 6). Filing (PR 13),
-// tags and collections (PR 14) are edited in place; the model and field controls are drawn as the
-// frames show them and come alive with PRs 17 and 18.
-import { AddTag, AddToCollection, ChipGroup } from './details-chips.js';
+// tags and collections (PR 14) and models (PR 17) are edited in place; the field controls are
+// drawn as the frames show them and come alive with PR 18.
+import { AddModel, AddTag, AddToCollection, ChipGroup } from './details-chips.js';
 import { FieldText } from './field-text.js';
 import { ApiForm, EditButton, EditView, HiddenLabel, SaveOrCancel } from './inline-edit.js';
 import { PendingAction } from './pending-action.js';
 
 import type { FieldType } from '#core/db/repositories/fields.js';
-import type { CollectionAdding, DetailChip } from './details-chips.js';
+import type { CollectionAdding, DetailChip, ModelAdding } from './details-chips.js';
 
 /** One row of the facts table. A link, a rating or a pending edit action may go with the text. */
 export type FactRow = {
@@ -46,8 +46,8 @@ export type DetailsModel = {
   readonly facts: readonly FactRow[];
   readonly tags: readonly DetailChip[];
   readonly models: readonly DetailChip[];
-  /** "add model", or "add model to pages 12–13" in the reader. */
-  readonly addModelLabel: string;
+  /** The "add model" form's action and choices, or the reader's pending "add model to pages 12–13". */
+  readonly modelAdding: ModelAdding;
   readonly collections: readonly DetailChip[];
   /** Where Add tag posts (R10). */
   readonly tagAction: string;
@@ -183,7 +183,7 @@ export function DetailsPanel(props: { readonly model: DetailsModel }) {
           title="Models"
           chips={model.models}
           removeName={(name) => `Remove model ${name}`}
-          add={<PendingAction label={model.addModelLabel} />}
+          add={<AddModel adding={model.modelAdding} />}
         />
         <ChipGroup
           title="Collections"

@@ -1,6 +1,7 @@
 // R9, R10 and R37 in a browser: items are selected on an Index page by click, Shift-click and
 // Ctrl+A, then tagged with suggestions as you type, put into collections, moved between them
-// and filed, all from the action panel on the page (frame 13), with no dialog or new window.
+// and filed, and linked to a model (R15), all from the action panel on the page (frame 13), with
+// no dialog or new window.
 // Runs on a small state server of its own, since it changes tags and collections.
 import { expect, test } from '../support/shared-server-test.js';
 import { startStateServerProcess, stopStateServer } from '../support/state-server-process.js';
@@ -144,6 +145,37 @@ test('R10: the item page adds a tag with suggestions and takes it off with its [
   await expect(tags.locator('.chip', { hasText: 'back-lit' })).toBeVisible();
   await tags.getByRole('button', { name: 'Remove tag back-lit' }).click();
   await expect(tags.locator('.chip', { hasText: 'back-lit' })).toHaveCount(0);
+});
+
+test('R15: a page of photos is linked to a new model in one action, then one is unlinked', async ({
+  page,
+}) => {
+  refuseDialogs(page);
+  await page.goto(`${server!.url}/photos/figure?select=on`);
+  const panel = actionPanel(page);
+  await page.keyboard.press('Control+a');
+  // This server has no models yet, so "New model…" is the only choice and its name field shows.
+  const nameField = panel.getByLabel("New model's name");
+  await expect(panel.getByLabel('Model', { exact: true })).toHaveValue('new');
+  await nameField.fill('Elena Varga');
+  const modelForm = panel.getByRole('form', { name: 'Link the selected items to a model' });
+  await clickAndReload(page, modelForm.getByRole('button', { name: 'Add' }));
+  await expect(panel.getByRole('status')).toHaveText('Linked 24 items to the model.');
+
+  await page.goto(`${server!.url}/photos/figure`);
+  await page.locator('.thumb-card .thumb').nth(2).click();
+  const models = page.locator('.details-group', { hasText: 'Models' });
+  await expect(models.locator('.chip', { hasText: 'Elena Varga' })).toBeVisible();
+  await models.getByRole('button', { name: 'Remove model Elena Varga' }).click();
+  await expect(models.locator('.chip', { hasText: 'Elena Varga' })).toHaveCount(0);
+  await models.getByRole('button', { name: 'add model' }).click();
+  const choice = models.getByLabel('Model', { exact: true });
+  await choice.selectOption({ label: 'New model…' });
+  await expect(models.getByLabel("New model's name")).toBeFocused();
+  await choice.selectOption({ label: 'Elena Varga' });
+  await expect(models.getByLabel("New model's name")).toBeHidden();
+  await models.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(models.locator('.chip', { hasText: 'Elena Varga' })).toBeVisible();
 });
 
 test('R5: Move to subcategory files the selection by hand, and it leaves the list', async ({

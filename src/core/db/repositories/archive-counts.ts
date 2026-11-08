@@ -24,6 +24,7 @@ export type SubcategoryCount = {
 
 /** A model by name, for the filter panel's model list. */
 export type ModelName = {
+  readonly id: number;
   readonly slug: string;
   readonly name: string;
 };
@@ -76,11 +77,11 @@ export function findAllTagNames(db: Db): string[] {
   return rows.map((row) => row.name);
 }
 
-/** Every model's slug and Name field, alphabetically. */
+/** Every model's id, slug and Name field, alphabetically. */
 export function findModelNames(db: Db): ModelName[] {
   const rows = db
     .prepare(
-      `SELECT models.slug, field_values.value_text AS name FROM models
+      `SELECT models.id, models.slug, field_values.value_text AS name FROM models
        JOIN field_values ON field_values.entity = 'model' AND field_values.entity_id = models.id
        WHERE field_values.field_id = (SELECT id FROM fields WHERE entity = 'model' AND key = 'name')
        ORDER BY field_values.value_text COLLATE NOCASE`,
