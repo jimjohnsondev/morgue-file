@@ -5,7 +5,6 @@ import path from 'node:path';
 
 import { openLibrary } from '#core/db/library.js';
 import { findAllRoots, REFERENCE_ROOT_ID } from '#core/db/repositories/roots.js';
-import { purgeExpiredFields } from '#core/fields/fields.js';
 import { startRootIndexing } from '#core/indexer/roots.js';
 import { runHashJob } from '#core/jobs/hash-jobs.js';
 import { DEFAULT_LANES, startJobQueue } from '#core/jobs/queue.js';
@@ -108,7 +107,6 @@ function startLibrary(
     appVersion: options.appVersion,
     ...(install.referenceDir === undefined ? {} : { referenceDir: install.referenceDir }),
   });
-  purgeExpiredFields(db, new Date());
   const mediaTools = findMediaTools(options.appDir);
   if (mediaTools === undefined) {
     log.warn('ffmpeg and ffprobe were not found; video thumbnails will fail.');

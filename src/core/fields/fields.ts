@@ -85,11 +85,24 @@ export function listFields(db: Db, owner: Omit<FieldOwner, 'entityId'>): Field[]
   );
 }
 
+/**
+ * Whether a draft makes the items' Rating again after the built-in one was removed and purged.
+ * `rating:` searches the item field keyed rating, so a number field by that name brings it back.
+ */
+function isRatingRemade(draft: FieldDraft, key: string): boolean {
+  return key === 'rating' && draft.entity === 'item' && draft.type === 'number';
+}
+
+/** Whether items or models have a field with this key, shown and not removed. */
+export function hasField(db: Db, owner: Omit<FieldOwner, 'entityId'>, key: string): boolean {
+  return listFields(db, owner).some((field) => field.key === key);
+}
+
 /** Adds a field to every item or every model at once, and returns it. */
 export function addField(db: Db, draft: FieldDraft): Field {
   const label = draft.label.trim();
   const key = keyFromLabel(label);
-  if (key === '' || RESERVED_KEYS.has(key)) {
+  if (key === '' || (RESERVED_KEYS.has(key) && !isRatingRemade(draft, key))) {
     throw new AppError('invalid-input', `"${label}" can't be used as a field name.`);
   }
   const existing = findFieldByKey(db, draft.entity, key);
@@ -116,11 +129,21 @@ export function addField(db: Db, draft: FieldDraft): Field {
 
 /** Renames a field everywhere it shows. Its search key and values stay as they were. */
 export function renameField(db: Db, fieldId: number, label: string): void {
-  requireField(db, fieldId);
-  if (label.trim() === '') {
+  const field = requireField(db, fieldId);
+  const newLabel = label.trim();
+  if (newLabel === '') {
     throw new AppError('invalid-input', 'A field needs a name.');
   }
-  updateFieldLabel(db, fieldId, label.trim());
+  if (field.removedAt !== undefined) {
+    throw new AppError('invalid-input', `${field.label} was removed; restore it to rename it.`);
+  }
+  const isTaken = findFieldsByEntity(db, field.entity).some(
+    (other) => other.id !== fieldId && other.label.toLowerCase() === newLabel.toLowerCase(),
+  );
+  if (isTaken) {
+    throw new AppError('invalid-input', `There is already a field called "${newLabel}".`);
+  }
+  updateFieldLabel(db, fieldId, newLabel);
 }
 
 /** Replaces a pick-list's choices. Values already set keep their text. */
@@ -140,7 +163,10 @@ export function setPicklistChoices(db: Db, fieldId: number, choices: readonly st
 export function removeField(db: Db, fieldId: number, now: Date): void {
   const field = requireField(db, fieldId);
   if (isModelName(field)) {
-    throw new AppError('invalid-input', 'The Name field can be renamed but not removed.');
+    throw new AppError(
+      'invalid-input',
+      "The Name field can't be removed: every profile is titled by it.",
+    );
   }
   if (field.removedAt === undefined) {
     updateFieldRemovedAt(db, fieldId, now.toISOString());
@@ -214,7 +240,8 @@ export function moveField(db: Db, fieldId: number, move: FieldMove): void {
 
 /**
  * Deletes, with their values, the fields removed more than 30 days ago, as R38 promises. The
- * library runs it each time it opens; until then such a field is neither listed nor restorable.
+ * library runs it each time it opens (`openLibrary`); until then such a field is neither listed
+ * nor restorable.
  */
 export function purgeExpiredFields(db: Db, now: Date): number {
   return deleteFieldsRemovedBefore(db, new Date(now.getTime() - RESTORE_MS).toISOString());

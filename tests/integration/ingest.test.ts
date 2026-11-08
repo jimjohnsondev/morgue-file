@@ -8,10 +8,11 @@ import path from 'node:path';
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { findFieldByKey } from '#core/db/repositories/fields.js';
 import { findItemById } from '#core/db/repositories/items.js';
 import { findJob } from '#core/db/repositories/jobs.js';
 import { REFERENCE_ROOT_ID, setReferenceRoot, setRootStatus } from '#core/db/repositories/roots.js';
-import { readFieldValues } from '#core/fields/fields.js';
+import { readFieldValues, removeField, restoreField } from '#core/fields/fields.js';
 import { reconcileEntries } from '#core/indexer/reconcile.js';
 import { walkRoot } from '#core/indexer/walk.js';
 import { inboxMonthFolder, ingestUrl } from '#core/ingest/ingest.js';
@@ -180,6 +181,18 @@ describe('R2: dropped and pasted files', () => {
     const response = await postFile('pasted.png', 'png bytes', 'data:image/png;base64,AAAA');
     expect(response.statusCode).toBe(201);
     expect(sourceUrlOf(response.json<{ itemId: number }>().itemId)).toBeUndefined();
+  });
+
+  it('R2: a dragged file is still saved while Settings has removed the Source URL field', async () => {
+    const sourceField = findFieldByKey(library.db, 'item', 'source_url')!;
+    removeField(library.db, sourceField.id, new Date());
+    try {
+      const response = await postFile('figure.jpg', 'jpeg bytes', 'https://example.com/figure');
+      expect(response.statusCode, response.body).toBe(201);
+      expect(sourceUrlOf(response.json<{ itemId: number }>().itemId)).toBeUndefined();
+    } finally {
+      restoreField(library.db, sourceField.id, new Date());
+    }
   });
 
   it('R2: a name already taken gets " (2)", ignoring case, and nothing is overwritten', async () => {

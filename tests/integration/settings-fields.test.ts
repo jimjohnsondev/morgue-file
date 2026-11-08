@@ -117,7 +117,7 @@ describe('the Fields tables in Settings', () => {
     const name = findFieldByKey(settings.db, 'model', 'name')!;
     const removed = await settings.send('DELETE', `/api/fields/${String(name.id)}`);
     expect(removed.statusCode).toBe(400);
-    expect(removed.body).toContain('can be renamed but not removed');
+    expect(removed.body).toContain("can't be removed");
     const page = await pageHtml('/settings');
     expect(page).not.toContain('aria-label="Move Bio up"');
     expect(page).not.toContain('aria-label="Remove Name"');

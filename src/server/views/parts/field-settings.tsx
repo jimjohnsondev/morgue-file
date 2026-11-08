@@ -79,7 +79,7 @@ function TypeCell(props: { readonly field: FieldSetting }) {
       </EditView>
       <ApiForm action={fieldAction(field, '/choices')} editId={formId}>
         <HiddenLabel for={`${formId}-choices`}>
-          Choices of {field.label}, separated by commas
+          Choices of {field.label}, separated by commas (a choice can't hold one)
         </HiddenLabel>
         <input
           id={`${formId}-choices`}
@@ -193,9 +193,6 @@ function AddFieldRow(props: { readonly entity: FieldEntity }) {
 
 /** The removed fields that can still be restored, each with the day it can be until. */
 function RemovedFields(props: { readonly removed: readonly RemovedFieldSetting[] }) {
-  if (props.removed.length === 0) {
-    return null;
-  }
   return (
     <ul class="caption settings-removed" aria-label="Removed fields">
       {props.removed.map((field) => (
@@ -240,7 +237,7 @@ function FieldTable(props: {
           <AddFieldRow entity={props.entity} />
         </tbody>
       </table>
-      <RemovedFields removed={props.table.removed} />
+      {props.table.removed.length > 0 && <RemovedFields removed={props.table.removed} />}
     </div>
   );
 }
