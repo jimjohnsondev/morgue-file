@@ -98,12 +98,21 @@ export function subcategoryChoices(db: Db, section: Section, query: Query): Filt
   ];
 }
 
-/** The three sections as tick boxes, each counting what the query matches in it. */
-export function sectionChoices(db: Db, query: Query): FilterChoice[] {
-  const anySection = {
-    terms: query.terms.filter((term) => !(term.kind === 'filter' && term.key === 'in')),
-  };
-  const counts = countItemsBySectionByQuery(db, compileQuery(anySection));
+/**
+ * The three sections as tick boxes, each counting what the query matches in it. A search page
+ * has already counted its query per section; when the query names no section, those are the
+ * same counts, so they are passed in rather than counted twice (R18).
+ */
+export function sectionChoices(
+  db: Db,
+  query: Query,
+  countedBySection: ReadonlyMap<Section, number> | undefined,
+): FilterChoice[] {
+  const terms = query.terms.filter((term) => !(term.kind === 'filter' && term.key === 'in'));
+  const counts =
+    countedBySection !== undefined && terms.length === query.terms.length
+      ? countedBySection
+      : countItemsBySectionByQuery(db, compileQuery({ terms }));
   const chosen = chosenValues(query, 'in');
   return Object.entries(SECTION_LABELS).map(([section, label]) => ({
     value: section,

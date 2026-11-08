@@ -28,6 +28,12 @@ export type GroupOrder = {
   readonly columns: readonly string[];
   /** One value per group, the same for every item in it; NULL for items without a value. */
   readonly value: string;
+  /**
+   * For a field grouping, the same value read from the item's row in field_values, aliased
+   * `group_values`, so groups can be counted from the field's rows alone (R18). Undefined when
+   * the grouping needs no field.
+   */
+  readonly valueOfRow: string | undefined;
 };
 
 /** The table the field's id is read from; its name is fixed, so the fragments can refer to it. */
@@ -51,25 +57,57 @@ const BY_SUBCATEGORY: GroupOrder = {
     'coalesce(items.subcategory_id, 0)',
   ],
   value: `items.section || ':' || coalesce(items.subcategory_id, 'unsorted')`,
+  valueOfRow: undefined,
 };
 
 /**
- * A field's group value, and the ascending keys that sort it, for each kind of order. Text sorts
- * ignoring case, then by its exact spelling, so "Vogue" and "vogue" stay two unbroken groups.
+ * What an item without a value sorts by in a number or year key: after every number. Stored
+ * numbers are always finite (field-values.ts), so nothing else sorts with it. 9e999 is how SQL
+ * writes infinity.
  */
-function fieldParts(order: 'text' | 'number' | 'year'): { value: string; sortKeys: string[] } {
+const AFTER_EVERY_NUMBER = '9e999';
+
+/**
+ * What an item without a value sorts by in a text key: after every text, because SQLite sorts
+ * BLOBs after TEXT, and the empty BLOB is no one's value.
+ */
+const AFTER_EVERY_TEXT = "x''";
+
+/**
+ * A field's group value, and the ascending keys that sort it, for each kind of order. The first
+ * key puts items without a value last, so each key reads the value once per item (R18). Text
+ * sorts ignoring case, then by its exact spelling, so "Vogue" and "vogue" stay two unbroken
+ * groups.
+ */
+function fieldParts(order: 'text' | 'number' | 'year'): {
+  value: string;
+  valueOfRow: string;
+  sortKeys: string[];
+} {
   switch (order) {
     case 'text': {
       const value = fieldValue('value_text');
-      return { value, sortKeys: [`coalesce(lower(${value}), '')`, `coalesce(${value}, '')`] };
+      return {
+        value,
+        valueOfRow: 'group_values.value_text',
+        sortKeys: [`coalesce(lower(${value}), ${AFTER_EVERY_TEXT})`, `coalesce(${value}, '')`],
+      };
     }
     case 'number': {
       const value = fieldValue('value_num');
-      return { value, sortKeys: [`coalesce(-${value}, 0)`] };
+      return {
+        value,
+        valueOfRow: 'group_values.value_num',
+        sortKeys: [`coalesce(-${value}, ${AFTER_EVERY_NUMBER})`],
+      };
     }
     case 'year': {
       const value = `substr(${fieldValue('value_text')}, 1, 4)`;
-      return { value, sortKeys: [`coalesce(-CAST(${value} AS INTEGER), 0)`] };
+      return {
+        value,
+        valueOfRow: 'substr(group_values.value_text, 1, 4)',
+        sortKeys: [`coalesce(-CAST(${value} AS INTEGER), ${AFTER_EVERY_NUMBER})`],
+      };
     }
   }
 }
@@ -79,10 +117,6 @@ export function groupOrder(grouping: Grouping): GroupOrder {
   if (grouping.kind === 'subcategory') {
     return BY_SUBCATEGORY;
   }
-  const { value, sortKeys } = fieldParts(grouping.order);
-  return {
-    cte: { sql: FIELD_CTE, params: [grouping.key] },
-    columns: [`${value} IS NULL`, ...sortKeys],
-    value,
-  };
+  const { value, valueOfRow, sortKeys } = fieldParts(grouping.order);
+  return { cte: { sql: FIELD_CTE, params: [grouping.key] }, columns: sortKeys, value, valueOfRow };
 }

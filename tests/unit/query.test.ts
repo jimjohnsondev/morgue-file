@@ -143,7 +143,9 @@ describe('R13: group: terms', () => {
     });
     expect(grouped.params).toEqual(['hands']);
     expect(grouped.group?.cte?.params).toEqual(['rating']);
-    expect(grouped.group?.columns).toHaveLength(2);
+    // One key per item read: highest rating first, and 9e999 (infinity) puts the unrated last.
+    expect(grouped.group?.columns).toHaveLength(1);
+    expect(grouped.group?.columns[0]).toMatch(/^coalesce\(-\(SELECT .*\), 9e999\)$/s);
     expect(compileQuery(parseQuery('group:subcategory'), { kind: 'subcategory' }).group?.cte).toBe(
       undefined,
     );

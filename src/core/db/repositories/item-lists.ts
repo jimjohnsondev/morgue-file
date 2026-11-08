@@ -154,6 +154,8 @@ export function countItemsBySectionByQuery(db: Db, query: CompiledQuery): Map<Se
   return new Map(rows.map((row) => [row.section, row.total]));
 }
 
+type GroupCountRow = { group_value: string | number | null; total: number };
+
 /**
  * How many items a grouped query matches in each of its groups, by group value; items without a
  * value are counted under undefined. Empty for a list that isn't grouped.
@@ -165,16 +167,51 @@ export function countItemsByGroupByQuery(
   if (query.group === undefined) {
     return new Map();
   }
+  if (query.group.valueOfRow !== undefined) {
+    return countItemsByFieldGroup(db, query, query.group.valueOfRow);
+  }
   const rows = db
     .prepare(
       `${withTables(query)} SELECT ${query.group.value} AS group_value, count(*) AS total
        FROM items WHERE ${query.where} GROUP BY group_value`,
     )
-    .all(...groupParams(query), ...query.params) as {
-    group_value: string | number | null;
-    total: number;
-  }[];
+    .all(...groupParams(query), ...query.params) as GroupCountRow[];
   return new Map(rows.map((row) => [optional(row.group_value), row.total]));
+}
+
+/**
+ * The groups of a list grouped by a field, counted from the field's own rows rather than by
+ * reading the field for every item (R18): only items with a value have a row. The items
+ * without a value are the rest of the list.
+ */
+function countItemsByFieldGroup(
+  db: Db,
+  query: CompiledQuery,
+  valueOfRow: string,
+): Map<string | number | undefined, number> {
+  const rows = db
+    .prepare(
+      `${withTables(query)} SELECT ${valueOfRow} AS group_value, count(*) AS total
+       FROM field_values AS group_values JOIN items ON items.id = group_values.entity_id
+       WHERE group_values.entity = 'item'
+         AND group_values.field_id = (SELECT field_id FROM list_group)
+         AND (${query.where})
+       GROUP BY group_value`,
+    )
+    .all(...groupParams(query), ...query.params) as GroupCountRow[];
+  const counts = new Map<string | number | undefined, number>();
+  let withValue = 0;
+  for (const row of rows) {
+    if (row.group_value !== null) {
+      counts.set(row.group_value, row.total);
+      withValue += row.total;
+    }
+  }
+  const withoutValue = countItemsByQuery(db, query) - withValue;
+  if (withoutValue > 0) {
+    counts.set(undefined, withoutValue);
+  }
+  return counts;
 }
 
 /** Where one item sits in a list: how many come before it, and the items either side. */

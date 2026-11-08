@@ -80,6 +80,7 @@ function filterPanelFor(
     readonly spec: ListSpec;
     readonly view: ListView;
     readonly named: NamedGrouping | undefined;
+    readonly counts: ListCounts;
   },
 ): FilterPanelModel {
   const { spec, view } = list;
@@ -91,7 +92,7 @@ function filterPanelFor(
     hideHref: listHref(spec.address, view, { filters: 'hidden' }),
     searchLabel: section === undefined ? 'Search within these' : `Search within ${spec.title}`,
     subcategories: section === undefined ? undefined : subcategoryChoices(db, section, query),
-    sections: section === undefined ? sectionChoices(db, query) : undefined,
+    sections: section === undefined ? sectionChoices(db, query, list.counts.bySection) : undefined,
     types: section === undefined ? undefined : typeChoices(section, query),
     ...sharedChoices(db, query),
     groupings: groupChoices(db, query, list.named),
@@ -121,6 +122,8 @@ function sumOf(counts: ReadonlyMap<unknown, number>): number {
 /** The list's counts and the lines that show them: the caption and the grid panel's title. */
 type ListCounts = {
   readonly total: number;
+  /** A search page's count in each section; undefined on other lists. */
+  readonly bySection: ReadonlyMap<Section, number> | undefined;
   readonly page: number;
   readonly lastPage: number;
   readonly caption: string;
@@ -141,7 +144,8 @@ function countList(
     const lastPage = Math.max(1, Math.ceil(total / view.perPage));
     const page = Math.min(view.page, lastPage);
     const caption = listCaption(total, page, view);
-    return { total, page, lastPage, caption, panelTitle: `Browse · ${countLabel(total, 'item')}` };
+    const panelTitle = `Browse · ${countLabel(total, 'item')}`;
+    return { total, bySection: undefined, page, lastPage, caption, panelTitle };
   }
   const bySection = countItemsBySectionByQuery(db, compiled);
   const total = sumOf(bySection);
@@ -149,6 +153,7 @@ function countList(
   const page = Math.min(view.page, lastPage);
   return {
     total,
+    bySection,
     page,
     lastPage,
     caption: searchCaption({ bySection, total, page, lastPage }),
@@ -202,7 +207,7 @@ export function buildListModel(db: Db, spec: ListSpec, view: ListView): IndexMod
     emptyHelp: spec.isSearch ? noResultsHelp(spec.query) : spec.emptyHelp,
     toolbar: { ...toolbarFor(spec.address, view), selectHref: selection.selectHref },
     paging: { page, lastPage, hrefFor: (target) => listHref(spec.address, view, { page: target }) },
-    filterPanel: isPanelOpen ? filterPanelFor(db, { spec, view, named }) : undefined,
+    filterPanel: isPanelOpen ? filterPanelFor(db, { spec, view, named, counts }) : undefined,
     showFiltersHref,
     activeFilters: spec.isSearch ? activeFilters(db, spec.query) : undefined,
     matchedModels: spec.isSearch ? matchedModelLinks(db, spec.query) : undefined,
