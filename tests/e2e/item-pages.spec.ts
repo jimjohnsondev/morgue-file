@@ -184,6 +184,10 @@ test('R21: a book of page scans shows its pages as pictures', async ({ page }) =
       .first()
       .evaluate((image: HTMLImageElement) => image.naturalWidth),
   ).toBeGreaterThan(1);
+  // The strip shows small pictures of the pages, not the full scans.
+  const firstStripPage = page.locator('.page-strip__page').first();
+  await expect(firstStripPage).toHaveJSProperty('complete', true);
+  expect(await firstStripPage.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(92);
 });
 
 test('frame 9: V hides all chrome, keeps it from item to item, and brings it back', async ({

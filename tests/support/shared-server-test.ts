@@ -1,4 +1,5 @@
-// Playwright's test and expect for every e2e and visual spec except the history and perf ones.
+// Playwright's test and expect for every spec on the shared e2e server except the history one:
+// the e2e and visual specs, and the R21 perf spec.
 // On the shared e2e server, every item a spec opens would otherwise add to the viewing history
 // (R35), and Home's first strip, frame 12 and the Home specs draw the history seed.json gives
 // that server. So in these specs the page answers its own history writes without sending them;
