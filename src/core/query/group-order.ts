@@ -29,6 +29,11 @@ export type GroupOrder = {
   /** One value per group, the same for every item in it; NULL for items without a value. */
   readonly value: string;
   /**
+   * What the groups are counted by: the columns `value` is made from, when grouping by them
+   * reads an index rather than building the value for every item (R18).
+   */
+  readonly countedBy: string;
+  /**
    * For a field grouping, the same value read from the item's row in field_values, aliased
    * `group_values`, so groups can be counted from the field's rows alone (R18). Undefined when
    * the grouping needs no field.
@@ -57,6 +62,7 @@ const BY_SUBCATEGORY: GroupOrder = {
     'coalesce(items.subcategory_id, 0)',
   ],
   value: `items.section || ':' || coalesce(items.subcategory_id, 'unsorted')`,
+  countedBy: 'items.section, items.subcategory_id',
   valueOfRow: undefined,
 };
 
@@ -118,5 +124,11 @@ export function groupOrder(grouping: Grouping): GroupOrder {
     return BY_SUBCATEGORY;
   }
   const { value, valueOfRow, sortKeys } = fieldParts(grouping.order);
-  return { cte: { sql: FIELD_CTE, params: [grouping.key] }, columns: sortKeys, value, valueOfRow };
+  return {
+    cte: { sql: FIELD_CTE, params: [grouping.key] },
+    columns: sortKeys,
+    value,
+    countedBy: value,
+    valueOfRow,
+  };
 }
