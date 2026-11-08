@@ -1,5 +1,5 @@
 // Smoke test: the built server starts, answers its health check and renders Home in Chromium.
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/shared-server-test.js';
 
 test('the health check names the app', async ({ request }) => {
   const response = await request.get('/healthz');

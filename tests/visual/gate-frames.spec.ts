@@ -1,8 +1,6 @@
 // The design gate's built frames 1–12 (docs/DESIGN-BRIEF.md, Screens), captured from the shared
 // server on the fixture archive. Jim compares them with the mocks; once approved they are the
 // baseline every later PR is checked against.
-import { expect, test } from '@playwright/test';
-
 import {
   freezeClock,
   openWhenSettled,
@@ -10,6 +8,7 @@ import {
   settlePointerAndFocus,
   waitForFontsAndImages,
 } from '../support/screenshots.js';
+import { expect, test } from '../support/shared-server-test.js';
 
 import type { Page } from '@playwright/test';
 

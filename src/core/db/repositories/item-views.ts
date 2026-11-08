@@ -21,9 +21,22 @@ function toItemView(row: ItemViewRow): ItemView {
   };
 }
 
-/** Records a view and drops any beyond the newest 200. */
+/**
+ * Records a view and drops any beyond the newest 200. A view of the item viewed last replaces that
+ * view instead, keeping its position if the new one has none: turning a reader's pages or pausing
+ * a video reloads or re-sends the same opening, which is one entry in the history (R35).
+ */
 export function recordItemView(db: Db, view: ItemView): void {
   db.transaction(() => {
+    const latest = db
+      .prepare('SELECT id, item_id FROM item_views ORDER BY viewed_at DESC, id DESC LIMIT 1')
+      .get() as { id: number; item_id: number } | undefined;
+    if (latest?.item_id === view.itemId) {
+      db.prepare(
+        'UPDATE item_views SET viewed_at = ?, position = coalesce(?, position) WHERE id = ?',
+      ).run(view.viewedAt, view.position ?? null, latest.id);
+      return;
+    }
     db.prepare('INSERT INTO item_views (item_id, viewed_at, position) VALUES (?, ?, ?)').run(
       view.itemId,
       view.viewedAt,

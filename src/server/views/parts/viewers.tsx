@@ -28,6 +28,8 @@ export type VideoPlayerModel = ViewerFrame & {
   readonly durationMs: number | undefined;
   /** Frames per second from ffprobe, the step of the frame buttons; 30 if not known yet. */
   readonly fps: number;
+  /** The time to start at, in seconds, when reopened from Home's history (R35). */
+  readonly startSeconds: number | undefined;
 };
 
 /** The viewer panel: title bar with the viewing mode hint, then the viewer's own parts. */
@@ -180,6 +182,7 @@ export function VideoPlayer(props: { readonly model: VideoPlayerModel }) {
           muted
           data-video-player
           data-fps={String(model.fps)}
+          data-start={model.startSeconds === undefined ? undefined : String(model.startSeconds)}
         />
       </div>
       <div class="video-controls">

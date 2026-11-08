@@ -135,6 +135,7 @@ export function buildViewerModel(source: ViewerSource): ViewerModel {
         src: original,
         durationMs: item.durationMs,
         fps: item.fps ?? DEFAULT_FPS,
+        startSeconds: view.startSeconds,
       };
     default:
       return readerModel(source, { title: `Reader · ${label}`, viewingHref });

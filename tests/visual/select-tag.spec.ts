@@ -3,9 +3,8 @@
 // field so its suggestions show. Its baseline is approved in the PR that builds it
 // (docs/DESIGN-BRIEF.md, How the design gate works, step 5). Nothing is saved, so the shared
 // server's library stays as the other frames need it.
-import { expect, test } from '@playwright/test';
-
 import { freezeClock, openWhenSettled, SCREENSHOT_OPTIONS } from '../support/screenshots.js';
+import { expect, test } from '../support/shared-server-test.js';
 
 /** The shared server may still be making thumbnails when this runs first. */
 test.describe.configure({ timeout: 660_000 });

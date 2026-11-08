@@ -1,6 +1,6 @@
 // The gate build's Index frames render from the fixture archive (build plan row 7): frames 1–4
 // and 11, with the design brief's sample names and counts.
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/shared-server-test.js';
 
 test('frame 1: Photos › Figure, page 3, with the filter panel open', async ({ page }) => {
   await page.goto('/photos/figure?page=3');

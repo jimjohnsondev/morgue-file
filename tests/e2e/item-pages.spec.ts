@@ -1,6 +1,6 @@
 // The gate build's Item frames render from the fixture archive (build plan row 8): frames 5–9,
 // with the design brief's sample content, and the keys that move through them (R19, R21).
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/shared-server-test.js';
 
 import type { Locator, Page } from '@playwright/test';
 

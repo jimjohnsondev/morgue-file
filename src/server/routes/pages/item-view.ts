@@ -1,6 +1,7 @@
 // How an Item page is viewed: the list it was opened from, the reader's page and layout, whether
-// the details panel is folded, and viewing mode. All of it lives in the URL, so Prev and Next,
-// the page strip and the panel toggle are plain links that work with JavaScript off.
+// the details panel is folded, viewing mode, and the video time to start at. All of it lives in
+// the URL, so Prev and Next, the page strip and the panel toggle are plain links that work with
+// JavaScript off.
 import { Type } from '@sinclair/typebox';
 
 import type { Static } from '@sinclair/typebox';
@@ -13,6 +14,8 @@ export const ItemViewQuerystring = Type.Object({
   layout: Type.Optional(Type.Union([Type.Literal('single'), Type.Literal('spread')])),
   details: Type.Optional(Type.Literal('hidden')),
   mode: Type.Optional(Type.Literal('viewing')),
+  /** The video time to start at, in seconds: where Home's history left off (R35). */
+  t: Type.Optional(Type.Number({ minimum: 0, maximum: 1_000_000 })),
 });
 
 /** The parsed query string of an Item page. */
@@ -30,9 +33,14 @@ export type ItemView = {
   readonly isDetailsHidden: boolean;
   /** Viewing mode hides all chrome so the reference fills the screen (frame 9). */
   readonly isViewing: boolean;
+  /**
+   * The video time the player starts at, from Home's history (R35). It belongs to one opening,
+   * so links to other items and pages leave it out.
+   */
+  readonly startSeconds: number | undefined;
 };
 
-/** Fills in the defaults: page 1 as a spread, details shown, chrome shown. */
+/** Fills in the defaults: page 1 as a spread, details shown, chrome shown, video from 0:00. */
 export function toItemView(params: ItemViewParams): ItemView {
   return {
     from: params.from,
@@ -40,6 +48,7 @@ export function toItemView(params: ItemViewParams): ItemView {
     layout: params.layout ?? 'spread',
     isDetailsHidden: params.details === 'hidden',
     isViewing: params.mode === 'viewing',
+    startSeconds: params.t,
   };
 }
 

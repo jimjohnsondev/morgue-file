@@ -31,6 +31,7 @@ import type { LibraryRuntime } from '#server/library-runtime.js';
  * The states a spec can ask for. Unsorted is empty in all of them (E1). `watching`, `ingest`,
  * `settings` and `organize` are `empty-unsorted` in homes of their own, for the R1, R2, R36 and
  * R9/R10 specs, which add files to them or change their subcategories, tags and collections.
+ * `history` also copies a few pose videos, for the R35 spec, which adds to the viewing history.
  */
 const STATES = [
   'empty-unsorted',
@@ -40,6 +41,7 @@ const STATES = [
   'ingest',
   'settings',
   'organize',
+  'history',
 ] as const;
 type State = (typeof STATES)[number];
 
@@ -52,11 +54,21 @@ const OFFLINE_FOLDER = 'E:\\Reference';
 /** The counters E5 is drawn with: a first index part-way through a large archive. */
 const HELD_PROGRESS = { found: 12_400, expected: 48_000, isPaused: false } as const;
 
+/** A fixture folder the small copy takes the first entries of, and the section it's filed in. */
+type CopiedFolder = { readonly folder: string; readonly count: number; readonly section: Section };
+
 /** How many entries of each fixture folder the small copy takes, and where they are filed. */
-const COPIED_FOLDERS = [
+const COPIED_FOLDERS: readonly CopiedFolder[] = [
   { folder: 'Figure', count: 24, section: 'photos' },
   { folder: 'Books', count: 3, section: 'library' },
-] as const satisfies readonly { folder: string; count: number; section: Section }[];
+];
+
+/** The folders a state's copy takes: the history state adds videos to reopen at a time. */
+function copiedFolders(state: State): readonly CopiedFolder[] {
+  return state === 'history'
+    ? [...COPIED_FOLDERS, { folder: 'Video/Poses', count: 3, section: 'video' }]
+    : COPIED_FOLDERS;
+}
 
 /** Reads the state from MORGUE_STATE, refusing anything else. */
 function readState(): State {
@@ -80,8 +92,8 @@ function readPort(): number {
  * Copies the first entries of each folder, keeping their times, so the footer's "site last
  * updated" day comes from the fixture rather than from today.
  */
-function copyFixtureSubset(referenceDir: string): void {
-  for (const { folder, count } of COPIED_FOLDERS) {
+function copyFixtureSubset(referenceDir: string, folders: readonly CopiedFolder[]): void {
+  for (const { folder, count } of folders) {
     const names = readdirSync(path.join(FIXTURE_DIR, folder)).sort().slice(0, count);
     for (const name of names) {
       cpSync(path.join(FIXTURE_DIR, folder, name), path.join(referenceDir, folder, name), {
@@ -93,13 +105,17 @@ function copyFixtureSubset(referenceDir: string): void {
 }
 
 /** Indexes the copy and files each folder under a subcategory of its own name. */
-async function indexSubset(db: Db, referenceDir: string): Promise<void> {
-  await scanRoot({ db, rootId: REFERENCE_ROOT_ID, rootPath: referenceDir });
-  for (const { folder, section } of COPIED_FOLDERS) {
-    // Library starts with a Books subcategory (migration 001); Photos starts with none.
+async function indexSubset(
+  db: Db,
+  copy: { readonly referenceDir: string; readonly folders: readonly CopiedFolder[] },
+): Promise<void> {
+  await scanRoot({ db, rootId: REFERENCE_ROOT_ID, rootPath: copy.referenceDir });
+  for (const { folder, section } of copy.folders) {
+    // Library starts with a Books subcategory (migration 001); Photos starts with none. A folder
+    // such as Video/Poses is filed under its last part.
+    const name = path.posix.basename(folder);
     const subcategoryId =
-      findSubcategoryBySlug(db, section, slugify(folder))?.id ??
-      insertSubcategory(db, section, folder);
+      findSubcategoryBySlug(db, section, slugify(name))?.id ?? insertSubcategory(db, section, name);
     insertFolderMapping(db, { rootId: REFERENCE_ROOT_ID, relPrefix: folder, subcategoryId });
   }
   refileItemsByMappings(db, REFERENCE_ROOT_ID);
@@ -115,7 +131,8 @@ async function prepareHome(state: State): Promise<string> {
   const referenceDir = path.join(homeDir, 'Reference');
   rmSync(homeDir, { recursive: true, force: true });
   mkdirSync(dataDir, { recursive: true });
-  copyFixtureSubset(referenceDir);
+  const folders = copiedFolders(state);
+  copyFixtureSubset(referenceDir, folders);
   writeFileSync(path.join(homeDir, 'morgue-file.json'), JSON.stringify({ dataDir: 'data' }));
   writeFileSync(
     path.join(dataDir, 'settings.json'),
@@ -123,7 +140,7 @@ async function prepareHome(state: State): Promise<string> {
   );
   const db = openLibrary({ dataDir, appVersion: 'state', referenceDir });
   try {
-    await indexSubset(db, referenceDir);
+    await indexSubset(db, { referenceDir, folders });
   } finally {
     db.close();
   }

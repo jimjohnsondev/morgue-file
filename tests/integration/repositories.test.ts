@@ -230,15 +230,32 @@ describe('models', () => {
 
 describe('viewing history and settings', () => {
   it('keeps only the newest 200 views', () => {
-    const item = addTestItem(db, 'Figure/figure_0193.jpg');
+    const items = [
+      addTestItem(db, 'Figure/figure_0193.jpg'),
+      addTestItem(db, 'Figure/figure_0194.jpg'),
+    ];
     for (let minute = 0; minute < KEPT_VIEWS + 5; minute++) {
       const viewedAt = new Date(Date.UTC(2026, 9, 31, 0, minute)).toISOString();
-      recordItemView(db, { itemId: item, viewedAt, position: minute });
+      // Two items in turn, since a view of the item viewed last replaces that view.
+      recordItemView(db, { itemId: items[minute % 2]!, viewedAt, position: minute });
     }
     const views = findRecentItemViews(db, 1000);
     expect(views).toHaveLength(KEPT_VIEWS);
     expect(views[0]?.position).toBe(KEPT_VIEWS + 4);
     expect(views.at(-1)?.position).toBe(5);
+  });
+
+  it('R35: viewing the item viewed last again moves that view on, keeping its position', () => {
+    const photo = addTestItem(db, 'Figure/figure_0193.jpg');
+    const video = addTestItem(db, 'Video/Poses/pose_session_04_seated.mp4', 'video');
+    recordItemView(db, { itemId: photo, viewedAt: '2026-10-31T10:00:00Z' });
+    recordItemView(db, { itemId: video, viewedAt: '2026-10-31T10:01:00Z', position: 3 });
+    recordItemView(db, { itemId: video, viewedAt: '2026-10-31T10:02:00Z', position: 42.12 });
+    recordItemView(db, { itemId: video, viewedAt: '2026-10-31T10:03:00Z' });
+    expect(findRecentItemViews(db, 10)).toEqual([
+      { itemId: video, viewedAt: '2026-10-31T10:03:00Z', position: 42.12 },
+      { itemId: photo, viewedAt: '2026-10-31T10:00:00Z' },
+    ]);
   });
 
   it('stores and replaces a setting', () => {

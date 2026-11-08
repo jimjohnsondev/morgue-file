@@ -6,14 +6,13 @@ import { mkdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import { expect, test } from '@playwright/test';
-
 import {
   settlePointerAndFocus,
   freezeClock,
   SCREENSHOT_OPTIONS,
   waitForFontsAndImages,
 } from '../support/screenshots.js';
+import { expect, test } from '../support/shared-server-test.js';
 
 import type { ChildProcess } from 'node:child_process';
 

@@ -26,10 +26,11 @@ export type CardOptions = {
   readonly caption: 'where' | 'details';
 };
 
-/** Card options, plus a label or caption of the list's own in place of the usual ones. */
+/** Card options, plus a label, caption or link of the list's own in place of the usual ones. */
 export type LabelledCardOptions<Listed extends ListedItem> = CardOptions & {
   readonly labelFor?: (item: Listed) => string;
   readonly detailsFor?: (item: Listed) => string | undefined;
+  readonly hrefFor?: (item: Listed) => string;
 };
 
 /** Where an item sits: Photos › Figure, or Photos › Unsorted. */
@@ -62,7 +63,7 @@ export function toThumbCards<Listed extends ListedItem>(
   return items.map((item) => ({
     key: String(item.id),
     itemId: item.id,
-    href: itemHref(item.id, options.fromQuery),
+    href: options.hrefFor?.(item) ?? itemHref(item.id, options.fromQuery),
     imageSrc: thumbnailSrc(item, options.size),
     shape: hasSquareThumbnail(item.kind) ? 'square' : 'cover',
     label: options.labelFor?.(item) ?? itemLabel(item),

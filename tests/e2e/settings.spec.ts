@@ -1,8 +1,7 @@
 // R36 and R37 in a browser: Settings' tables are edited in place, with no dialog, and the item
 // page's [move] files an item by hand. Runs on a small state server of its own, since it changes
 // the library's subcategories.
-import { expect, test } from '@playwright/test';
-
+import { expect, test } from '../support/shared-server-test.js';
 import { startStateServerProcess, stopStateServer } from '../support/state-server-process.js';
 
 import type { StateServer } from '../support/state-server-process.js';

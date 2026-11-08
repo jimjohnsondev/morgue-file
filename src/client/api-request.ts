@@ -29,11 +29,18 @@ async function readJson(response: Response): Promise<unknown> {
   }
 }
 
+/**
+ * A write: its method, its JSON body if there is one, and whether it must still reach the server
+ * after the page is left (keepalive), as the video time does when the page closes.
+ */
+type ApiWrite = {
+  readonly method: 'POST' | 'DELETE';
+  readonly body?: object;
+  readonly isSentOnLeaving?: boolean;
+};
+
 /** Sends a write, with a JSON body if there is one, and says whether it was saved. */
-export async function sendToApi(
-  url: string,
-  request: { readonly method: 'POST' | 'DELETE'; readonly body?: object },
-): Promise<ApiAnswer> {
+export async function sendToApi(url: string, request: ApiWrite): Promise<ApiAnswer> {
   let response: Response;
   try {
     response = await fetch(url, {
@@ -43,6 +50,7 @@ export async function sendToApi(
         ...(request.body && { 'content-type': 'application/json' }),
       },
       ...(request.body && { body: JSON.stringify(request.body) }),
+      keepalive: request.isSentOnLeaving === true,
     });
   } catch {
     // No answer at all: most likely the "Morgue File server" window was closed.

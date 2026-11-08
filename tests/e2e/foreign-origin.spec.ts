@@ -1,7 +1,7 @@
 // R27: a page served from another origin can't read from or write to the archive server.
 import { createServer } from 'node:http';
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/shared-server-test.js';
 
 import type { Page } from '@playwright/test';
 import type { Server } from 'node:http';
