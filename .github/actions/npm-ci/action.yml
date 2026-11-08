@@ -1,0 +1,83 @@
+# npm ci with ffmpeg-static's binary cached. Its install script downloads the binary from GitHub's
+# release servers, and when those answered 504 every job failed before a test ran (PR 57). On a
+# cache hit, FFMPEG_BIN points ffmpeg-static at the cached copy, so the install script finds it and
+# skips the download. On a miss, npm ci downloads it once and the copy below is saved for next time.
+# Windows runners only, like the jobs that use it: the binary is ffmpeg.exe.
+#
+# The cache is checked against pinned SHA-256s both ways. update-baselines.yml runs a branch's own
+# code in main's cache scope, and release builds copy this binary into the zip, so an unchecked
+# entry would let a branch ship its own ffmpeg.exe.
+name: npm-ci
+description: Install dependencies, with ffmpeg-static's binary cached
+runs:
+  using: composite
+  steps:
+    # A locked version with no pinned hashes (after a Dependabot bump, say) installs without the
+    # cache, as before; add its hashes here to turn the cache back on.
+    - name: Look up the pinned ffmpeg hashes
+      id: ffmpeg
+      shell: bash
+      run: |
+        version=$(node -e "
+          const entry = require('./package-lock.json').packages['node_modules/ffmpeg-static'];
+          if (!entry) throw new Error('package-lock.json has no ffmpeg-static entry.');
+          console.log(entry.version);
+        ")
+        case "$version" in
+          5.3.0)
+            exe=04e1307997530f9cf2fe35cba2ca7e8875ca91da02f89d6c7243df819c94ad00
+            license=8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903
+            ;;
+          *)
+            echo "::warning::No pinned hashes for ffmpeg-static $version, so ffmpeg isn't cached."
+            exit 0
+            ;;
+        esac
+        {
+          echo "version=$version"
+          echo "checksums<<EOF"
+          echo "$exe *ffmpeg.exe"
+          echo "$license *ffmpeg.exe.LICENSE"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+    - name: Cache the ffmpeg binary
+      id: ffmpeg-cache
+      if: steps.ffmpeg.outputs.version != ''
+      uses: actions/cache@v4
+      with:
+        path: ~\ffmpeg-static
+        key: ffmpeg-static-${{ runner.os }}-${{ runner.arch }}-${{ steps.ffmpeg.outputs.version }}
+    # FFMPEG_BIN stays set for the rest of the job, so the fixture generator, the server and
+    # package-win.ts (which copies ffmpeg.exe and ffmpeg.exe.LICENSE) all use the cached copy. A
+    # copy that fails the check is ignored, and npm ci downloads ffmpeg as if the cache missed;
+    # it stays bad until someone deletes the entry, since a hit is never saved over.
+    - name: Check and use the cached binary
+      id: cached
+      if: steps.ffmpeg-cache.outputs.cache-hit == 'true'
+      shell: bash
+      env:
+        CHECKSUMS: ${{ steps.ffmpeg.outputs.checksums }}
+        CACHE_KEY: ${{ steps.ffmpeg-cache.outputs.cache-primary-key }}
+      run: |
+        if (cd ~/ffmpeg-static && sha256sum --check --strict --quiet <<< "$CHECKSUMS"); then
+          echo "FFMPEG_BIN=$USERPROFILE\\ffmpeg-static\\ffmpeg.exe" >> "$GITHUB_ENV"
+          echo "used=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "::warning::The cached ffmpeg doesn't match its pinned hashes, so it's downloaded instead. Delete the entry: gh cache delete $CACHE_KEY"
+        fi
+    - run: npm ci
+      shell: bash
+    # Whenever npm ci downloaded ffmpeg, the download is checked too, so a tampered one fails here.
+    # Only a real miss is copied for the cache; a hit is never saved over.
+    - name: Check the downloaded binary, and keep it for the cache
+      if: steps.ffmpeg.outputs.version != '' && steps.cached.outputs.used != 'true'
+      shell: bash
+      env:
+        CHECKSUMS: ${{ steps.ffmpeg.outputs.checksums }}
+        CACHE_HIT: ${{ steps.ffmpeg-cache.outputs.cache-hit }}
+      run: |
+        (cd node_modules/ffmpeg-static && sha256sum --check --strict <<< "$CHECKSUMS")
+        if [ "$CACHE_HIT" != 'true' ]; then
+          mkdir -p ~/ffmpeg-static
+          cp node_modules/ffmpeg-static/ffmpeg.exe node_modules/ffmpeg-static/ffmpeg.exe.LICENSE ~/ffmpeg-static/
+        fi
