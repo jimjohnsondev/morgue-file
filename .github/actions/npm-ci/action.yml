@@ -48,15 +48,21 @@ runs:
         path: ~\ffmpeg-static
         key: ffmpeg-static-${{ runner.os }}-${{ runner.arch }}-${{ steps.ffmpeg.outputs.version }}
     # FFMPEG_BIN stays set for the rest of the job, so the fixture generator, the server and
-    # package-win.ts (which copies ffmpeg.exe and ffmpeg.exe.LICENSE) all use the cached copy.
+    # package-win.ts (which copies ffmpeg.exe and ffmpeg.exe.LICENSE) all use the cached copy. A
+    # copy that fails the check is ignored, and npm ci downloads ffmpeg as if the cache missed;
+    # it stays bad until someone deletes the entry, since a hit is never saved over.
     - name: Check and use the cached binary
       if: steps.ffmpeg-cache.outputs.cache-hit == 'true'
       shell: bash
       env:
         CHECKSUMS: ${{ steps.ffmpeg.outputs.checksums }}
+        CACHE_KEY: ffmpeg-static-${{ runner.os }}-${{ runner.arch }}-${{ steps.ffmpeg.outputs.version }}
       run: |
-        (cd ~/ffmpeg-static && sha256sum --check --strict <<< "$CHECKSUMS")
-        echo "FFMPEG_BIN=$USERPROFILE\\ffmpeg-static\\ffmpeg.exe" >> "$GITHUB_ENV"
+        if (cd ~/ffmpeg-static && sha256sum --check --strict --quiet <<< "$CHECKSUMS"); then
+          echo "FFMPEG_BIN=$USERPROFILE\\ffmpeg-static\\ffmpeg.exe" >> "$GITHUB_ENV"
+        else
+          echo "::warning::The cached ffmpeg doesn't match its pinned hashes, so it's downloaded instead. Delete the entry: gh cache delete $CACHE_KEY"
+        fi
     - run: npm ci
       shell: bash
     # Checked before it's saved too, so a tampered download fails here rather than being cached.
