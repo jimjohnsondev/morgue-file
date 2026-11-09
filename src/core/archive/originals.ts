@@ -1,15 +1,25 @@
 // The only module that touches files under a Reference root: it reads and watches them, and
 // creates the Inbox and writes dropped files into it.
-import { createHash } from 'node:crypto';
-import { createReadStream, existsSync, watch } from 'node:fs';
-import { lstat, mkdir, open, opendir, readdir, readFile, rm, stat } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { constants, createReadStream, createWriteStream, existsSync, watch } from 'node:fs';
+import {
+  copyFile,
+  link,
+  lstat,
+  mkdir,
+  open,
+  opendir,
+  readdir,
+  readFile,
+  rm,
+  stat,
+} from 'node:fs/promises';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 
 import { AppError, systemErrorCode } from '#core/errors.js';
 
 import type { Stats } from 'node:fs';
-import type { FileHandle } from 'node:fs/promises';
 import type { Readable } from 'node:stream';
 
 /** The folder inside the Reference folder where dropped and pasted files are saved (R2). */
@@ -245,6 +255,18 @@ export async function readPartialHash(rootPath: string, relPath: string): Promis
   }
 }
 
+/**
+ * Hashes all of a file under a root with SHA-256. Reading every byte is slow for a video, so it
+ * only confirms that a file whose partial hash matches another's is really the same (R8).
+ */
+export async function readFullHash(rootPath: string, relPath: string): Promise<string> {
+  const hash = createHash('sha256');
+  for await (const chunk of streamOriginal(rootPath, relPath)) {
+    hash.update(chunk as Buffer);
+  }
+  return hash.digest('hex');
+}
+
 /** What is at a path under a root now. Links and devices count as nothing, as in listFolder. */
 export type EntryKind = 'file' | 'folder' | 'none';
 
@@ -304,7 +326,18 @@ export type InboxFile = {
   /** A name already cleaned for Windows (core/ingest/file-names.ts); one name, never a path. */
   readonly fileName: string;
   readonly content: Readable;
+  /**
+   * Asked once every byte is written, with the received file's path relative to the root,
+   * whether to keep it. Ingest says no to a copy of a file the archive already has (R8).
+   */
+  readonly shouldKeep?: (receivedRelPath: string) => Promise<boolean>;
 };
+
+/**
+ * What a file is called while it is being received. The scanner ignores the extension, so a
+ * file that is still arriving, or that turns out to be a copy, never becomes an item.
+ */
+const RECEIVING_EXTENSION = '.receiving';
 
 /** Refuses a folder or file name that is a path, so a write can't leave its Inbox folder. */
 function requireSingleName(name: string): void {
@@ -324,55 +357,84 @@ function numberedName(fileName: string, number: number): string {
   return `${fileName.slice(0, fileName.length - extension.length)} (${String(number)})${extension}`;
 }
 
-/** Creates a new file for writing, or returns undefined if the name was taken meanwhile. */
-async function createNewFile(file: string): Promise<FileHandle | undefined> {
+/**
+ * Gives a received file a second name: a hard link, or a copy on drives without them (FAT and
+ * exFAT). Neither replaces a file already there; both fail with `EEXIST` instead.
+ */
+async function addName(received: string, target: string): Promise<void> {
   try {
-    return await open(file, 'wx');
+    await link(received, target);
   } catch (error) {
     if (systemErrorCode(error) === 'EEXIST') {
-      return undefined;
+      throw error;
+    }
+    try {
+      await copyFile(received, target, constants.COPYFILE_EXCL);
+    } catch (copyError) {
+      if (systemErrorCode(copyError) !== 'EEXIST') {
+        // A copy that failed part way is ours to remove; a name someone else took is not.
+        await rm(target, { force: true });
+      }
+      throw copyError;
+    }
+  }
+}
+
+/** Names the received file, or returns false if the name was taken meanwhile. */
+async function addNameIfFree(received: string, target: string): Promise<boolean> {
+  try {
+    await addName(received, target);
+    return true;
+  } catch (error) {
+    if (systemErrorCode(error) === 'EEXIST') {
+      return false;
     }
     throw error;
   }
 }
 
 /**
- * Creates the file under the first free name: `name.ext`, then `name (2).ext` and so on. Names
- * are compared ignoring case, as Windows and the database do, and the file is opened with `wx`,
- * so another write that takes the name first is never overwritten.
+ * Names the received file with the first free name: `name.ext`, then `name (2).ext` and so on.
+ * Names are compared ignoring case, as Windows and the database do, and a name another write
+ * takes first is never overwritten.
  */
-async function createFreeFile(folder: string, fileName: string): Promise<[string, FileHandle]> {
+async function nameReceivedFile(folder: string, received: string, fileName: string) {
   const taken = new Set((await readdir(folder)).map((name) => name.toLowerCase()));
   for (let number = 1; ; number += 1) {
     const candidate = numberedName(fileName, number);
-    const handle = taken.has(candidate.toLowerCase())
-      ? undefined
-      : await createNewFile(path.join(folder, candidate));
-    if (handle !== undefined) {
-      return [candidate, handle];
+    const isFree = !taken.has(candidate.toLowerCase());
+    if (isFree && (await addNameIfFree(received, path.join(folder, candidate)))) {
+      return candidate;
     }
   }
 }
 
 /**
  * Saves a dropped, pasted or fetched file in `Inbox/<folder>/` (R2), the one place the app writes
- * inside a Reference root. A name that is taken gets " (2)" and so on; nothing is overwritten. A
- * file whose content fails part way is removed, so no half-written file is left behind. Returns
- * the new file's path relative to the root.
+ * inside a Reference root. The bytes arrive under a name the scanner ignores; once they are all
+ * there and `shouldKeep` agrees, the file gets its own name, with " (2)" and so on if that is
+ * taken, and nothing is overwritten. Returns the new file's path relative to the root, or
+ * undefined if it wasn't kept. A file whose content fails part way, or that isn't kept, is
+ * removed, so nothing is left behind.
  */
-export async function writeInbox(referenceFolder: string, file: InboxFile): Promise<string> {
+export async function writeInbox(
+  referenceFolder: string,
+  file: InboxFile,
+): Promise<string | undefined> {
   requireSingleName(file.folderName);
   requireSingleName(file.fileName);
   const relDir = `${INBOX_FOLDER_NAME}/${file.folderName}`;
   const folder = resolveOriginalPath(referenceFolder, relDir);
   await mkdir(folder, { recursive: true });
-  const [name, handle] = await createFreeFile(folder, file.fileName);
+  const receivedName = `${randomUUID()}${RECEIVING_EXTENSION}`;
+  const received = path.join(folder, receivedName);
   try {
-    await pipeline(file.content, handle.createWriteStream());
-  } catch (error) {
-    await handle.close();
-    await rm(path.join(folder, name), { force: true });
-    throw error;
+    await pipeline(file.content, createWriteStream(received, { flags: 'wx' }));
+    const isKept = (await file.shouldKeep?.(`${relDir}/${receivedName}`)) ?? true;
+    return isKept
+      ? `${relDir}/${await nameReceivedFile(folder, received, file.fileName)}`
+      : undefined;
+  } finally {
+    await rm(received, { force: true });
   }
-  return `${relDir}/${name}`;
 }

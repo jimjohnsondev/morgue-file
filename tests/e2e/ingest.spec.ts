@@ -1,6 +1,7 @@
 // R2 in a browser: a file dropped or pasted onto any page is saved to the Inbox and listed in
-// Unsorted, with the "Saved to Unsorted" notice (E6) linking to it. Runs on a small state server
-// of its own, since it adds files to the archive the server indexes.
+// Unsorted, with the "Saved to Unsorted" notice (E6) linking to it; R8: a file the archive
+// already has links to its item instead. Runs on a small state server of its own, since it adds
+// files to the archive the server indexes.
 import { readdir, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,17 +18,45 @@ const PORT = 47698;
 /** The state server's Reference folder (see tests/support/start-state-server.ts). */
 const REFERENCE_DIR = path.join(os.tmpdir(), 'morgue-file-state-ingest', 'Reference');
 
+/** The full fixture archive, which holds Figure photos the state server's small copy doesn't. */
+const FIXTURE_FIGURE_DIR = path.resolve(
+  import.meta.dirname,
+  '..',
+  '..',
+  'fixtures',
+  'generated',
+  'Reference',
+  'Figure',
+);
+
 let server: StateServer | undefined;
-/** A generated fixture photo's bytes, as base64, so the dropped file makes a real thumbnail. */
-let photoBase64: string;
+/**
+ * Generated fixture photos' bytes, as base64, so dropped files make real thumbnails. Each test
+ * drops a photo of its own that the archive doesn't hold yet, or it would be a copy (R8).
+ */
+let photosBase64: string[];
+/** A photo the state server's archive already holds, in Figure. */
+let keptPhoto: { readonly name: string; readonly base64: string };
 
 test.describe.configure({ mode: 'serial', timeout: 360_000 });
 
+/** Reads a file as base64. */
+async function readBase64(file: string): Promise<string> {
+  return (await readFile(file)).toString('base64');
+}
+
 test.beforeAll(async () => {
   server = await startStateServerProcess('ingest', PORT);
-  const figure = path.join(REFERENCE_DIR, 'Figure');
-  const photo = (await readdir(figure)).sort()[0]!;
-  photoBase64 = (await readFile(path.join(figure, photo))).toString('base64');
+  // The small copy takes the first Figure photos by name, so the last ones are not in it.
+  const unkept = (await readdir(FIXTURE_FIGURE_DIR)).sort().slice(-3);
+  photosBase64 = await Promise.all(
+    unkept.map(async (name) => readBase64(path.join(FIXTURE_FIGURE_DIR, name))),
+  );
+  const keptName = (await readdir(path.join(REFERENCE_DIR, 'Figure'))).sort()[0]!;
+  keptPhoto = {
+    name: keptName,
+    base64: await readBase64(path.join(REFERENCE_DIR, 'Figure', keptName)),
+  };
 });
 
 test.afterAll(async () => {
@@ -74,7 +103,11 @@ test('R2: a file dropped on a page is saved to Unsorted and its notice links to 
   await page.goto(`${server!.url}/photos/figure`);
   await drop(
     page,
-    await makeTransfer(page, { name: 'hand_study.jpg', base64: photoBase64, type: 'image/jpeg' }),
+    await makeTransfer(page, {
+      name: 'hand_study.jpg',
+      base64: photosBase64[0]!,
+      type: 'image/jpeg',
+    }),
   );
 
   const itemId = await savedItemId(page);
@@ -93,7 +126,7 @@ test('R2: browser drags keep the source URL when the browser provides it', async
   await page.goto(`${server!.url}/photos`);
   const transfer = await makeTransfer(page, {
     name: 'hand.jpg',
-    base64: photoBase64,
+    base64: photosBase64[1]!,
     type: 'image/jpeg',
     strings: {
       'text/uri-list': 'https://example.com/studies/hand.jpg',
@@ -111,7 +144,7 @@ test('R2: Ctrl+V pastes a picture from the clipboard into Unsorted', async ({ pa
   await page.goto(`${server!.url}/`);
   const transfer = await makeTransfer(page, {
     name: 'image.png',
-    base64: photoBase64,
+    base64: photosBase64[2]!,
     type: 'image/png',
   });
   await page.evaluate((clipboardData) => {
@@ -139,4 +172,27 @@ test('R2: a file the archive does not keep is refused in the outline, and nothin
   await page.mouse.click(10, 10);
   await expect(outline).toBeHidden();
   await expect(page).toHaveURL(`${server!.url}/photos`);
+});
+
+test('R8: re-importing a file links to the existing item instead of copying it', async ({
+  page,
+}) => {
+  await page.goto(`${server!.url}/photos`);
+  await drop(
+    page,
+    await makeTransfer(page, {
+      name: 'download.jpg',
+      base64: keptPhoto.base64,
+      type: 'image/jpeg',
+    }),
+  );
+  const itemId = await savedItemId(page);
+  expect(new URL(page.url()).searchParams.get('duplicate')).toBe('true');
+  const notice = page.getByRole('status').filter({ hasText: 'Already in the archive' });
+  await expect(notice).toContainText(keptPhoto.name);
+  await notice.getByRole('link', { name: 'Open the item' }).click();
+  await expect(page).toHaveURL(new RegExp(`/item/${itemId}$`));
+  const month = (await readdir(path.join(REFERENCE_DIR, 'Inbox')))[0];
+  const inbox = month === undefined ? [] : await readdir(path.join(REFERENCE_DIR, 'Inbox', month));
+  expect(inbox).not.toContain('download.jpg');
 });

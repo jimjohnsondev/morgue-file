@@ -13,9 +13,13 @@ import type { LibraryRuntime } from '../library-runtime.js';
 import type { PageContext } from './page-context.js';
 import type { OfflineNotice, PageStatus, SavedNotice } from '../views/parts/status-notices.js';
 
-/** Any page can carry `saved=<item id>`, the item a drop just made, to show its notice (E6). */
+/**
+ * Any page can carry `saved=<item id>`, the item a drop just made, to show its notice (E6), and
+ * `duplicate=true` when the archive already had the file, so the notice says so instead (R8).
+ */
 export const SavedQuerystring = Type.Object({
   saved: Type.Optional(Type.Integer({ minimum: 1 })),
+  duplicate: Type.Optional(Type.Boolean()),
 });
 
 /** The field an item's source address is kept in (R2, R11). */
@@ -43,10 +47,16 @@ function sourceHostOf(db: Db, itemId: number): string | undefined {
   return typeof source === 'string' && URL.canParse(source) ? new URL(source).hostname : undefined;
 }
 
-/** The page's address without `saved`, so "dismiss" lands on the same page, notice gone. */
+/** Reads the page's address; only its path and query are used. */
+function parsePageUrl(url: string): URL {
+  return new URL(url, 'http://localhost');
+}
+
+/** The page's address without its notice, so "dismiss" lands on the same page, notice gone. */
 function withoutSaved(url: string): string {
-  const address = new URL(url, 'http://localhost');
+  const address = parsePageUrl(url);
   address.searchParams.delete('saved');
+  address.searchParams.delete('duplicate');
   // A path that collapses to `//host` would read as another site's address; keep it on this one.
   return `${address.pathname.replace(/^\/+/, '/')}${address.search}`;
 }
@@ -60,6 +70,9 @@ function readSavedNotice(db: Db, page: PageRequest): SavedNotice | undefined {
   return {
     itemHref: `/item/${String(item.id)}`,
     name: itemLabel(item),
+    // Read from the address, which the route's schema has already checked, so the many page
+    // routes need only pass the address and `saved`.
+    isDuplicate: parsePageUrl(page.url).searchParams.get('duplicate') === 'true',
     sourceHost: sourceHostOf(db, item.id),
     dismissHref: withoutSaved(page.url),
   };

@@ -1,7 +1,7 @@
 // POST /api/ingest and /api/ingest/url: files dropped or pasted onto a page, and web addresses
 // dragged from a browser with no file, saved to the Inbox (R2). client/ingest-upload.ts sends
 // them with the launch token; each answers with the new item's id for the "Saved to Unsorted"
-// notice (E6).
+// notice (E6), or with the item a file the archive already has is a copy of (R8).
 import { Type } from '@sinclair/typebox';
 
 import { ingestFile, ingestUrl } from '#core/ingest/ingest.js';
@@ -22,8 +22,8 @@ const UrlBody = Type.Object({
   url: Type.String({ minLength: 1, maxLength: 8192 }),
 });
 
-/** What both routes answer: the item the file became. */
-const IngestReply = Type.Object({ itemId: Type.Integer() });
+/** What both routes answer: the item the file became, and whether it was already kept (R8). */
+const IngestReply = Type.Object({ itemId: Type.Integer(), isDuplicate: Type.Boolean() });
 
 /** The body type uploads are sent as; its bytes are streamed to the Inbox, never buffered. */
 const UPLOAD_CONTENT_TYPE = 'application/octet-stream';
@@ -44,12 +44,12 @@ export function registerIngestApi(app: FastifyInstance, library: LibraryRuntime 
       { schema: { querystring: FileQuerystring, response: { 201: IngestReply } } },
       async (request, reply) => {
         try {
-          const itemId = await ingestFile(requireLibrary(library), {
+          const result = await ingestFile(requireLibrary(library), {
             fileName: request.query.name,
             content: request.raw,
             sourceUrl: request.query.source,
           });
-          return await reply.code(201).send({ itemId });
+          return await reply.code(201).send(result);
         } catch (error) {
           // A refusal comes before the body is read; read it to the end so the browser gets the
           // reason rather than a dropped connection.
@@ -62,8 +62,8 @@ export function registerIngestApi(app: FastifyInstance, library: LibraryRuntime 
       '/api/ingest/url',
       { schema: { body: UrlBody, response: { 201: IngestReply } } },
       async (request, reply) => {
-        const itemId = await ingestUrl(requireLibrary(library), request.body.url);
-        return reply.code(201).send({ itemId });
+        const result = await ingestUrl(requireLibrary(library), request.body.url);
+        return reply.code(201).send(result);
       },
     );
     done();
