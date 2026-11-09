@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.17.0...v1.18.0) (2026-11-09)
+
+
+### Features
+
+* edit an item's rating, notes, source URL and other fields in place ([#66](https://github.com/jimjohnsondev/morgue-file/issues/66)) ([667774d](https://github.com/jimjohnsondev/morgue-file/commit/667774d29982e33dc981e724bf777d3d7d91ff86))
+
 ## [1.17.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.16.0...v1.17.0) (2026-11-09)
 
 
