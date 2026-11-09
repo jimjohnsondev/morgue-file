@@ -196,7 +196,7 @@ describe('R14: model profiles with user-defined fields, model tags and a portrai
     expect(missing.statusCode).toBe(404);
   });
 
-  it("R14: a video or Library item can't be the portrait", async () => {
+  it("R14: a Library item can't be the portrait, only a photo", async () => {
     const model = makeModel();
     const book = await saveProfile(model, {
       'field.name': model.name,
