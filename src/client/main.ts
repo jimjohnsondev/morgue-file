@@ -21,6 +21,7 @@ import './paste.js';
 import './live-status.js';
 import './inline-edit.js';
 import './api-forms.js';
+import './save-on-change.js';
 import './selection.js';
 import './bulk-actions.js';
 import './tag-suggest.js';

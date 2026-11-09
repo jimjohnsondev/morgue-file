@@ -8,13 +8,20 @@ export type FieldValue = string | number;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+/** The items' rating runs from 1 to 5 stars, which `rating:n` and the stars of frame 5 read. */
+const MAX_RATING = 5;
+
 /**
  * Checks a value against its field's type and returns it in stored form. Forms send numbers as
  * text, so a number field also takes numeric text.
  */
 export function toStoredValue(field: Field, value: FieldValue): StoredValue {
   if (field.type === 'number') {
-    return { valueText: undefined, valueNum: toNumber(field, value) };
+    const number = toNumber(field, value);
+    if (isItemRating(field)) {
+      requireStars(field, number);
+    }
+    return { valueText: undefined, valueNum: number };
   }
   const text = String(value).trim();
   if (field.type === 'link') {
@@ -38,6 +45,18 @@ function toNumber(field: Field, value: FieldValue): number {
     refuse(field, 'must be a number');
   }
   return number;
+}
+
+/** Whether a field is the items' Rating, the one number field drawn as stars (R11). */
+function isItemRating(field: Field): boolean {
+  return field.entity === 'item' && field.key === 'rating';
+}
+
+/** A rating is a whole number of stars from 1 to 5; clearing it means "none". */
+function requireStars(field: Field, number: number): void {
+  if (!Number.isInteger(number) || number < 1 || number > MAX_RATING) {
+    refuse(field, `must be a whole number from 1 to ${String(MAX_RATING)}`);
+  }
 }
 
 /** Links must be web addresses, so a stored link can never run script when clicked. */

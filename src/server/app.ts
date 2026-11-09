@@ -9,6 +9,7 @@ import { registerFieldApi } from './routes/api/fields.js';
 import { registerHistoryApi } from './routes/api/history.js';
 import { registerIndexingApi } from './routes/api/indexing.js';
 import { registerIngestApi } from './routes/api/ingest.js';
+import { registerItemFieldApi } from './routes/api/item-fields.js';
 import { registerModelLinkApi } from './routes/api/model-links.js';
 import { registerModelProfileApi } from './routes/api/model-profiles.js';
 import { registerOrganizeApi } from './routes/api/organize.js';
@@ -49,6 +50,19 @@ export type BuildAppOptions = {
   readonly library?: LibraryRuntime;
 };
 
+/** The JSON routes that read or change the library: indexing, ingest, organizing and fields. */
+function registerLibraryApis(app: FastifyInstance, library: LibraryRuntime | undefined): void {
+  registerIndexingApi(app, library);
+  registerHistoryApi(app, library);
+  registerIngestApi(app, library);
+  registerSubcategoryApi(app, library);
+  registerOrganizeApi(app, library);
+  registerModelLinkApi(app, library);
+  registerModelProfileApi(app, library);
+  registerFieldApi(app, library);
+  registerItemFieldApi(app, library);
+}
+
 /** Creates the app with every route registered, ready to listen or to inject requests into. */
 export async function buildApp(options: BuildAppOptions): Promise<FastifyInstance> {
   const { config, install, library } = options;
@@ -82,14 +96,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerMediaRoutes(app, library);
   registerOriginalRoutes(app, library);
   registerEventsRoute(app, library);
-  registerIndexingApi(app, library);
-  registerHistoryApi(app, library);
-  registerIngestApi(app, library);
-  registerSubcategoryApi(app, library);
-  registerOrganizeApi(app, library);
-  registerModelLinkApi(app, library);
-  registerModelProfileApi(app, library);
-  registerFieldApi(app, library);
+  registerLibraryApis(app, library);
   registerWatchedFolderApi(app, { homeDir: config.homeDir, install, library });
 
   return app;

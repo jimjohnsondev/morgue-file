@@ -1,24 +1,21 @@
 // The Item page's details panel (frames 5, 7, 8): the item's facts, its tags, models and
-// collections as chips, then its other fields. It folds to a thin edge (frame 6). Filing (PR 13),
-// tags and collections (PR 14) and models (PR 17) are edited in place; the field controls are
-// drawn as the frames show them and come alive with PR 18.
+// collections as chips, then its other fields. It folds to a thin edge (frame 6). Filing (R5),
+// tags and collections (R9, R10), models (R15) and the item's own fields (R11) are all edited in
+// place.
 import { AddModel, AddTag, AddToCollection, ChipGroup } from './details-chips.js';
-import { FieldText } from './field-text.js';
 import { ApiForm, EditButton, EditView, HiddenLabel, SaveOrCancel } from './inline-edit.js';
-import { PendingAction } from './pending-action.js';
+import { FieldsTable, RatingValue } from './item-fields.js';
 
-import type { FieldType } from '#core/db/repositories/fields.js';
 import type { CollectionAdding, DetailChip, ModelAdding } from './details-chips.js';
+import type { FieldRow, RatingFact } from './item-fields.js';
 
-/** One row of the facts table. A link, a rating or a pending edit action may go with the text. */
+/** One row of the facts table. A link, the rating or the filing form may go with the text. */
 export type FactRow = {
   readonly label: string;
   readonly text: string;
   readonly href?: string;
-  /** Stars out of 5, read out as "4 of 5". */
-  readonly stars?: { readonly text: string; readonly rating: number };
-  /** The edit link after the value: [move], [change]. */
-  readonly action?: string;
+  /** The Rating row's stars and its [change] form (R11). */
+  readonly rating?: RatingFact;
   /** The Subcategory row's [move] form, which files the item by hand (R5). */
   readonly filing?: FilingForm;
 };
@@ -33,14 +30,6 @@ export type FilingForm = {
   readonly current: string;
 };
 
-/** One of the item's own fields (notes, source URL…), rendered by its type (R11). */
-export type FieldRow = {
-  readonly key: string;
-  readonly label: string;
-  readonly type: FieldType;
-  readonly text: string | undefined;
-};
-
 /** Everything the details panel shows. */
 export type DetailsModel = {
   readonly facts: readonly FactRow[];
@@ -53,6 +42,8 @@ export type DetailsModel = {
   readonly tagAction: string;
   readonly collectionAdding: CollectionAdding;
   readonly fields: readonly FieldRow[];
+  /** Where each field's form posts (R11). */
+  readonly fieldAction: string;
   readonly hideHref: string;
 };
 
@@ -90,70 +81,16 @@ function FilingValue(props: { readonly row: FactRow; readonly filing: FilingForm
   );
 }
 
-/** The value cell of a fact: text or a link, stars, and the edit action in brackets. */
+/** The value cell of a fact: text or a link, or the rating and filing forms. */
 function FactValue(props: { readonly row: FactRow }) {
   const { row } = props;
   if (row.filing !== undefined) {
     return <FilingValue row={row} filing={row.filing} />;
   }
-  return (
-    <td>
-      {row.stars === undefined &&
-        (row.href === undefined ? row.text : <a href={row.href}>{row.text}</a>)}
-      {row.stars !== undefined && (
-        <span class="rating" aria-label={`${String(row.stars.rating)} of 5`}>
-          {row.stars.text}
-        </span>
-      )}
-      {row.action !== undefined && (
-        <>
-          {' '}
-          [<PendingAction label={row.action} />]
-        </>
-      )}
-    </td>
-  );
-}
-
-/** A field's value as its type reads; long text is a box, as notes are edited in place. */
-function FieldValue(props: { readonly row: FieldRow }) {
-  const { row } = props;
-  if (row.type === 'longtext') {
-    return (
-      <textarea id={`field-${row.key}`} class="field details-field__text" rows={4} disabled>
-        {row.text ?? ''}
-      </textarea>
-    );
+  if (row.rating !== undefined) {
+    return <RatingValue fact={row.rating} />;
   }
-  return <FieldText type={row.type} text={row.text} />;
-}
-
-/** The fields table: short values first, then long text boxes such as notes. */
-function FieldsTable(props: { readonly fields: readonly FieldRow[] }) {
-  const ordered = [
-    ...props.fields.filter((row) => row.type !== 'longtext'),
-    ...props.fields.filter((row) => row.type === 'longtext'),
-  ];
-  return (
-    <table class="details-table">
-      <tbody>
-        {ordered.map((row) => (
-          <tr key={row.key}>
-            <th scope="row">
-              {row.type === 'longtext' ? (
-                <label for={`field-${row.key}`}>{row.label}</label>
-              ) : (
-                row.label
-              )}
-            </th>
-            <td>
-              <FieldValue row={row} />
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
+  return <td>{row.href === undefined ? row.text : <a href={row.href}>{row.text}</a>}</td>;
 }
 
 /** The open details panel, 400 px beside the viewer. */
@@ -193,7 +130,7 @@ export function DetailsPanel(props: { readonly model: DetailsModel }) {
             add: <AddToCollection adding={model.collectionAdding} />,
           })}
         />
-        <FieldsTable fields={model.fields} />
+        <FieldsTable fields={model.fields} action={model.fieldAction} />
         <span class="caption">
           <a href="/settings">Edit fields</a>
         </span>

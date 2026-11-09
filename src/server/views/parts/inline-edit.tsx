@@ -40,6 +40,8 @@ export type ApiFormProps = {
   readonly next?: string;
   /** A whole page's form, laid out as a block, which Ctrl+S sends (client/save-key.ts). */
   readonly isPageForm?: boolean;
+  /** Saved without reloading the page, as the notes box is when it loses the focus. */
+  readonly isSavedInPlace?: boolean;
   readonly children: ComponentChildren;
 };
 
@@ -52,6 +54,7 @@ export function ApiForm(props: ApiFormProps) {
       data-api-form={props.action}
       data-api-method={props.method ?? 'POST'}
       data-api-next={props.next}
+      data-api-stay={props.isSavedInPlace === true ? '' : undefined}
       data-save-key={props.isPageForm === true ? '' : undefined}
       data-edit-form={props.editId === undefined ? undefined : ''}
       hidden={props.editId !== undefined}

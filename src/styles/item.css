@@ -353,10 +353,10 @@
   resize: vertical;
 }
 
-/* Editing arrives with the editing PRs; until then its fields look as the frames draw them. */
-.details-panel .field:disabled {
-  color: var(--color-text);
-  background: var(--color-white);
+/* A field's [change] box fits the 400 px panel, whatever width the profile editor gives it. */
+.details-panel .inline-form .field {
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .rating {

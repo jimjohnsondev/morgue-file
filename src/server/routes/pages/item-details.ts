@@ -1,6 +1,6 @@
 // Builds the details panel of an Item page (frames 5, 7, 8): facts by kind, chips for tags,
 // models and collections with their edit controls, and the item's own fields as the fields table
-// holds them (R11).
+// holds them, each with its form (R11).
 import { findModelNames } from '#core/db/repositories/archive-counts.js';
 import {
   findCollectionsByItem,
@@ -15,7 +15,6 @@ import {
   formatDuration,
   formatName,
   formatPages,
-  formatStars,
   itemLabel,
 } from '../../views/format.js';
 
@@ -28,12 +27,8 @@ import type { ItemModelLink } from '#core/db/repositories/models.js';
 import type { Subcategory } from '#core/db/repositories/subcategories.js';
 import type { FieldWithValue } from '#core/fields/fields.js';
 import type { ItemView } from './item-view.js';
-import type {
-  DetailsModel,
-  FactRow,
-  FieldRow,
-  FilingForm,
-} from '../../views/parts/details-panel.js';
+import type { DetailsModel, FactRow, FilingForm } from '../../views/parts/details-panel.js';
+import type { FieldRow } from '../../views/parts/item-fields.js';
 
 /** The grouped value an issue belongs to: its magazine title, and the issue's own name. */
 export type IssueOf = {
@@ -94,19 +89,24 @@ function mediaFacts(item: Item): FactRow[] {
   return rows;
 }
 
-/** The rating row, if items have a rating field: stars, or "none" when it isn't rated yet. */
-function ratingFact(fields: readonly FieldWithValue[]): FactRow[] {
-  const rating = fields.find((entry) => entry.field.key === RATING_KEY);
+/** Where every field's form posts (R11). */
+function fieldAction(itemId: number): string {
+  return `/api/items/${String(itemId)}/fields`;
+}
+
+/** The rating row, if items have a rating field: stars, or "none", and its [change] (R11). */
+function ratingFact(source: DetailsSource): FactRow[] {
+  const rating = source.fields.find((entry) => entry.field.key === RATING_KEY);
   if (rating === undefined) {
     return [];
   }
+  const label = rating.field.label;
   const value = typeof rating.value === 'number' ? rating.value : undefined;
   return [
     {
-      label: rating.field.label,
+      label,
       text: 'none',
-      ...(value !== undefined && { stars: { text: formatStars(value), rating: value } }),
-      action: 'change',
+      rating: { label, rating: value, action: fieldAction(source.item.id) },
     },
   ];
 }
@@ -140,7 +140,7 @@ function factRows(db: Db, source: DetailsSource): FactRow[] {
     },
     ...mediaFacts(item),
     { label: 'Format', text: formatName(item) },
-    ...ratingFact(source.fields),
+    ...ratingFact(source),
   ];
 }
 
@@ -154,6 +154,12 @@ function fieldRows(source: DetailsSource): FieldRow[] {
       label: entry.field.label,
       type: entry.field.type,
       text: fieldValueText(entry),
+      box: {
+        key: entry.field.key,
+        type: entry.field.type,
+        value: entry.value === undefined ? '' : String(entry.value),
+        choices: entry.field.options,
+      },
     }));
 }
 
@@ -240,6 +246,7 @@ export function buildDetailsModel(db: Db, source: DetailsSource): DetailsModel {
     ...modelParts(db, source),
     ...collectionParts(db, item.id),
     fields: fieldRows(source),
+    fieldAction: fieldAction(item.id),
     hideHref: itemPageHref(item.id, view, { isDetailsHidden: true }),
   };
 }

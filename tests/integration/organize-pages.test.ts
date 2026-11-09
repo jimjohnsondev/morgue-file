@@ -97,7 +97,7 @@ describe('the item page edits its tags and collections in place (R9, R10, R37)',
     ).json<{ collectionId: number }>().collectionId;
     const body = (await organize.get(`/item/${String(photo)}`)).body;
     expect(body).toContain(`<option value="${String(other)}">Gouache palettes</option>`);
-    expect(body).not.toContain(`<option value="${String(holding)}">`);
+    expect(body).not.toContain(`<option value="${String(holding)}">Spring model session`);
     expect(body).toContain(
       `data-api-form="/api/items/${String(photo)}/collections/${String(holding)}"`,
     );
