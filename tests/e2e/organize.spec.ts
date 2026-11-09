@@ -236,7 +236,7 @@ test("R11: an item's rating, source URL and notes are edited in place, and a sea
   await expect(details.getByRole('link', { name: 'example.com/seated' })).toBeVisible();
 
   // The notes box has no Save button: it saves itself when it loses the focus.
-  const notes = details.getByLabel('Notes');
+  const notes = details.getByRole('textbox', { name: 'Notes' });
   await notes.fill('Cadmium highlights on the shoulder.');
   await details.getByRole('heading', { name: 'Tags' }).click();
   await expect(details.getByRole('form', { name: 'Notes' }).getByRole('status')).toHaveText(
@@ -245,7 +245,9 @@ test("R11: an item's rating, source URL and notes are edited in place, and a sea
   await page.goto(`${server!.url}/search?q=cadmium`);
   await page.locator('.thumb-card .thumb').first().click();
   expect(page.url().split('?')[0]).toBe(itemUrl.split('?')[0]);
-  await expect(page.getByLabel('Notes')).toHaveValue('Cadmium highlights on the shoulder.');
+  await expect(page.getByRole('textbox', { name: 'Notes' })).toHaveValue(
+    'Cadmium highlights on the shoulder.',
+  );
 });
 
 test('R5: Move to subcategory files the selection by hand, and it leaves the list', async ({
