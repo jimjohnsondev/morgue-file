@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.16.0...v1.17.0) (2026-11-09)
+
+
+### Features
+
+* edit a model's profile in place, with model tags and a portrait chooser ([#64](https://github.com/jimjohnsondev/morgue-file/issues/64)) ([7a07986](https://github.com/jimjohnsondev/morgue-file/commit/7a07986f29b9a3e53fbe0bb7c524ea0c246c1d1a))
+
 ## [1.16.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.15.0...v1.16.0) (2026-11-08)
 
 
