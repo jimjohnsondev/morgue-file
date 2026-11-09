@@ -1,4 +1,5 @@
 // How numbers, dates and media details read on the page: "1,236", "31 Oct 2026", "3:15".
+import type { FieldType } from '#core/db/repositories/fields.js';
 import type { ListedItem } from '#core/db/repositories/item-lists.js';
 import type { FieldWithValue } from '#core/fields/fields.js';
 
@@ -113,3 +114,13 @@ export function fieldValueText(entry: FieldWithValue): string | undefined {
   }
   return entry.field.type === 'date' ? formatDay(String(entry.value)) : String(entry.value);
 }
+
+/** How Settings and the profile editor name each field type. */
+export const FIELD_TYPE_NAMES: Readonly<Record<FieldType, string>> = {
+  text: 'short text',
+  longtext: 'long text',
+  link: 'link',
+  date: 'date',
+  number: 'number',
+  picklist: 'pick-list',
+};

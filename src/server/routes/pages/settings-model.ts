@@ -15,6 +15,8 @@ import {
 import { isModelName, listRestorableFields, listSettingsFields } from '#core/fields/fields.js';
 import { showRootFolder } from '#core/filing/folder-paths.js';
 
+import { FIELD_TYPE_NAMES } from '../../views/format.js';
+
 import { SECTION_LABELS } from './filter-choices.js';
 
 import type { Db } from '#core/db/connection.js';
@@ -22,16 +24,6 @@ import type { Field, FieldEntity } from '#core/db/repositories/fields.js';
 import type { Section } from '#core/db/repositories/items.js';
 import type { Root, RootStatus } from '#core/db/repositories/roots.js';
 import type { FolderMapping } from '#core/db/repositories/subcategories.js';
-
-/** How the fields table names each type; a rating's range is part of its name. */
-const TYPE_NAMES: Readonly<Record<Field['type'], string>> = {
-  text: 'short text',
-  longtext: 'long text',
-  link: 'link',
-  date: 'date',
-  number: 'number',
-  picklist: 'pick-list',
-};
 
 /** One row of a fields table. */
 export type FieldSetting = {
@@ -112,7 +104,7 @@ function typeNameOf(field: Field): string {
       : `pick-list: ${field.options.join(', ')}`;
   }
   // The rating is the one number with a fixed range (1 to 5, R11).
-  return field.key === 'rating' ? 'number, 1 to 5' : TYPE_NAMES[field.type];
+  return field.key === 'rating' ? 'number, 1 to 5' : FIELD_TYPE_NAMES[field.type];
 }
 
 /**

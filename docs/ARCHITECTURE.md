@@ -417,6 +417,16 @@ The search box, the filter bar and every Index URL share one query language. It 
 - Screenshots: frame 15's baseline changes, as its Fields tables are enabled now (Add field, the boxes and every action drew `disabled` before); no other frame shows the panel.
 - Left for the last PR of row 17: profile editing with the portrait chooser (frame 14).
 
+**As built in PR 17, third PR (R14).**
+
+- The profile editor (`/models/<slug>/edit`, `routes/pages/model-edit-route.tsx`, `model-edit-model.ts`, `views/templates/model-edit-template.tsx`) draws frame 14: one row per model field, its box drawn by its type (`views/parts/profile-field-input.tsx`: a line, a box, an address with "open »", a date, a number, a pick-list starting with "none"), the type named as Settings names it, the model tags as chips (`views/parts/model-tag-editor.tsx`), and the portrait chooser (`views/parts/portrait-chooser.tsx`). The page is one form (`ApiForm` with `isPageForm`), sent by Save profile or Ctrl+S (`client/save-key.ts`); once saved, `client/api-forms.ts` opens the profile again (`data-api-next`). Cancel and the title bar's "cancel" link back to the profile. Nothing opens a dialog (R37).
+- `POST /api/models/<id>/profile` (`routes/api/model-profiles.ts`) takes each field's box as `field.<key>`, `tags` (one per line) and `portrait` (an item id), and `saveModelProfile` (`core/models/model-profiles.ts`) writes them in one transaction, so a refused value leaves the whole profile as it was. A model field the form leaves out is cleared, as an emptied box is (`api-forms.ts` leaves empty boxes out). Only changed values are written, so a pick-list value whose choice was taken off the list in Settings is kept (the select lists it after the choices). The name is required and may not be another model's, ignoring case (`requireFreeModelName`, shared with "New model…"). The slug stays when the model is renamed, so links to the profile keep working; search rows follow, the model's items' too.
+- Model tags are edited on the page by `client/model-tag-editor.ts` (Add, or Enter in the box; a chip's x) and saved with the profile through the hidden `tags` list; `untagModel` takes a tag off.
+- The portrait chooser lists the model's first eight photos in list order (`in:photos model:"<name>"`), the chosen one framed as a selected card through `:has(input:checked)`, with "more of Elena's 212 photos »" linking to that search. The portrait can be any photo in the archive (R14): the current one shows first when it isn't among the eight, and the API takes any photo's id, refusing a video or Library item.
+- The profile's edit controls (frame 10) are links now: "edit profile", "edit fields for all models" (`/settings#fields`), the portrait's [change] or [choose] (`#portrait`) and "add tag" (`#model-tags`). They are drawn as the disabled buttons were.
+- Screenshots: frame 14's spec (`tests/visual/profile-edit.spec.ts`) opens Elena's editor and saves nothing; its baseline is approved in this PR. Frame 10's links take the place of disabled link buttons and should render the same; if its baseline moves, the change is in this PR too.
+- Row 17 is complete with this PR.
+
 ## Security
 
 Only this PC's browser can reach the server, and only Morgue File's own pages can act on it (R27). The archive is never written to except through the Inbox.

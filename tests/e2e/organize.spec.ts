@@ -1,7 +1,7 @@
 // R9, R10 and R37 in a browser: items are selected on an Index page by click, Shift-click and
 // Ctrl+A, then tagged with suggestions as you type, put into collections, moved between them
 // and filed, and linked to a model (R15), all from the action panel on the page (frame 13), with
-// no dialog or new window.
+// no dialog or new window. The model's profile is then edited in place (R14, frame 14).
 // Runs on a small state server of its own, since it changes tags and collections.
 import { expect, test } from '../support/shared-server-test.js';
 import { startStateServerProcess, stopStateServer } from '../support/state-server-process.js';
@@ -176,6 +176,41 @@ test('R15: a page of photos is linked to a new model in one action, then one is 
   await expect(models.getByLabel("New model's name")).toBeHidden();
   await models.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(models.locator('.chip', { hasText: 'Elena Varga' })).toBeVisible();
+});
+
+test('R14: a profile is edited in place: a field, the model tags and the portrait, saved with Ctrl+S', async ({
+  page,
+}) => {
+  refuseDialogs(page);
+  await page.goto(`${server!.url}/models/elena-varga`);
+  await page.getByRole('link', { name: 'edit profile' }).click();
+  await expect(page.getByRole('heading', { name: 'Edit Elena Varga' })).toBeVisible();
+  const form = page.getByRole('form', { name: 'Edit Elena Varga' });
+  await form.getByLabel('Bio').fill('Dancer and life model.');
+
+  const tagField = form.getByLabel('add', { exact: true });
+  await tagField.fill('dancer');
+  await tagField.press('Enter');
+  await tagField.fill('long poses');
+  await form.getByRole('button', { name: 'Add', exact: true }).click();
+  await form.getByRole('button', { name: 'Remove tag dancer' }).click();
+  await expect(form.locator('[data-tag-name]')).toHaveText(['long poses']);
+
+  const portrait = form
+    .getByRole('group', { name: /Portrait/ })
+    .getByRole('radio')
+    .nth(1);
+  await portrait.check();
+  const portraitName = (await portrait.locator('xpath=..').textContent())?.trim() ?? '';
+  // Ctrl+S saves and opens the profile again.
+  await Promise.all([
+    page.waitForURL(`${server!.url}/models/elena-varga`),
+    page.keyboard.press('Control+s'),
+  ]);
+  const profile = page.getByRole('region', { name: 'Profile' });
+  await expect(profile.getByRole('row', { name: /Bio/ })).toContainText('Dancer and life model.');
+  await expect(profile.locator('.profile__tags .chip')).toHaveText(['long poses']);
+  await expect(profile.locator('figcaption')).toContainText(`portrait from ${portraitName}`);
 });
 
 test('R5: Move to subcategory files the selection by hand, and it leaves the list', async ({

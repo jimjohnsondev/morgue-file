@@ -3,7 +3,7 @@
 import { countItemsBySectionByQuery, findItemsByQuery } from '#core/db/repositories/item-lists.js';
 import { findItemById } from '#core/db/repositories/items.js';
 import { findModelTagNames, findPageRangesByModel } from '#core/db/repositories/models.js';
-import { readFieldValues } from '#core/fields/fields.js';
+import { isModelName, readFieldValues } from '#core/fields/fields.js';
 import { queryToText } from '#core/query/canonical-query.js';
 import { compileQuery } from '#core/query/compile-query.js';
 import { filterTerm } from '#core/query/parse-query.js';
@@ -17,6 +17,7 @@ import { itemPlace, itemHref, thumbnailSrc, toThumbCards } from './thumb-cards.j
 import type { Db } from '#core/db/connection.js';
 import type { Section } from '#core/db/repositories/items.js';
 import type { ModelRow, PageRange } from '#core/db/repositories/models.js';
+import type { FieldWithValue } from '#core/fields/fields.js';
 import type { Query } from '#core/query/query-types.js';
 import type { PreviewStripModel, StripLink } from '../../views/parts/preview-strip.js';
 import type {
@@ -30,7 +31,7 @@ export const STRIP_LENGTH = 6;
 const SECTIONS: readonly Section[] = ['photos', 'video', 'library'];
 
 /** The model's items in one section, as the search page lists them: `in:photos model:Elena`. */
-function sectionQuery(section: Section, modelName: string): Query {
+export function sectionQuery(section: Section, modelName: string): Query {
   return { terms: [filterTerm('in', section), filterTerm('model', modelName)] };
 }
 
@@ -83,14 +84,19 @@ function sectionStrip(
   };
 }
 
+/** A model's name, from its Name field; a model somehow without one is named by its slug. */
+export function readModelName(fields: readonly FieldWithValue[], model: ModelRow): string {
+  const nameValue = fields.find((entry) => isModelName(entry.field))?.value;
+  return nameValue === undefined ? model.slug : String(nameValue);
+}
+
 /**
  * Builds a model's profile. Sections the model isn't in get neither a strip nor an "Appears in"
  * link (R16).
  */
 export function buildModelProfileModel(db: Db, model: ModelRow): ModelProfileModel {
   const fields = readFieldValues(db, { entity: 'model', entityId: model.id });
-  const nameValue = fields.find((entry) => entry.field.key === 'name')?.value;
-  const modelName = nameValue === undefined ? model.slug : String(nameValue);
+  const modelName = readModelName(fields, model);
   const counts = countItemsBySectionByQuery(
     db,
     compileQuery({ terms: [filterTerm('model', modelName)] }),
@@ -106,6 +112,7 @@ export function buildModelProfileModel(db: Db, model: ModelRow): ModelProfileMod
   }));
   return {
     name: modelName,
+    editHref: `/models/${model.slug}/edit`,
     breadcrumb: [
       { label: 'Home', href: '/' },
       { label: 'Models', href: '/models' },

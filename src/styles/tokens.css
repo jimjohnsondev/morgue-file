@@ -162,6 +162,20 @@
   --tag-group-min-width: 380px;
   --collection-name-width: 180px;
 
+  /* The profile editor, as the frame 14 canvas draws it: the form's width, the fields table's
+     name and type columns, the boxes for each type, the add-tag box and a portrait choice, and
+     the pale gray behind the type column and the portrait chooser. */
+  --color-table-tint: #f5f6f8;
+  --profile-edit-width: 1400px;
+  --profile-edit-label-width: 180px;
+  --profile-edit-type-width: 140px;
+  --profile-short-field-width: 420px;
+  --profile-link-field-width: 520px;
+  --profile-number-field-width: 90px;
+  --profile-tag-field-width: 200px;
+  --portrait-choice-width: 130px;
+  --button-large-height: 34px;
+
   /* Spacing: multiples of 4 px */
   --space-1: 4px;
   --space-2: 8px;

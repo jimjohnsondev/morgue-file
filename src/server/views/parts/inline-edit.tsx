@@ -36,6 +36,10 @@ export type ApiFormProps = {
   /** The id of a form that shows from the start, for fields in other cells to name it. */
   readonly id?: string;
   readonly label?: string;
+  /** Where the page goes once the change is saved; it reloads itself without one. */
+  readonly next?: string;
+  /** A whole page's form, laid out as a block, which Ctrl+S sends (client/save-key.ts). */
+  readonly isPageForm?: boolean;
   readonly children: ComponentChildren;
 };
 
@@ -44,9 +48,11 @@ export function ApiForm(props: ApiFormProps) {
   return (
     <form
       id={props.editId ?? props.id}
-      class="inline-form"
+      class={props.isPageForm === true ? 'page-form' : 'inline-form'}
       data-api-form={props.action}
       data-api-method={props.method ?? 'POST'}
+      data-api-next={props.next}
+      data-save-key={props.isPageForm === true ? '' : undefined}
       data-edit-form={props.editId === undefined ? undefined : ''}
       hidden={props.editId !== undefined}
       aria-label={props.label}
