@@ -23,8 +23,8 @@ import type { Section } from '#core/db/repositories/items.js';
 import type { Root, RootStatus } from '#core/db/repositories/roots.js';
 import type { FolderMapping } from '#core/db/repositories/subcategories.js';
 
-/** How the fields table names each type; a rating's range is part of its name. */
-const TYPE_NAMES: Readonly<Record<Field['type'], string>> = {
+/** How the fields tables name each type; a rating's range is part of its name in Settings. */
+export const TYPE_NAMES: Readonly<Record<Field['type'], string>> = {
   text: 'short text',
   longtext: 'long text',
   link: 'link',

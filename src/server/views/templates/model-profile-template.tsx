@@ -4,7 +4,6 @@ import { Fragment } from 'preact';
 
 import { Breadcrumb } from '../parts/breadcrumb.js';
 import { FieldText } from '../parts/field-text.js';
-import { PendingAction } from '../parts/pending-action.js';
 import { PreviewStrip } from '../parts/preview-strip.js';
 
 import type { FieldType } from '#core/db/repositories/fields.js';
@@ -30,6 +29,8 @@ export type ProfileField = {
 /** Everything a Model profile page shows. */
 export type ModelProfileModel = {
   readonly name: string;
+  /** The profile editor's address (frame 14). */
+  readonly editHref: string;
   readonly breadcrumb: readonly Crumb[];
   readonly portrait: PortraitModel | undefined;
   readonly fields: readonly ProfileField[];
@@ -40,13 +41,16 @@ export type ModelProfileModel = {
 };
 
 /** The portrait in its mat, with the file it comes from underneath. */
-function Portrait(props: { readonly portrait: PortraitModel | undefined }) {
-  const { portrait } = props;
+function Portrait(props: {
+  readonly portrait: PortraitModel | undefined;
+  readonly chooseHref: string;
+}) {
+  const { portrait, chooseHref } = props;
   if (portrait === undefined) {
     return (
       <figure class="profile__portrait profile__portrait--none">
         <figcaption class="caption">
-          No portrait yet [<PendingAction label="choose" />]
+          No portrait yet [<a href={chooseHref}>choose</a>]
         </figcaption>
       </figure>
     );
@@ -58,7 +62,7 @@ function Portrait(props: { readonly portrait: PortraitModel | undefined }) {
       </a>
       <figcaption class="caption">
         portrait from <a href={portrait.itemHref}>{portrait.fileName}</a> [
-        <PendingAction label="change" />]
+        <a href={chooseHref}>change</a>]
       </figcaption>
     </figure>
   );
@@ -89,7 +93,7 @@ function ProfilePanel(props: { readonly model: ModelProfileModel }) {
     <section aria-label="Profile" class="panel profile">
       <h2 class="panel__title">Model profile</h2>
       <div class="panel__body profile__body">
-        <Portrait portrait={model.portrait} />
+        <Portrait portrait={model.portrait} chooseHref={`${model.editHref}#portrait`} />
         <div class="profile__details">
           <table class="details-table profile__fields">
             <tbody>
@@ -110,7 +114,7 @@ function ProfilePanel(props: { readonly model: ModelProfileModel }) {
                 {tag}
               </span>
             ))}
-            <PendingAction label="add tag" />
+            <a href={`${model.editHref}#model-tags`}>add tag</a>
           </div>
           <AppearsIn links={model.appearsIn} />
         </div>
@@ -128,8 +132,8 @@ export function ModelProfileTemplate(props: { readonly model: ModelProfileModel 
       <div class="index-page__heading">
         <h1 class="page__title">{model.name}</h1>
         <span class="caption">
-          <PendingAction label="edit profile" /> ·{' '}
-          <PendingAction label="edit fields for all models" />
+          <a href={model.editHref}>edit profile</a> ·{' '}
+          <a href="/settings#fields">edit fields for all models</a>
         </span>
       </div>
       <ProfilePanel model={model} />

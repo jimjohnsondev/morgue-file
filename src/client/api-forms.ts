@@ -1,6 +1,7 @@
-// Sends Settings' and the item page's edit forms to the server as JSON with the launch token,
-// which a plain form post can't carry. The page reloads once the change is saved, so it shows
-// the archive as it now is; a refusal shows beside the form in the server's own words.
+// Sends Settings', the item page's and the profile editor's forms to the server as JSON with the
+// launch token, which a plain form post can't carry. The page reloads once the change is saved
+// (or opens the page the form names next), so it shows the archive as it now is; a refusal
+// shows beside the form in the server's own words.
 
 import { sendToApi } from './api-request.js';
 
@@ -36,10 +37,15 @@ function showRefusal(form: HTMLFormElement, message: string): void {
   }
 }
 
-/** Sends a form, then reloads the page without its #filing so no form opens again. */
+/**
+ * Sends a form, then opens the page it names next (an edit page's profile), or reloads this one
+ * without its #filing so no form opens again.
+ */
 async function submitForm(form: HTMLFormElement): Promise<void> {
   const refusal = await sendForm(form);
-  if (refusal === undefined) {
+  if (refusal === undefined && form.dataset.apiNext !== undefined) {
+    window.location.assign(form.dataset.apiNext);
+  } else if (refusal === undefined) {
     window.location.replace(`${window.location.pathname}${window.location.search}`);
   } else {
     showRefusal(form, refusal);

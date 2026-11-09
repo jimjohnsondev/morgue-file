@@ -10,6 +10,7 @@ import { registerHistoryApi } from './routes/api/history.js';
 import { registerIndexingApi } from './routes/api/indexing.js';
 import { registerIngestApi } from './routes/api/ingest.js';
 import { registerModelLinkApi } from './routes/api/model-links.js';
+import { registerModelProfileApi } from './routes/api/model-profiles.js';
 import { registerOrganizeApi } from './routes/api/organize.js';
 import { registerSetupApi } from './routes/api/setup.js';
 import { registerSubcategoryApi } from './routes/api/subcategories.js';
@@ -23,6 +24,7 @@ import { registerCardListRoutes } from './routes/pages/card-lists.js';
 import { registerHomeRoute } from './routes/pages/home.js';
 import { registerIndexRoutes } from './routes/pages/index-routes.js';
 import { registerItemRoute } from './routes/pages/item-route.js';
+import { registerModelEditRoute } from './routes/pages/model-edit-route.js';
 import { registerModelRoute } from './routes/pages/model-route.js';
 import { registerSearchRoute } from './routes/pages/search-route.js';
 import { registerSearchTipsRoute } from './routes/pages/search-tips-route.js';
@@ -72,6 +74,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerIndexRoutes(app, pageContext);
   registerCardListRoutes(app, pageContext);
   registerModelRoute(app, pageContext);
+  registerModelEditRoute(app, pageContext);
   registerSearchRoute(app, pageContext);
   registerSearchTipsRoute(app, pageContext);
   registerItemRoute(app, pageContext);
@@ -85,6 +88,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerSubcategoryApi(app, library);
   registerOrganizeApi(app, library);
   registerModelLinkApi(app, library);
+  registerModelProfileApi(app, library);
   registerFieldApi(app, library);
   registerWatchedFolderApi(app, { homeDir: config.homeDir, install, library });
 

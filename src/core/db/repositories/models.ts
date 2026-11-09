@@ -16,6 +16,14 @@ export type ModelRow = {
   readonly portraitItemId: number | undefined;
 };
 
+/** A models row as SQLite returns it, turned into a ModelRow. */
+function toModelRow(row: unknown): ModelRow | undefined {
+  const model = row as { id: number; slug: string; portrait_item_id: number | null } | undefined;
+  return model === undefined
+    ? undefined
+    : { id: model.id, slug: model.slug, portraitItemId: optional(model.portrait_item_id) };
+}
+
 /** Adds a model with a URL slug and returns its id. */
 export function insertModel(db: Db, slug: string): number {
   const result = db.prepare('INSERT INTO models (slug) VALUES (?)').run(slug);
@@ -29,11 +37,12 @@ export function isModelSlugTaken(db: Db, slug: string): boolean {
 
 /** Returns the model at /models/<slug>, or undefined if there is none. */
 export function findModelBySlug(db: Db, slug: string): ModelRow | undefined {
-  const row = db.prepare('SELECT * FROM models WHERE slug = ?').get(slug) as
-    { id: number; slug: string; portrait_item_id: number | null } | undefined;
-  return row === undefined
-    ? undefined
-    : { id: row.id, slug: row.slug, portraitItemId: optional(row.portrait_item_id) };
+  return toModelRow(db.prepare('SELECT * FROM models WHERE slug = ?').get(slug));
+}
+
+/** Returns the model with this id, or undefined if there is none. */
+export function findModelById(db: Db, modelId: number): ModelRow | undefined {
+  return toModelRow(db.prepare('SELECT * FROM models WHERE id = ?').get(modelId));
 }
 
 /** Every model id, oldest first, for listing every profile. */
@@ -57,6 +66,17 @@ export function tagModel(db: Db, modelId: number, tagName: string): void {
     db.prepare(
       `INSERT INTO model_tag_links (model_id, model_tag_id)
        SELECT ?, id FROM model_tags WHERE name = ? ON CONFLICT DO NOTHING`,
+    ).run(modelId, tagName);
+    rewriteModelSearch(db, [modelId]);
+  })();
+}
+
+/** Takes a tag off a model. The tag's name stays, for other models that have it. */
+export function untagModel(db: Db, modelId: number, tagName: string): void {
+  db.transaction(() => {
+    db.prepare(
+      `DELETE FROM model_tag_links WHERE model_id = ?
+         AND model_tag_id = (SELECT id FROM model_tags WHERE name = ?)`,
     ).run(modelId, tagName);
     rewriteModelSearch(db, [modelId]);
   })();
