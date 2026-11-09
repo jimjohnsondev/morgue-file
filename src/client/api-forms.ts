@@ -1,7 +1,8 @@
 // Sends Settings', the item page's and the profile editor's forms to the server as JSON with the
 // launch token, which a plain form post can't carry. The page reloads once the change is saved
-// (or opens the page the form names next), so it shows the archive as it now is; a refusal
-// shows beside the form in the server's own words.
+// (or opens the page the form names next), so it shows the archive as it now is; a form saved in
+// place, such as the notes box, says "Saved." instead. A refusal shows beside the form in the
+// server's own words.
 
 import { sendToApi } from './api-request.js';
 
@@ -16,7 +17,19 @@ function readFields(form: HTMLFormElement): Record<string, string> {
   return fields;
 }
 
-/** Sends a form and returns undefined once saved, or the message to show if it wasn't. */
+/** What a form saved in place says once the server has its change. */
+const SAVED_MESSAGE = 'Saved.';
+
+/** Whether a form is saved without reloading the page, as the notes box is. */
+function isSavedInPlace(form: HTMLFormElement): boolean {
+  return form.dataset.apiStay !== undefined;
+}
+
+/**
+ * Sends a form and returns undefined once saved, or the message to show if it wasn't. A form
+ * saved in place is often sent as the page is left (the notes box loses the focus to a link), so
+ * it is sent to outlive the page.
+ */
 async function sendForm(form: HTMLFormElement): Promise<string | undefined> {
   const method = form.dataset.apiMethod === 'DELETE' ? 'DELETE' : 'POST';
   const fields = readFields(form);
@@ -24,14 +37,16 @@ async function sendForm(form: HTMLFormElement): Promise<string | undefined> {
   const sent = await sendToApi(form.dataset.apiForm ?? '', {
     method,
     ...(hasBody && { body: fields }),
+    isSentOnLeaving: isSavedInPlace(form),
   });
   return sent.isSaved ? undefined : sent.message;
 }
 
-/** Shows the server's refusal beside the form that was refused. */
-function showRefusal(form: HTMLFormElement, message: string): void {
+/** Shows the server's refusal, or "Saved." in the cyan of a notice that went well, beside the form. */
+function showResult(form: HTMLFormElement, message: string): void {
   const result = form.querySelector<HTMLElement>('[data-api-result]');
   if (result !== null) {
+    result.classList.toggle('inline-form__result--saved', message === SAVED_MESSAGE);
     result.textContent = message;
     result.hidden = false;
   }
@@ -43,12 +58,14 @@ function showRefusal(form: HTMLFormElement, message: string): void {
  */
 async function submitForm(form: HTMLFormElement): Promise<void> {
   const refusal = await sendForm(form);
-  if (refusal === undefined && form.dataset.apiNext !== undefined) {
+  if (refusal === undefined && isSavedInPlace(form)) {
+    showResult(form, SAVED_MESSAGE);
+  } else if (refusal === undefined && form.dataset.apiNext !== undefined) {
     window.location.assign(form.dataset.apiNext);
   } else if (refusal === undefined) {
     window.location.replace(`${window.location.pathname}${window.location.search}`);
   } else {
-    showRefusal(form, refusal);
+    showResult(form, refusal);
   }
 }
 

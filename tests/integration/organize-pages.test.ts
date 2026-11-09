@@ -97,7 +97,11 @@ describe('the item page edits its tags and collections in place (R9, R10, R37)',
     ).json<{ collectionId: number }>().collectionId;
     const body = (await organize.get(`/item/${String(photo)}`)).body;
     expect(body).toContain(`<option value="${String(other)}">Gouache palettes</option>`);
-    expect(body).not.toContain(`<option value="${String(holding)}">`);
+    const collectionChoices = /<select id="add-collection-choice"[^>]*>(.*?)<\/select>/.exec(
+      body,
+    )?.[1];
+    expect(collectionChoices).toBeDefined();
+    expect(collectionChoices).not.toContain(`value="${String(holding)}"`);
     expect(body).toContain(
       `data-api-form="/api/items/${String(photo)}/collections/${String(holding)}"`,
     );

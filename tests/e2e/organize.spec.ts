@@ -1,7 +1,8 @@
 // R9, R10 and R37 in a browser: items are selected on an Index page by click, Shift-click and
 // Ctrl+A, then tagged with suggestions as you type, put into collections, moved between them
 // and filed, and linked to a model (R15), all from the action panel on the page (frame 13), with
-// no dialog or new window. The model's profile is then edited in place (R14, frame 14).
+// no dialog or new window. The model's profile is then edited in place (R14, frame 14), and an
+// item's own fields from its details panel (R11).
 // Runs on a small state server of its own, since it changes tags and collections.
 import { expect, test } from '../support/shared-server-test.js';
 import { startStateServerProcess, stopStateServer } from '../support/state-server-process.js';
@@ -211,6 +212,42 @@ test('R14: a profile is edited in place: a field, the model tags and the portrai
   await expect(profile.getByRole('row', { name: /Bio/ })).toContainText('Dancer and life model.');
   await expect(profile.locator('.profile__tags .chip')).toHaveText(['long poses']);
   await expect(profile.locator('figcaption')).toContainText(`portrait from ${portraitName}`);
+});
+
+test("R11: an item's rating, source URL and notes are edited in place, and a search finds the notes", async ({
+  page,
+}) => {
+  refuseDialogs(page);
+  await page.goto(`${server!.url}/photos/figure`);
+  await page.locator('.thumb-card .thumb').nth(5).click();
+  const itemUrl = page.url();
+  const details = page.getByRole('complementary', { name: 'Details' });
+
+  await details.getByRole('button', { name: 'Change Rating' }).click();
+  await details.getByLabel('Rating', { exact: true }).selectOption('2');
+  const ratingForm = details.getByRole('form', { name: 'Change Rating' });
+  await clickAndReload(page, ratingForm.getByRole('button', { name: 'Save' }));
+  await expect(details.getByLabel('2 of 5')).toHaveText('★★☆☆☆');
+
+  await details.getByRole('button', { name: 'Change Source URL' }).click();
+  await details.getByLabel('Source URL', { exact: true }).fill('https://example.com/seated');
+  const sourceForm = details.getByRole('form', { name: 'Change Source URL' });
+  await clickAndReload(page, sourceForm.getByRole('button', { name: 'Save' }));
+  await expect(details.getByRole('link', { name: 'example.com/seated' })).toBeVisible();
+
+  // The notes box has no Save button: it saves itself when it loses the focus.
+  const notes = details.getByRole('textbox', { name: 'Notes' });
+  await notes.fill('Cadmium highlights on the shoulder.');
+  await details.getByRole('heading', { name: 'Tags' }).click();
+  await expect(details.getByRole('form', { name: 'Notes' }).getByRole('status')).toHaveText(
+    'Saved.',
+  );
+  await page.goto(`${server!.url}/search?q=cadmium`);
+  await page.locator('.thumb-card .thumb').first().click();
+  expect(page.url().split('?')[0]).toBe(itemUrl.split('?')[0]);
+  await expect(page.getByRole('textbox', { name: 'Notes' })).toHaveValue(
+    'Cadmium highlights on the shoulder.',
+  );
 });
 
 test('R5: Move to subcategory files the selection by hand, and it leaves the list', async ({
