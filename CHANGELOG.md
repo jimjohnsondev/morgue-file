@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.18.0...v1.19.0) (2026-11-09)
+
+
+### Features
+
+* link a re-imported file to the item it already is instead of copying it ([#69](https://github.com/jimjohnsondev/morgue-file/issues/69)) ([551825f](https://github.com/jimjohnsondev/morgue-file/commit/551825faa83a947a929e46028610331a9245080f))
+
 ## [1.18.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.17.0...v1.18.0) (2026-11-09)
 
 
