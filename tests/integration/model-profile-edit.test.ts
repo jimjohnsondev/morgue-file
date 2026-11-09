@@ -196,6 +196,17 @@ describe('R14: model profiles with user-defined fields, model tags and a portrai
     expect(missing.statusCode).toBe(404);
   });
 
+  it("R14: a video or Library item can't be the portrait", async () => {
+    const model = makeModel();
+    const book = await saveProfile(model, {
+      'field.name': model.name,
+      portrait: String(organize.bookId),
+    });
+    expect(book.statusCode).toBe(400);
+    expect(book.json<{ message: string }>().message).toBe('The portrait must be a photo.');
+    expect(findModelById(organize.db, model.id)?.portraitItemId).toBeUndefined();
+  });
+
   it('R14: a field added in Settings shows on every profile editor with no code change', async () => {
     const model = makeModel();
     const added = await organize.send('POST', '/api/fields', {
@@ -236,7 +247,7 @@ describe('R14: model profiles with user-defined fields, model tags and a portrai
     const gone = { id: 999_999, slug: 'gone', name: 'Gone' };
     expect((await saveProfile(gone, { 'field.name': 'Gone' })).statusCode).toBe(404);
     const unknownField = await saveProfile(model, { 'field.name': model.name, 'field.age': '30' });
-    expect(unknownField.statusCode).toBe(404);
+    expect(unknownField.statusCode).toBe(400);
     // Fastify drops properties a schema doesn't name, as it does on every route.
     const unknownBox = await saveProfile(model, { 'field.name': model.name, colour: 'red' });
     expect(unknownBox.statusCode).toBe(204);

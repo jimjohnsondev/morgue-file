@@ -82,10 +82,12 @@ document.addEventListener('click', (event) => {
 
 // Enter in the add box adds the tag rather than saving the whole profile half-typed.
 document.addEventListener('keydown', (event) => {
-  const field = event.target instanceof Element ? event.target.closest('[data-tag-new]') : null;
-  const editor = field?.closest('[data-tag-editor]');
-  const parts = editor === null || editor === undefined ? undefined : findParts(editor);
-  if (event.key === 'Enter' && parts !== undefined) {
+  if (event.key !== 'Enter' || !(event.target instanceof Element)) {
+    return;
+  }
+  const editor = event.target.closest('[data-tag-new]')?.closest('[data-tag-editor]') ?? undefined;
+  const parts = editor === undefined ? undefined : findParts(editor);
+  if (parts !== undefined) {
     event.preventDefault();
     addTypedTag(parts);
   }

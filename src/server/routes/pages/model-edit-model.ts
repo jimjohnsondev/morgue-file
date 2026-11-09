@@ -6,11 +6,10 @@ import { findModelTagNames } from '#core/db/repositories/models.js';
 import { readFieldValues } from '#core/fields/fields.js';
 import { compileQuery } from '#core/query/compile-query.js';
 
-import { formatCount } from '../../views/format.js';
+import { FIELD_TYPE_NAMES, formatCount } from '../../views/format.js';
 
 import { searchHref } from './active-filters.js';
 import { readModelName, sectionQuery } from './model-profile-model.js';
-import { TYPE_NAMES } from './settings-model.js';
 import { thumbnailSrc } from './thumb-cards.js';
 
 import type { Db } from '#core/db/connection.js';
@@ -33,7 +32,7 @@ function toEditedField(entry: FieldWithValue): EditedField {
     key: field.key,
     label: field.label,
     type: field.type,
-    typeName: TYPE_NAMES[field.type],
+    typeName: FIELD_TYPE_NAMES[field.type],
     value: value === undefined ? '' : String(value),
     choices: field.options,
   };

@@ -22,7 +22,7 @@ export type ProfileEdit = {
   readonly values: ReadonlyMap<string, string>;
   /** Every model tag the profile keeps; the others are taken off. */
   readonly tags: readonly string[];
-  /** The item chosen as the portrait, any in the archive; undefined keeps the current one. */
+  /** The photo chosen as the portrait, any in the archive; undefined keeps the current one. */
   readonly portraitItemId?: number;
 };
 
@@ -37,7 +37,7 @@ function saveFields(db: Db, modelId: number, values: ReadonlyMap<string, string>
   );
   if (unknownKey !== undefined) {
     throw new AppError(
-      'not-found',
+      'invalid-input',
       `Models have no field "${unknownKey}" now. Reload the page to see the fields as they are.`,
     );
   }
@@ -63,10 +63,14 @@ function saveTags(db: Db, modelId: number, tags: readonly string[]): void {
   }
 }
 
-/** Sets the portrait to an item in the archive, refusing one that isn't there. */
+/** Sets the portrait to any photo in the archive, refusing an item that isn't one (R14). */
 function savePortrait(db: Db, modelId: number, itemId: number): void {
-  if (findItemById(db, itemId) === undefined) {
+  const item = findItemById(db, itemId);
+  if (item === undefined) {
     throw new AppError('not-found', `No item ${String(itemId)} to use as the portrait.`);
+  }
+  if (item.section !== 'photos') {
+    throw new AppError('invalid-input', 'The portrait must be a photo.');
   }
   setModelPortrait(db, modelId, itemId);
 }
