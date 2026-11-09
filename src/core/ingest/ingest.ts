@@ -122,7 +122,7 @@ type Written =
  * Writes a file to `Inbox/YYYY-MM/` under a cleaned, unused name, unless it is a copy of a file
  * the archive already has (R8), which is removed again once its bytes have been compared.
  */
-async function writeUnlessKept(
+async function saveUnlessCopy(
   context: IngestContext,
   root: Root,
   file: { readonly fileName: string; readonly kind: FileKind; readonly content: Readable },
@@ -168,7 +168,7 @@ export async function ingestFile(
   const kind = requireKeptKind(fileName);
   const root = await requireOnlineRoot(db);
   const sourceUrl = webAddressOrUndefined(file.sourceUrl);
-  const written = await writeUnlessKept(context, root, { fileName, kind, content: file.content });
+  const written = await saveUnlessCopy(context, root, { fileName, kind, content: file.content });
   if (written.isCopy) {
     const kept = { itemId: written.itemId, isDuplicate: true };
     db.transaction(() => {

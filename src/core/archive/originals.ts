@@ -435,6 +435,7 @@ export async function writeInbox(
       ? `${relDir}/${await nameReceivedFile(folder, received, file.fileName)}`
       : undefined;
   } finally {
-    await rm(received, { force: true });
+    // Windows may hold a new file open a moment (antivirus, the search indexer), so retry.
+    await rm(received, { force: true, maxRetries: 5 });
   }
 }
