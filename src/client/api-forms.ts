@@ -42,10 +42,11 @@ async function sendForm(form: HTMLFormElement): Promise<string | undefined> {
   return sent.isSaved ? undefined : sent.message;
 }
 
-/** Shows the server's refusal, or "Saved.", beside the form. */
+/** Shows the server's refusal, or "Saved." in the cyan of a notice that went well, beside the form. */
 function showResult(form: HTMLFormElement, message: string): void {
   const result = form.querySelector<HTMLElement>('[data-api-result]');
   if (result !== null) {
+    result.classList.toggle('inline-form__result--saved', message === SAVED_MESSAGE);
     result.textContent = message;
     result.hidden = false;
   }

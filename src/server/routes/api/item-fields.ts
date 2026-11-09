@@ -15,7 +15,9 @@ const ItemParams = Type.Object({ id: Type.Integer({ minimum: 1 }) });
 
 /**
  * The field's key and its new value. api-forms.ts leaves an emptied box out, so a missing value
- * clears the field. Notes are capped so a save still fits a keepalive request as the page closes.
+ * clears the field. Notes are capped so a save still fits a keepalive request (64 KB) as the page
+ * closes; text made mostly of control characters, which JSON writes six bytes each, could still go
+ * over it, and would then be reported as the server not answering.
  */
 const ItemFieldBody = Type.Object(
   {

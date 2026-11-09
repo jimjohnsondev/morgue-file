@@ -159,6 +159,10 @@
   border: 1px solid var(--color-border);
 }
 
+.inline-form__result--saved {
+  background: var(--color-notice-cyan);
+}
+
 .inline-form__result[hidden] {
   display: none;
 }
