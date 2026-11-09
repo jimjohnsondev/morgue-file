@@ -278,6 +278,17 @@ describe('E6: drop in progress', () => {
     expect(body).toContain('<a href="/photos/figure?page=1" aria-label="Dismiss notice">');
   });
 
+  it('R8: says a dropped file was already in the archive, with no filing links', async () => {
+    const id = idOf('Figure/figure_0002.jpg');
+    const body = await getPage(`/photos/figure?page=1&saved=${String(id)}&duplicate=true`);
+    expect(body).toContain('Already in the archive');
+    expect(body).toContain('<b>figure_0002.jpg</b> · not copied again');
+    expect(body).toContain(`<a href="/item/${String(id)}">Open the item</a>`);
+    expect(body).not.toContain('Saved to Unsorted');
+    expect(body).not.toContain('go to Unsorted');
+    expect(body).toContain('<a href="/photos/figure?page=1" aria-label="Dismiss notice">');
+  });
+
   it('shows no notice for an item that doesn’t exist', async () => {
     const body = await getPage('/photos?saved=999999');
     expect(body).not.toContain('Saved to Unsorted');

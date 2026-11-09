@@ -152,3 +152,43 @@ export function setItemMediaDetails(db: Db, id: number, details: MediaDetails): 
 export function setThumbState(db: Db, id: number, state: ThumbState): void {
   db.prepare('UPDATE items SET thumb_state = ? WHERE id = ?').run(state, id);
 }
+
+/** An item whose file a dropped file may be a copy of, with where to read that file. */
+export type CopyCandidate = {
+  readonly id: number;
+  readonly rootPath: string;
+  readonly relPath: string;
+  readonly partialHash: string | undefined;
+};
+
+type CopyCandidateRow = {
+  id: number;
+  root_path: string;
+  rel_path: string;
+  partial_hash: string | null;
+};
+
+/**
+ * The items a dropped file may be a copy of (R8): the same kind and size, with the file there
+ * now on a root that is online, so it can be read to confirm. Oldest first.
+ */
+export function findCopyCandidates(
+  db: Db,
+  file: { readonly kind: ItemKind; readonly size: number },
+): CopyCandidate[] {
+  const rows = db
+    .prepare(
+      `SELECT items.id, roots.path AS root_path, items.rel_path, items.partial_hash
+       FROM items JOIN roots ON roots.id = items.root_id
+       WHERE items.kind = ? AND items.size = ? AND items.missing_since IS NULL
+         AND roots.status = 'online'
+       ORDER BY items.id`,
+    )
+    .all(file.kind, file.size) as CopyCandidateRow[];
+  return rows.map((row) => ({
+    id: row.id,
+    rootPath: row.root_path,
+    relPath: row.rel_path,
+    partialHash: optional(row.partial_hash),
+  }));
+}

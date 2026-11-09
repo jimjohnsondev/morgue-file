@@ -24,6 +24,8 @@ export type IndexingNotice = {
 export type SavedNotice = {
   readonly itemHref: string;
   readonly name: string;
+  /** The archive already had the file, so it was linked to this item, not copied (R8). */
+  readonly isDuplicate: boolean;
   readonly sourceHost: string | undefined;
   /** The page's own address without the notice, for "dismiss". */
   readonly dismissHref: string;
@@ -145,9 +147,36 @@ export function StatusFooterLines(props: { readonly status: PageStatus }) {
   return indexing ? <IndexingFooterLines indexing={indexing} /> : null;
 }
 
-/** The notice after a drop, linking to the item it made (E6). */
+/**
+ * The notice after a drop of a file the archive already had: it names the item the file was
+ * found as, which may be filed anywhere, so it offers no filing links (R8).
+ */
+function DuplicateNoticePanel(props: { readonly saved: SavedNotice }) {
+  const { saved } = props;
+  return (
+    <section role="status" class="panel saved-notice">
+      <h2 class="panel__title">Already in the archive</h2>
+      <div class="panel__body saved-notice__body">
+        <span>
+          <b>{saved.name}</b> · not copied again
+        </span>
+        <span class="saved-notice__links">
+          <a href={saved.itemHref}>Open the item</a> ·{' '}
+          <a href={saved.dismissHref} aria-label="Dismiss notice">
+            dismiss
+          </a>
+        </span>
+      </div>
+    </section>
+  );
+}
+
+/** The notice after a drop, linking to the item it made (E6), or to the one it already was. */
 export function SavedNoticePanel(props: { readonly saved: SavedNotice }) {
   const { saved } = props;
+  if (saved.isDuplicate) {
+    return <DuplicateNoticePanel saved={saved} />;
+  }
   return (
     <section role="status" class="panel saved-notice">
       <h2 class="panel__title">Saved to Unsorted</h2>

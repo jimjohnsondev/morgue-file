@@ -68,8 +68,11 @@ function sourceUrlOf(itemId: number): unknown {
 async function startSite(): Promise<void> {
   site = createServer((request, response) => {
     const route = request.url ?? '';
-    if (route === '/pictures/hand%20study.jpg' || route === '/pictures/render?id=7') {
+    if (route === '/pictures/hand%20study.jpg') {
       response.writeHead(200, { 'content-type': 'image/jpeg' }).end('jpeg bytes');
+    } else if (route === '/pictures/render?id=7') {
+      // Bytes of its own, or it would be a copy of the picture above and not saved again (R8).
+      response.writeHead(200, { 'content-type': 'image/jpeg' }).end('render bytes');
     } else if (route === '/short-link') {
       response.writeHead(302, { location: '/pictures/hand%20study.jpg' }).end();
     } else if (route === '/page.html') {
@@ -311,7 +314,7 @@ describe('R2: web addresses dragged with no file', () => {
 
   it('R2: fetches the file, names it from the address and keeps the address', async () => {
     const address = `${siteUrl}/pictures/hand%20study.jpg`;
-    const itemId = await ingestUrl(context(), address, ANY_ADDRESS);
+    const { itemId } = await ingestUrl(context(), address, ANY_ADDRESS);
     expect(await readFile(path.join(inboxDir(), 'hand study.jpg'), 'utf8')).toBe('jpeg bytes');
     expect(findItemById(library.db, itemId)?.kind).toBe('image');
     expect(sourceUrlOf(itemId)).toBe(address);

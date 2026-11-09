@@ -1,7 +1,8 @@
 // Saves what is dropped or pasted onto a page to the Inbox (R2): each file is posted to
 // /api/ingest, or a web address dragged with no file to /api/ingest/url. The page then reloads
-// with `saved=<item id>`, which shows the "Saved to Unsorted" notice (E6). A refusal is shown in
-// the drop outline until the next click or key.
+// with `saved=<item id>`, which shows the "Saved to Unsorted" notice (E6), plus `duplicate=true`
+// when the archive already had the file and linked to its item rather than copying it (R8). A
+// refusal is shown in the drop outline until the next click or key.
 
 /** What a drop or paste carries, read while its event runs: the browser clears it afterwards. */
 export type Transfer = {
@@ -11,7 +12,14 @@ export type Transfer = {
 };
 
 /** The upload's reply: the item the file became, or why it was refused. */
-type IngestReply = { readonly itemId?: number; readonly message?: string };
+type IngestReply = {
+  readonly itemId?: number;
+  readonly isDuplicate?: boolean;
+  readonly message?: string;
+};
+
+/** A saved file's item, and whether the archive already had the file (R8). */
+type Saved = { readonly itemId: number; readonly isDuplicate: boolean };
 
 /** Reads the per-launch token the server put in the page's meta tag; writes need it. */
 function readToken(): string {
@@ -47,8 +55,8 @@ export function readTransfer(data: DataTransfer): Transfer {
 /** A request body and the type it is sent as. */
 type Upload = { readonly body: BodyInit; readonly contentType: string };
 
-/** Posts a request with the token and returns the new item's id, or throws the server's reason. */
-async function post(address: string, upload: Upload): Promise<number> {
+/** Posts a request with the token and returns the item it saved, or throws the server's reason. */
+async function post(address: string, upload: Upload): Promise<Saved> {
   const response = await fetch(address, {
     method: 'POST',
     headers: { 'content-type': upload.contentType, 'x-morgue-token': readToken() },
@@ -64,11 +72,11 @@ async function post(address: string, upload: Upload): Promise<number> {
   if (!response.ok || reply.itemId === undefined) {
     throw new Error(reply.message ?? 'Morgue File could not save it.');
   }
-  return reply.itemId;
+  return { itemId: reply.itemId, isDuplicate: reply.isDuplicate === true };
 }
 
 /** Saves one file, with the address it came from. */
-async function postFile(file: File, sourceUrl: string | undefined): Promise<number> {
+async function postFile(file: File, sourceUrl: string | undefined): Promise<Saved> {
   const query = new URLSearchParams({ name: file.name });
   if (sourceUrl !== undefined) {
     query.set('source', sourceUrl);
@@ -79,19 +87,19 @@ async function postFile(file: File, sourceUrl: string | undefined): Promise<numb
   });
 }
 
-/** Saves every file, or fetches the address if there are none; returns the last item's id. */
-async function saveTransfer(transfer: Transfer): Promise<number | undefined> {
-  let savedId: number | undefined;
+/** Saves every file, or fetches the address if there are none; returns the last one saved. */
+async function saveTransfer(transfer: Transfer): Promise<Saved | undefined> {
+  let saved: Saved | undefined;
   for (const file of transfer.files) {
-    savedId = await postFile(file, transfer.sourceUrl);
+    saved = await postFile(file, transfer.sourceUrl);
   }
   if (transfer.files.length === 0 && transfer.sourceUrl !== undefined) {
-    savedId = await post('/api/ingest/url', {
+    saved = await post('/api/ingest/url', {
       body: JSON.stringify({ url: transfer.sourceUrl }),
       contentType: 'application/json',
     });
   }
-  return savedId;
+  return saved;
 }
 
 /** The events that put the drop outline back as it was after a refusal. */
@@ -152,10 +160,14 @@ function showRefusal(message: string): void {
  */
 export async function saveToInbox(transfer: Transfer): Promise<void> {
   try {
-    const savedId = await saveTransfer(transfer);
-    if (savedId !== undefined) {
+    const saved = await saveTransfer(transfer);
+    if (saved !== undefined) {
       const address = new URL(window.location.href);
-      address.searchParams.set('saved', String(savedId));
+      address.searchParams.set('saved', String(saved.itemId));
+      address.searchParams.delete('duplicate');
+      if (saved.isDuplicate) {
+        address.searchParams.set('duplicate', 'true');
+      }
       window.location.assign(address);
     }
   } catch (error) {
