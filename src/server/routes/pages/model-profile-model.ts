@@ -12,6 +12,7 @@ import { fieldValueText, formatCount, formatPages } from '../../views/format.js'
 
 import { searchHref } from './active-filters.js';
 import { SECTION_LABELS } from './filter-choices.js';
+import { itemPageHref, toItemView } from './item-view.js';
 import { itemPlace, itemHref, thumbnailSrc, toThumbCards } from './thumb-cards.js';
 
 import type { Db } from '#core/db/connection.js';
@@ -55,6 +56,18 @@ function pagesCaption(ranges: readonly PageRange[] | undefined): string | undefi
   return ranges?.map(([first, last]) => formatPages(first, last)).join(', ');
 }
 
+/**
+ * Where a Library cover on the strip opens: the item at the first page of the model's first range
+ * there (R17), keeping the strip's "View all" list as `from`; page 1 when the model is in all of it.
+ */
+function libraryCardHref(
+  itemId: number,
+  link: { readonly fromQuery: string; readonly ranges: readonly PageRange[] | undefined },
+): string {
+  const view = toItemView({ from: link.fromQuery });
+  return itemPageHref(itemId, view, { page: link.ranges?.[0]?.[0] ?? 1 });
+}
+
 /** One section's strip: its first few items in list order, and links to all of them. */
 function sectionStrip(
   db: Db,
@@ -69,6 +82,7 @@ function sectionStrip(
   const query = sectionQuery(section, modelName);
   const label = SECTION_LABELS[section];
   const items = findItemsByQuery(db, compileQuery(query), { limit: STRIP_LENGTH, offset: 0 });
+  const fromQuery = queryToText(query);
   return {
     title: `${label} · ${formatCount(count)}`,
     name: `${label} featuring ${modelName}`,
@@ -76,10 +90,13 @@ function sectionStrip(
     moreLink: { text: `View all ${formatCount(count)} in ${label} »`, href: searchHref(query) },
     cards: toThumbCards(items, {
       size: 'medium',
-      fromQuery: queryToText(query),
+      fromQuery,
       caption: 'details',
       detailsFor: (item) =>
         section === 'library' ? pagesCaption(pageRanges.get(item.id)) : itemPlace(item),
+      ...(section === 'library' && {
+        hrefFor: (item) => libraryCardHref(item.id, { fromQuery, ranges: pageRanges.get(item.id) }),
+      }),
     }),
   };
 }

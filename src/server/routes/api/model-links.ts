@@ -4,7 +4,11 @@
 import { Type } from '@sinclair/typebox';
 
 import { AppError } from '#core/errors.js';
-import { linkSelectionToModel, unlinkItemFromModel } from '#core/models/model-links.js';
+import {
+  linkItemToModel,
+  linkSelectionToModel,
+  unlinkItemFromModel,
+} from '#core/models/model-links.js';
 
 import { requireLibrary } from '../require-library.js';
 
@@ -26,9 +30,17 @@ const ModelFields = {
   name: Type.Optional(Type.String({ maxLength: 120 })),
 };
 
+/** A page number as the reader's hidden fields send it, as text. */
+const PageText = Type.String({ pattern: '^[1-9][0-9]{0,5}$' });
+
 const SelectionModelBody = Type.Object({ selection: SelectionSchema, ...ModelFields });
 const ItemParams = Type.Object({ id: ID });
-const ItemModelBody = Type.Object(ModelFields);
+/** The item page's "add model": in the reader, also the pages on show (R17). */
+const ItemModelBody = Type.Object({
+  ...ModelFields,
+  from: Type.Optional(PageText),
+  to: Type.Optional(PageText),
+});
 const ItemModelParams = Type.Object({ id: ID, model: ID });
 
 /** A link over a page range names its pages; the whole-item link names none. */
@@ -37,9 +49,13 @@ const LinkPagesQuery = Type.Object({
   to: Type.Optional(ID),
 });
 
-/** The page range a DELETE names: none, or both ends in order; half or reversed is refused. */
-function linkPages(query: { readonly from?: number; readonly to?: number }) {
-  const { from, to } = query;
+/**
+ * The page range a link names: none, or both ends in order; half or reversed is refused. The
+ * reader's form sends them as text, a DELETE's query string as numbers.
+ */
+function linkPages(fields: { readonly from?: number | string; readonly to?: number | string }) {
+  const from = fields.from === undefined ? undefined : Number(fields.from);
+  const to = fields.to === undefined ? undefined : Number(fields.to);
   if (from === undefined && to === undefined) {
     return {};
   }
@@ -75,8 +91,11 @@ export function registerModelLinkApi(
     '/api/items/:id/models',
     { schema: { params: ItemParams, body: ItemModelBody } },
     async (request, reply) => {
-      const selection = { itemIds: [request.params.id] };
-      linkSelectionToModel(requireLibrary(library).db, selection, modelChoice(request.body));
+      linkItemToModel(requireLibrary(library).db, {
+        itemId: request.params.id,
+        choice: modelChoice(request.body),
+        ...linkPages(request.body),
+      });
       return reply.code(204).send();
     },
   );

@@ -1,6 +1,8 @@
 // Linking items to models (R15): the selection's action panel (frame 13) links many photos,
-// videos or Library items to a model in one transaction, and the item page links or unlinks one.
-// A link lives only in the library; no file on disk changes.
+// videos or Library items to a model in one transaction, and the item page links or unlinks one,
+// in the reader over the pages on show (R17). A link lives only in the library; no file on disk
+// changes.
+import { findItemById } from '#core/db/repositories/items.js';
 import { isModelId, linkModelToItems, unlinkModelFromItem } from '#core/db/repositories/models.js';
 import { AppError } from '#core/errors.js';
 import { selectedItemIds } from '#core/organize/bulk-changes.js';
@@ -39,6 +41,41 @@ export function linkSelectionToModel(
     const modelId = chosenModelId(db, choice);
     linkModelToItems(db, modelId, { itemIds });
     return { modelId, itemCount: itemIds.length };
+  })();
+}
+
+/** Refuses a page range that isn't inside a Library item's pages, from first page to last. */
+function requirePagesOf(db: Db, itemId: number, pages: PageRange): void {
+  const item = findItemById(db, itemId);
+  if (item === undefined) {
+    throw new AppError('not-found', `No item ${String(itemId)}.`);
+  }
+  const [from, to] = pages;
+  const pageCount = item.section === 'library' ? item.pageCount : undefined;
+  if (pageCount === undefined) {
+    throw new AppError('invalid-input', 'Only a book or magazine with pages has page ranges.');
+  }
+  if (from < 1 || from > to || to > pageCount) {
+    throw new AppError('invalid-input', `Pages run from 1 to ${String(pageCount)}, from first.`);
+  }
+}
+
+/**
+ * Links one item to a model from its item page: the whole item, or, in the reader, the pages on
+ * show (R17), which the profile's Library strip then opens the item at.
+ */
+export function linkItemToModel(
+  db: Db,
+  link: { readonly itemId: number; readonly choice: ModelChoice; readonly pages?: PageRange },
+): void {
+  const { itemId, pages } = link;
+  if (pages === undefined) {
+    linkSelectionToModel(db, { itemIds: [itemId] }, link.choice);
+    return;
+  }
+  db.transaction(() => {
+    requirePagesOf(db, itemId, pages);
+    linkModelToItems(db, chosenModelId(db, link.choice), { itemIds: [itemId], pages });
   })();
 }
 

@@ -35,7 +35,7 @@ export type DetailsModel = {
   readonly facts: readonly FactRow[];
   readonly tags: readonly DetailChip[];
   readonly models: readonly DetailChip[];
-  /** The "add model" form's action and choices, or the reader's pending "add model to pages 12–13". */
+  /** The "add model" form: its action, choices and label; in the reader, the pages on show. */
   readonly modelAdding: ModelAdding;
   readonly collections: readonly DetailChip[];
   /** Where Add tag posts (R10). */
