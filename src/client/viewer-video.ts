@@ -142,7 +142,8 @@ function loopRestart(loop: Loop, frame: number): number | undefined {
 
 /**
  * Follows every frame the browser shows: the readouts follow it, and while the loop plays, its
- * out frame sends the video back to the in frame. A seek in flight was counted by whatever started it.
+ * out frame sends the video back to the in frame. A seek in flight was counted by whatever
+ * started it.
  */
 function followFrames(player: Player, loop: Loop): void {
   const { video, fps } = player;
