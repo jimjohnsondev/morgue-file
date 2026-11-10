@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.23.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.22.0...v1.23.0) (2026-11-10)
+
+
+### Features
+
+* add the compare board, up to 4 references in a window of its own ([#79](https://github.com/jimjohnsondev/morgue-file/issues/79)) ([ef84564](https://github.com/jimjohnsondev/morgue-file/commit/ef84564c3b2ef81b2dea02baf228563ebb34aee0))
+
 ## [1.22.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.21.0...v1.22.0) (2026-11-10)
 
 
