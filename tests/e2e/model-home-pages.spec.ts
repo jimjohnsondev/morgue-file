@@ -33,6 +33,21 @@ test('R16: a profile strip links to its section filtered by the model', async ({
   await expect(page.locator('.thumb-card')).toHaveCount(4);
 });
 
+test("R17: the profile's Library preview opens the item at that page", async ({ page }) => {
+  await page.goto('/models/elena-varga');
+  const library = page.getByRole('region', { name: 'Library featuring Elena Varga' });
+  await library.locator('.thumb-card', { hasText: 'pages 12–19' }).locator('a').first().click();
+  await expect(page).toHaveURL(/[?&]page=12(&|$)/);
+  // The issue's page count arrives with its thumbnail job, so reload until the reader knows it.
+  await expect(async () => {
+    await page.reload();
+    await expect(page.locator('.reader-nav')).toContainText('Pages 12–13 of 72', {
+      timeout: 1000,
+    });
+  }).toPass({ timeout: 120_000 });
+  await expect(page.locator('.breadcrumb')).toContainText('No. 12 · Winter 2023');
+});
+
 test('frame 12: Home with five strips and the archive counts', async ({ page }) => {
   await page.goto('/?shuffle=1');
   await expect(page.locator('.tab--current')).toHaveText('Home');

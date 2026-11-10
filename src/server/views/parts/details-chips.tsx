@@ -1,6 +1,6 @@
 // The chip groups of the Item page's details panel (frames 5, 7, 8): tags, models and
 // collections, each chip with its [x], then the way to add one. All three are edited in place
-// (R9, R10, R15, R37), except a model on the reader's pages, which waits for page ranges (R17).
+// (R9, R10, R15, R37); in the reader a model is linked to the pages on show (R17).
 import {
   ApiAction,
   ApiForm,
@@ -38,11 +38,16 @@ const ADD_MODEL_FORM_ID = 'add-model';
 
 /**
  * How the item page adds a model: a form listing the models the item isn't linked to yet (R15),
- * or, in the reader, "add model to pages 12–13" drawn until page ranges arrive (R17, PR 21).
+ * or, in the reader, "add model to pages 12–13", linking the pages on show (R17).
  */
-export type ModelAdding =
-  | { readonly action: string; readonly models: readonly ModelOption[] }
-  | { readonly pendingLabel: string };
+export type ModelAdding = {
+  readonly action: string;
+  readonly models: readonly ModelOption[];
+  /** The link that opens the form: "add model", or "add model to pages 12–13". */
+  readonly label: string;
+  /** The pages on show, sent with the form; none for the whole item. */
+  readonly pages?: readonly [from: number, to: number];
+};
 
 /** A chip's [x]: a DELETE once its edit is built, else drawn but doing nothing yet. */
 function RemoveChip(props: { readonly chip: DetailChip; readonly name: string }) {
@@ -139,20 +144,26 @@ export function AddToCollection(props: { readonly adding: CollectionAdding }) {
   );
 }
 
-/** "add model", which opens a list of the models the item isn't linked to, and "New model…". */
+/**
+ * "add model", which opens a list of the models the item isn't linked to, and "New model…". In
+ * the reader the form carries the pages on show.
+ */
 export function AddModel(props: { readonly adding: ModelAdding }) {
   const { adding } = props;
-  if ('pendingLabel' in adding) {
-    return <PendingAction label={adding.pendingLabel} />;
-  }
   return (
     <>
       <EditView formId={ADD_MODEL_FORM_ID}>
-        <EditButton formId={ADD_MODEL_FORM_ID} label="add model" />
+        <EditButton formId={ADD_MODEL_FORM_ID} label={adding.label} />
       </EditView>
       <ApiForm action={adding.action} editId={ADD_MODEL_FORM_ID} label="Link a model">
         <HiddenLabel for="add-model-choice">Model</HiddenLabel>
         <ModelChoiceFields id="add-model-choice" models={adding.models} />{' '}
+        {adding.pages !== undefined && (
+          <>
+            <input type="hidden" name="from" value={String(adding.pages[0])} />
+            <input type="hidden" name="to" value={String(adding.pages[1])} />
+          </>
+        )}
         <SaveOrCancel saveLabel="Add" />
       </ApiForm>
     </>

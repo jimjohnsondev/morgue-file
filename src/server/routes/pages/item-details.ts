@@ -23,7 +23,7 @@ import { itemPageHref } from './item-view.js';
 
 import type { Db } from '#core/db/connection.js';
 import type { Item } from '#core/db/repositories/items.js';
-import type { ItemModelLink } from '#core/db/repositories/models.js';
+import type { ItemModelLink, PageRange } from '#core/db/repositories/models.js';
 import type { Subcategory } from '#core/db/repositories/subcategories.js';
 import type { FieldWithValue } from '#core/fields/fields.js';
 import type { ItemView } from './item-view.js';
@@ -199,12 +199,25 @@ function unlinkAction(itemId: number, link: ItemModelLink): string {
     : `${action}?from=${String(link.pages[0])}&to=${String(link.pages[1])}`;
 }
 
+/** Says whether a model link already covers what "add model" would add: these pages, or all. */
+function isLinkedOver(link: ItemModelLink, pages: PageRange | undefined): boolean {
+  return pages === undefined
+    ? link.pages === undefined
+    : link.pages?.[0] === pages[0] && link.pages[1] === pages[1];
+}
+
+/** The pages on show in the reader, first to last; none outside the reader. */
+function pagesShown(shownPages: readonly number[] | undefined): PageRange | undefined {
+  const [first, last] = [shownPages?.[0], shownPages?.at(-1)];
+  return first === undefined || last === undefined ? undefined : [first, last];
+}
+
 /**
  * The item's models as chips, each [x] unlinking it, and how to add one (R15): a list of the
- * models it isn't linked to as a whole, or, in the reader, the pages on show (R17, PR 21).
+ * models it isn't linked to as a whole, or, in the reader, over the pages on show (R17).
  */
 function modelParts(db: Db, source: DetailsSource) {
-  const { item, view, shownPages } = source;
+  const { item, view } = source;
   const links = findModelLinksByItem(db, item.id);
   const models = links.map((link) => ({
     label: link.name,
@@ -217,23 +230,20 @@ function modelParts(db: Db, source: DetailsSource) {
       },
     }),
   }));
-  const [firstShown, lastShown] = [shownPages?.[0], shownPages?.at(-1)];
-  if (firstShown !== undefined && lastShown !== undefined) {
-    return {
-      models,
-      modelAdding: { pendingLabel: `add model to ${formatPages(firstShown, lastShown)}` },
-    };
-  }
-  const linkedWhole = new Set(
-    links.filter((link) => link.pages === undefined).map((link) => link.modelId),
+  const pages = pagesShown(source.shownPages);
+  const linked = new Set(
+    links.filter((link) => isLinkedOver(link, pages)).map((link) => link.modelId),
   );
   const choices = findModelNames(db)
-    .filter((model) => !linkedWhole.has(model.id))
+    .filter((model) => !linked.has(model.id))
     .map((model) => ({ value: String(model.id), label: model.name }));
-  return {
-    models,
-    modelAdding: { action: `/api/items/${String(item.id)}/models`, models: choices },
+  const modelAdding = {
+    action: `/api/items/${String(item.id)}/models`,
+    models: choices,
+    label: pages === undefined ? 'add model' : `add model to ${formatPages(...pages)}`,
+    ...(pages !== undefined && { pages }),
   };
+  return { models, modelAdding };
 }
 
 /** Builds the details panel for one item. */
