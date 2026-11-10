@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.22.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.21.0...v1.22.0) (2026-11-10)
+
+
+### Features
+
+* make video frame-step and the loop range frame-exact ([#76](https://github.com/jimjohnsondev/morgue-file/issues/76)) ([2a405dd](https://github.com/jimjohnsondev/morgue-file/commit/2a405dddd3b77bc731b76f6535cb55bac61932f1))
+
+
+### Bug Fixes
+
+* start a playing loop on its in frame even on a slow runner ([#78](https://github.com/jimjohnsondev/morgue-file/issues/78)) ([278eb28](https://github.com/jimjohnsondev/morgue-file/commit/278eb28f6daea5b2e0d0710909ce0792c64d247d))
+
 ## [1.21.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.20.0...v1.21.0) (2026-11-10)
 
 
