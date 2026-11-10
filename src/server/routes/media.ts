@@ -11,7 +11,7 @@ import {
   defaultThumbnailSize,
   hasSquareThumbnail,
   parseSizeLabel,
-  readThumbnail,
+  readCacheFile,
   sizeToLabel,
   thumbnailPath,
 } from '#core/jobs/thumbnail-files.js';
@@ -86,17 +86,17 @@ async function findOrMakeThumbnail(
   size: ThumbnailSize,
 ): Promise<FoundThumbnail> {
   const { thumbsDir } = library.thumbnails;
-  const cached = await readThumbnail(thumbnailPath(thumbsDir, item.id, size));
+  const cached = await readCacheFile(thumbnailPath(thumbsDir, item.id, size));
   if (cached !== undefined || isDefaultSize(item, size) || item.thumbState !== 'ready') {
     return found('exact', cached);
   }
   try {
     const made = await makeThumbnailAtSize(library.thumbnails, item.id, size);
-    return found('exact', await readThumbnail(made));
+    return found('exact', await readCacheFile(made));
   } catch {
     // The original may be offline or unreadable; the default size stands in until it is back.
     const fallback = thumbnailPath(thumbsDir, item.id, defaultThumbnailSize(item.kind));
-    return found('stand-in', await readThumbnail(fallback));
+    return found('stand-in', await readCacheFile(fallback));
   }
 }
 

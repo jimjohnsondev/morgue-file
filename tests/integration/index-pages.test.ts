@@ -13,7 +13,7 @@ import {
 } from '#core/db/repositories/subcategories.js';
 import { tagItems } from '#core/db/repositories/tags.js';
 import { setFieldValue, setPicklistChoices } from '#core/fields/fields.js';
-import { DEFAULT_SQUARE, saveThumbnail, thumbnailPath } from '#core/jobs/thumbnail-files.js';
+import { DEFAULT_SQUARE, saveCacheFile, thumbnailPath } from '#core/jobs/thumbnail-files.js';
 import { createModel } from '#core/models/models.js';
 import { buildApp } from '#server/app.js';
 import { findAppDir, LOOPBACK_HOST } from '#server/config.js';
@@ -256,7 +256,7 @@ describe('thumbnails by id', () => {
   it('serves the default size when a larger one can’t be made, and leaves its job alone', async () => {
     const id = findItemIdsByPath(library.db, REFERENCE_ROOT_ID).get('Figure/figure_0002.jpg')!;
     const thumbsDir = path.join(library.dataDir, 'thumbs');
-    await saveThumbnail(thumbnailPath(thumbsDir, id, DEFAULT_SQUARE), Buffer.from('default'));
+    await saveCacheFile(thumbnailPath(thumbsDir, id, DEFAULT_SQUARE), Buffer.from('default'));
     library.db.prepare(`UPDATE items SET thumb_state = 'ready' WHERE id = ?`).run(id);
     // The Reference folder isn't there, so the Large square can't be made from the original.
     const response = await get(`/media/thumb/${String(id)}/480`);

@@ -60,6 +60,14 @@ describe('R7: decoding HEIC photos', () => {
     expect(await averageDifference(copy, photo)).toBeLessThan(MOST_AVERAGE_DIFFERENCE);
   });
 
+  it('refuses a grid that claims a picture larger than its tiles, before setting memory aside', async () => {
+    const heic = await encodeHeic(await drawPhoto(1300, 700));
+    // The grid's description is the file's last item: its last 4 bytes are its width and height.
+    heic.writeUInt16BE(65_535, heic.length - 4);
+    heic.writeUInt16BE(65_535, heic.length - 2);
+    await expect(decode(heic)).rejects.toThrow('tiles do not cover the picture');
+  });
+
   it('refuses a file that is not HEIF', async () => {
     await expect(decode(Buffer.from('not a picture'))).rejects.toThrow('HEIC');
   });

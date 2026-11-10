@@ -28,6 +28,9 @@ export type HeifPicture = {
 /** The start code that begins each NAL unit in an Annex B stream. */
 const START_CODE = Buffer.from([0, 0, 0, 1]);
 
+/** sharp's own default limit, so a HEIC can't ask for more memory than any other photo. */
+const MOST_PIXELS = 268_402_689;
+
 /** Refuses a picture this reader can't put together. */
 function unsupported(detail: string): AppError {
   return new AppError('media-unreadable', `The HEIC picture can't be shown: ${detail}.`);
@@ -125,6 +128,10 @@ function gridPicture(items: HeifItems, id: number): HeifPicture {
     );
   }
   const tileSize = readImageSize(items, firstTile);
+  // The tiles must cover the picture (ISO/IEC 23008-12), or it would show blank stripes.
+  if (width > columns * tileSize.width || height > rows * tileSize.height) {
+    throw unsupported('its tiles do not cover the picture');
+  }
   return {
     tiles: tileIds.map((tileId) => tileStream(items, tileId)),
     tileWidth: tileSize.width,
@@ -136,24 +143,36 @@ function gridPicture(items: HeifItems, id: number): HeifPicture {
   };
 }
 
+/**
+ * Refuses a picture, or set of tiles, larger than sharp would open, before any memory is set
+ * aside for it: the sizes come from the file, and a small file of flat tiles could claim gigabytes.
+ */
+function refuseOversized(picture: HeifPicture): HeifPicture {
+  const tilePixels = picture.tiles.length * picture.tileWidth * picture.tileHeight;
+  if (picture.width * picture.height > MOST_PIXELS || tilePixels > MOST_PIXELS) {
+    throw unsupported('it is larger than the largest photo Morgue File opens');
+  }
+  return picture;
+}
+
 /** Reads how a HEIC file's picture is made, refusing any kind but an HEVC image or grid. */
 export function readHeifPicture(bytes: Buffer): HeifPicture {
   const items = readHeifItems(bytes);
   const id = items.primaryId;
   const type = items.typeById.get(id);
   if (type === 'grid') {
-    return gridPicture(items, id);
+    return refuseOversized(gridPicture(items, id));
   }
   if (type !== 'hvc1') {
     throw unsupported(`its picture is stored as ${type ?? 'nothing'}`);
   }
   const size = readImageSize(items, id);
-  return {
+  return refuseOversized({
     tiles: [tileStream(items, id)],
     tileWidth: size.width,
     tileHeight: size.height,
     columns: 1,
     ...size,
     transforms: readTransforms(items, id),
-  };
+  });
 }

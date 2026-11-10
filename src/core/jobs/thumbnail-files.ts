@@ -85,7 +85,7 @@ export function viewerCopyPath(thumbsDir: string, itemId: number): string {
  * Saves a thumbnail or viewer copy. It is written beside its final name and then renamed, so a page never
  * reads half a file and a crash never leaves one behind under the real name.
  */
-export async function saveThumbnail(file: string, bytes: Buffer): Promise<void> {
+export async function saveCacheFile(file: string, bytes: Buffer): Promise<void> {
   await mkdir(path.dirname(file), { recursive: true });
   // Unique per call: a page can ask for a size while another request is making it.
   const partial = `${file}.${String(process.pid)}-${randomUUID()}.partial`;
@@ -94,7 +94,7 @@ export async function saveThumbnail(file: string, bytes: Buffer): Promise<void> 
 }
 
 /** Reads a cached thumbnail or viewer copy, or returns undefined if it hasn't been made. */
-export async function readThumbnail(file: string): Promise<Buffer | undefined> {
+export async function readCacheFile(file: string): Promise<Buffer | undefined> {
   try {
     return await readFile(file);
   } catch (error) {

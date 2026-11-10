@@ -14,8 +14,8 @@ import { readMoveHash } from '#core/indexer/moves.js';
 
 import {
   defaultThumbnailSize,
-  readThumbnail,
-  saveThumbnail,
+  readCacheFile,
+  saveCacheFile,
   thumbnailPath,
   viewerCopyPath,
 } from './thumbnail-files.js';
@@ -109,7 +109,7 @@ async function makeAndSaveViewerCopy(
 ): Promise<Buffer> {
   const original = await readOriginal(root.path, item.relPath);
   const copy = await makeViewerCopy(item.relPath, original, context.mediaTools);
-  await saveThumbnail(viewerCopyPath(context.thumbsDir, item.id), copy);
+  await saveCacheFile(viewerCopyPath(context.thumbsDir, item.id), copy);
   return copy;
 }
 
@@ -130,7 +130,7 @@ async function readPhoto(
     return readOriginal(root.path, item.relPath);
   }
   const cached = reuseViewerCopy
-    ? await readThumbnail(viewerCopyPath(context.thumbsDir, item.id))
+    ? await readCacheFile(viewerCopyPath(context.thumbsDir, item.id))
     : undefined;
   return cached ?? makeAndSaveViewerCopy(context, item, root);
 }
@@ -141,17 +141,16 @@ async function makeAndSave(
   itemId: number,
   request: MakeRequest,
 ): Promise<ThumbnailResult> {
-  const found = requireItemAndRoot(context.db, itemId);
-  const { item, root } = found;
+  const { item, root } = requireItemAndRoot(context.db, itemId);
   const { size } = request;
   const result = await makeThumbnail({
     kind: item.kind,
     original: { rootPath: root.path, relPath: item.relPath },
     size,
     mediaTools: context.mediaTools,
-    readPhoto: async () => readPhoto(context, found, request.reuseViewerCopy),
+    readPhoto: async () => readPhoto(context, { item, root }, request.reuseViewerCopy),
   });
-  await saveThumbnail(thumbnailPath(context.thumbsDir, item.id, size), result.webp);
+  await saveCacheFile(thumbnailPath(context.thumbsDir, item.id, size), result.webp);
   return result;
 }
 
@@ -194,9 +193,13 @@ export async function findOrMakeViewerCopy(
   if (item.kind !== 'image' || !needsViewerCopy(item.relPath)) {
     throw new AppError('not-found', 'Only HEIC, TIFF and PSD photos have viewer copies.');
   }
+  if (item.thumbState === 'failed') {
+    // The queue already tried this file four times; trying again on every request would fail too.
+    throw new AppError('media-unreadable', `${item.relPath} couldn't be read to show it.`);
+  }
   const cached =
     item.thumbState === 'ready'
-      ? await readThumbnail(viewerCopyPath(context.thumbsDir, item.id))
+      ? await readCacheFile(viewerCopyPath(context.thumbsDir, item.id))
       : undefined;
   return cached ?? makeAndSaveViewerCopy(context, item, root);
 }
