@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.25.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.24.0...v1.25.0) (2026-11-10)
+
+
+### Features
+
+* reach the 1.0 milestone: test every P0 and P1 row, finish the README and release notes ([#84](https://github.com/jimjohnsondev/morgue-file/issues/84)) ([82671eb](https://github.com/jimjohnsondev/morgue-file/commit/82671eb29b10bc463785f040215fbc350279ca0b))
+
 ## [1.24.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.23.0...v1.24.0) (2026-11-10)
 
 
