@@ -16,10 +16,17 @@ export const LIBRARY_FILE_NAME = 'library.db';
  */
 export function openDatabase(file: string): Db {
   const db = new Database(file);
-  db.pragma('journal_mode = WAL');
-  db.pragma('synchronous = NORMAL');
-  db.pragma('foreign_keys = ON');
-  db.pragma('busy_timeout = 5000');
-  db.function('name_words', { deterministic: true }, (relPath) => nameWords(String(relPath)));
-  return db;
+  try {
+    db.pragma('journal_mode = WAL');
+    db.pragma('synchronous = NORMAL');
+    db.pragma('foreign_keys = ON');
+    db.pragma('busy_timeout = 5000');
+    db.function('name_words', { deterministic: true }, (relPath) => nameWords(String(relPath)));
+    return db;
+  } catch (error) {
+    // A file that isn't a database fails at the first pragma. Closing lets go of the file and its
+    // -shm, which Windows otherwise keeps locked, so a restore can replace them (R26).
+    db.close();
+    throw error;
+  }
 }

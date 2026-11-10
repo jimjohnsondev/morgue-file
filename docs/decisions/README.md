@@ -19,3 +19,4 @@ What gets easier, what gets harder, what to revisit.
 ```
 
 - [0001: Tool versions at scaffold](0001-tool-versions.md)
+- [0002: yazl writes backup zips at run time](0002-yazl-at-runtime.md)

@@ -23,7 +23,9 @@ export type AppErrorCode =
   | 'too-large'
   | 'fetch-refused'
   | 'fetch-failed'
-  | 'compare-board-full';
+  | 'compare-board-full'
+  | 'invalid-backup'
+  | 'restore-running';
 
 /**
  * An expected failure with a stable code, so callers can react to the code
@@ -62,6 +64,8 @@ const statusByCode: Readonly<Record<AppErrorCode, number>> = {
   'fetch-refused': 400,
   'fetch-failed': 502,
   'compare-board-full': 409,
+  'invalid-backup': 400,
+  'restore-running': 409,
 };
 
 /** Returns the HTTP status for an error code, kept in one place so routes agree. */

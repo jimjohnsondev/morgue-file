@@ -1,4 +1,4 @@
-// The schema version and backups, for migrations.ts.
+// The schema version and backups, for migrations.ts, and the checks a restored backup passes.
 import type { Db } from '../connection.js';
 
 /** The highest migration applied, kept in SQLite's user_version header field. */
@@ -18,4 +18,16 @@ export function writeSchemaVersion(db: Db, version: number): void {
 /** Writes a consistent copy of the whole database, including what's still in the WAL file. */
 export function backUpDatabase(db: Db, targetFile: string): void {
   db.prepare('VACUUM INTO ?').run(targetFile);
+}
+
+/** Says whether SQLite finds every page, index and free-list entry of the file sound. */
+export function isDatabaseSound(db: Db): boolean {
+  const rows = db.pragma('quick_check') as { quick_check: string }[];
+  return rows.length === 1 && rows[0]?.quick_check === 'ok';
+}
+
+/** Says whether the database holds a table of this name. */
+export function hasTable(db: Db, name: string): boolean {
+  const row = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name);
+  return row !== undefined;
 }

@@ -1,5 +1,5 @@
-// An edit control drawn as the frames show it but not working yet: the PRs still to come bring
-// each one to life (backup and restore, 24).
+// An edit control drawn as the frames show it but with nothing to do, such as the [x] of a chip
+// whose removal isn't built.
 
 /** A link-styled button for an edit action that isn't built yet, so it does nothing. */
 export function PendingAction(props: { readonly label: string; readonly name?: string }) {

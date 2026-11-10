@@ -100,3 +100,34 @@ test('R36: a model field is added, renamed, removed and restored from the Fields
   await expect(fields.getByRole('rowheader', { name: 'Agency link', exact: true })).toBeVisible();
   await expect(fields.getByText('Removed:')).toBeHidden();
 });
+
+test('R26: a backup saved with one click from Settings restores the library as it was', async ({
+  page,
+}) => {
+  page.on('dialog', () => {
+    throw new Error('Settings opened a dialog (R37).');
+  });
+  await page.goto(`${server!.url}/settings`);
+  const backup = page.getByRole('region', { name: 'Backup and restore' });
+  const downloading = page.waitForEvent('download');
+  await backup.getByRole('link', { name: 'Back up now' }).click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toMatch(/^MorgueFile-backup-.+Z\.zip$/);
+  const zipFile = test.info().outputPath(download.suggestedFilename());
+  await download.saveAs(zipFile);
+
+  const table = page.getByRole('region', { name: 'Subcategories' });
+  await table.getByLabel('Section').selectOption('photos');
+  await table.getByLabel('New subcategory name').fill('After the backup');
+  await table.getByRole('button', { name: 'Add subcategory' }).click();
+  await expect(table.getByRole('cell', { name: 'After the backup', exact: true })).toBeVisible();
+
+  await backup.getByLabel('Restore from a backup').setInputFiles(zipFile);
+  await Promise.all([
+    page.waitForURL(`${server!.url}/`),
+    backup.getByRole('button', { name: 'Restore', exact: true }).click(),
+  ]);
+  await page.goto(`${server!.url}/settings`);
+  await expect(table.getByRole('cell', { name: 'Figure', exact: true })).toBeVisible();
+  await expect(table.getByRole('cell', { name: 'After the backup', exact: true })).toHaveCount(0);
+});
