@@ -131,7 +131,7 @@ function unopenedMessage(kept: string | undefined, isPutBack: boolean): string {
   }
   return kept === undefined
     ? `${refusal}.`
-    : `${refusal}, and the library could not be put back. It is kept in the data folder as ${kept}.`;
+    : `${refusal}, and the library could not be put back. It is kept as ${kept}.`;
 }
 
 /** Swaps in the restored library, or puts the old one back if that fails or it won't open. */
