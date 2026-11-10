@@ -57,8 +57,8 @@ function pagesCaption(ranges: readonly PageRange[] | undefined): string | undefi
 }
 
 /**
- * Where a Library cover on the strip opens: the item at the first page the model is on, in the
- * order of the strip's "View all" list (R17), or its first page when the model is in all of it.
+ * Where a Library cover on the strip opens: the item at the first page of the model's first range
+ * there (R17), keeping the strip's "View all" list as `from`; page 1 when the model is in all of it.
  */
 function libraryCardHref(
   itemId: number,
