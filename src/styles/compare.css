@@ -49,6 +49,12 @@
   min-width: 0;
 }
 
+/* The title bar's heading keeps the bar's own type; the layout choices sit beside it. */
+.compare-board__heading {
+  margin: 0;
+  font: inherit;
+}
+
 .compare-board__layouts {
   display: flex;
   gap: var(--space-3);

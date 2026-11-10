@@ -140,16 +140,16 @@ export function CompareTemplate(props: { readonly model: CompareModel }) {
       data-compare-board
       data-compare-window={windowPlace}
     >
-      <h1 class="panel__title panel__title--split">
-        <span>
+      <div class="panel__title panel__title--split">
+        <h1 class="compare-board__heading">
           Compare board · {String(count)} of {String(model.limit)} references
-        </span>
+        </h1>
         <span class="panel__title-note compare-board__layouts">
           {LAYOUT_CHOICES.map((choice) => (
             <LayoutChoice key={choice.layout} {...choice} current={model.layout} />
           ))}
         </span>
-      </h1>
+      </div>
       {count === 0 ? (
         <EmptyBoard limit={model.limit} />
       ) : (

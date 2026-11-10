@@ -103,6 +103,26 @@ describe('the board page', () => {
     expect(html).toContain('pose_session_04_seated.mp4');
   });
 
+  it('R22: a reference whose original is offline or missing shows its thumbnail and why', async () => {
+    const [first, second] = app.figureIds;
+    await addToBoard(first!, second!);
+    app.db
+      .prepare("UPDATE items SET missing_since = '2026-10-31T12:00:00.000Z' WHERE id = ?")
+      .run(second!);
+    try {
+      const missing = (await app.get('/compare')).body;
+      expect(missing).toContain(`src="/media/thumb/${String(second!)}/320?v=`);
+      expect(missing).toContain('original missing');
+      app.db.exec("UPDATE roots SET status = 'offline'");
+      const offline = (await app.get('/compare')).body;
+      expect(offline).toContain(`src="/media/thumb/${String(first!)}/320?v=`);
+      expect(offline).toContain('original offline');
+    } finally {
+      app.db.prepare('UPDATE items SET missing_since = NULL WHERE id = ?').run(second!);
+      app.db.exec("UPDATE roots SET status = 'online'");
+    }
+  });
+
   it('R22: the board has its own window, without the banner, tabs or footer', async () => {
     const html = (await app.get('/compare')).body;
     expect(html).toContain('<title>Compare board · Morgue File</title>');

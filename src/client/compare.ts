@@ -96,7 +96,7 @@ function markPlaced(): void {
  */
 function moveToSavedPlace(board: HTMLElement): void {
   const saved = readSavedPlace(board);
-  if (window.opener === null || saved === undefined || wasPlaced()) {
+  if (saved === undefined || wasPlaced()) {
     return;
   }
   markPlaced();
@@ -137,7 +137,9 @@ function keepPlace(): void {
 }
 
 const board = document.querySelector<HTMLElement>('[data-compare-board]');
-if (board !== null) {
+// Only the window the button opened keeps a place: the board opened in a browser tab by its
+// address would otherwise save the main window's size as the board's.
+if (board !== null && window.opener !== null) {
   moveToSavedPlace(board);
   keepPlace();
 }
