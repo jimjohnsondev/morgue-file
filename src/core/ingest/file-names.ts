@@ -19,14 +19,18 @@ const UNSAFE_CHARACTERS = /[<>:"/\\|?*\p{Cc}]/gu;
 /** Names Windows reserves for devices, with or without an extension (`con.jpg` too). */
 const RESERVED_STEMS = /^(con|prn|aux|nul|com\d|lpt\d)$/i;
 
-/** The extension each fetched content type is saved with: the image and video formats R6 keeps. */
+/** The extension each fetched content type is saved with: the kept image and video formats. */
 const EXTENSION_BY_CONTENT_TYPE: ReadonlyMap<string, string> = new Map([
   ['image/jpeg', '.jpg'],
   ['image/png', '.png'],
   ['image/webp', '.webp'],
   ['image/gif', '.gif'],
+  ['image/heic', '.heic'],
+  ['image/tiff', '.tif'],
+  ['image/vnd.adobe.photoshop', '.psd'],
   ['video/mp4', '.mp4'],
   ['video/quicktime', '.mov'],
+  ['video/webm', '.webm'],
 ]);
 
 /** Shortens a name to the limit, keeping its extension. */
@@ -79,7 +83,7 @@ function mediaTypeOf(contentType: string | undefined): string {
 /**
  * Names a file fetched from a web address: the last part of its path if that names a kept image
  * or video of the type the server sent, else that name (or `image`) with the type's extension.
- * Anything but the image and video types R6 keeps is refused (docs/ARCHITECTURE.md, Security).
+ * Anything but the image and video types kept (R6, R7) is refused (docs/ARCHITECTURE.md, Security).
  */
 export function nameFetchedFile(url: URL, contentType: string | undefined): string {
   const extension = EXTENSION_BY_CONTENT_TYPE.get(mediaTypeOf(contentType));

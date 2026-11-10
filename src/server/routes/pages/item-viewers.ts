@@ -7,6 +7,7 @@ import {
   hasSquareThumbnail,
   sizeToLabel,
 } from '#core/jobs/thumbnail-files.js';
+import { needsViewerCopy } from '#core/jobs/workers/viewer-copy.js';
 
 import { itemPageHref, viewParams } from './item-view.js';
 import { pagesOnShow, readerTargets } from './reader-pages.js';
@@ -109,6 +110,16 @@ function unavailableModel(
   };
 }
 
+/**
+ * What the image viewer opens: the original, or for a HEIC, TIFF or PSD photo, its JPEG copy,
+ * addressed by the original's time and size so a changed file is fetched again.
+ */
+function photoSource(item: Item): string {
+  return needsViewerCopy(item.relPath)
+    ? `/media/view/${String(item.id)}?v=${String(item.mtimeMs)}-${String(item.size)}`
+    : `/media/original/${String(item.id)}`;
+}
+
 /** The viewer that suits the item's kind, or its thumbnail if the original can't be opened. */
 export function buildViewerModel(source: ViewerSource): ViewerModel {
   const { item, label, view } = source;
@@ -124,7 +135,7 @@ export function buildViewerModel(source: ViewerSource): ViewerModel {
         kind: 'image',
         title: `Viewer · ${label}`,
         viewingHref,
-        src: original,
+        src: photoSource(item),
         alt: label,
         width: item.width,
         height: item.height,

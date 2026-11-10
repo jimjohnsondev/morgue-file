@@ -6,15 +6,20 @@ import type { ItemKind } from '#core/db/repositories/items.js';
 /** The kinds a single file can be. A page folder is a folder, so it isn't one of them. */
 export type FileKind = Exclude<ItemKind, 'pagefolder'>;
 
-/** Every P0 format (R6), by lower-case extension. P1 formats join in PR 20. */
+/** Every P0 format (R6) and P1 format (R7), by lower-case extension. */
 const KIND_BY_EXTENSION: ReadonlyMap<string, FileKind> = new Map([
   ['.jpg', 'image'],
   ['.jpeg', 'image'],
   ['.png', 'image'],
   ['.webp', 'image'],
   ['.gif', 'image'],
+  ['.heic', 'image'],
+  ['.tif', 'image'],
+  ['.tiff', 'image'],
+  ['.psd', 'image'],
   ['.mp4', 'video'],
   ['.mov', 'video'],
+  ['.webm', 'video'],
   ['.pdf', 'pdf'],
   ['.cbz', 'cbz'],
 ]);
