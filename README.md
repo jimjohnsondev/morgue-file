@@ -9,8 +9,9 @@ browsable gallery with a profile page for each model, styled like an early-2000s
 on your own Windows PC in your web browser, works offline, and never changes your files. Only your
 own PC can open it.
 
-> **Status:** under construction. The archive pages arrive over the next releases; a screenshot
-> of the finished gallery is added here once its design is approved.
+Every feature planned for its first full release is in: watched folders, drag and drop, the
+Photos, Video, Library and Models pages, tags, collections, model profiles, search, the page
+reader and video tools, the compare board, and backup and restore.
 
 ## Requirements
 
@@ -80,7 +81,37 @@ you close Morgue File, it carries on where it stopped next time.
   references, layout, size and place on screen until you change them, even after a restart. If
   your browser blocks the window, allow pop-ups for Morgue File's address.
 
-More about browsing, tagging and searching is added here as those features arrive.
+- **Browsing:** the tabs at the top lead to Home, Photos, Video, Library, Models and Settings.
+  Home picks up where you left off, and shows what was added lately, what waits in Unsorted,
+  your collections and a few random picks. Every list is pages of thumbnails with « Prev and
+  Next; the filter panel above it narrows the list and can group it, by rating or a field.
+- **Viewing:** click a thumbnail to open it. Photos zoom with **−**, **+**, 100% and 200%, and
+  pan by dragging. Videos play and scrub, step one frame at a time, and loop a range. Books and
+  magazines open in a page reader, a page or a spread at a time, with a strip of pages to jump
+  to. **←** and **→** move to the previous and next item of the list you came from, and **V**
+  turns viewing mode (the picture alone) on and off. A video or book you reopen from Home starts
+  at the time or page you reached.
+- **Tags and collections:** on an item's page, type a tag under its details; suggestions appear
+  as you type. To tag many at once, click **Select items to tag** above a list, tick thumbnails
+  (Shift-click ticks a run, Ctrl+A the page, or choose the whole list), then tag them, add them
+  to a collection, file them in a subcategory or link them to a model in one go. Collections
+  hold whatever you pick, and an item can sit in many; nothing moves on disk.
+- **Models:** each model has a profile page with a portrait, fields such as name, bio and
+  agency link, model tags, and a strip of their photos, videos and Library items. Link items to a
+  model with **add model** on the item's page, or from the selection panel. In the page reader,
+  **add model to pages** links just the pages on show, and the profile opens the book there.
+- **Notes, rating and other fields:** an item's details hold its rating, source URL and notes,
+  each changed in place with **[change]**. Notes save as you leave the box. Add, rename, reorder
+  or remove fields for items and models under **Settings → Fields**; a removed field and its
+  values can be restored for 30 days.
+- **Searching:** type in the search box at the top. Words match file names, tags, collections,
+  subcategories, notes and models. Narrow a search with terms such as `tag:hands`,
+  `model:Elena`, `in:photos`, `sub:figure`, `type:pdf`, `rating:3+` or `-tag:drapery`; each term
+  shows above the results with a link to remove it. **search tips**, linked from a search that
+  finds nothing, lists every term.
+- **Drag and drop:** drop files, or an image from another browser tab, anywhere on a page, or
+  paste one with Ctrl+V. They are saved in the Inbox, with the web address they came from. A
+  file that is already in the archive isn't copied again; Morgue File opens the one it has.
 
 ## Update
 
@@ -97,7 +128,10 @@ are. Before its first launch after an update, Morgue File backs up its database.
 - **With Keep data with the app:** close Morgue File, then copy or move the whole **MorgueFile**
   folder. Everything comes with it. On a USB drive it works under any drive letter.
 - **With a folder you chose:** move the **MorgueFile** folder freely; your data stays where it
-  is. To move the data too, use Settings → Move data (coming in a later release).
+  is. To move the data too, close Morgue File, move the data folder, then start Morgue File. It
+  says it can't find its data folder and shows the setup page. Check your Reference folder,
+  choose **Use a folder I choose**, type where the data is now, click **Check**, then **Save**.
+  The library there is used, not replaced.
 - **Backing up the library:** open **Settings**, then click **Back up now** under Backup and
   restore. Your browser saves a zip named like `MorgueFile-backup-2026-11-10T14-32-05Z.zip`. It
   holds your tags, collections, subcategories, fields, notes, model profiles and settings, but not
@@ -161,6 +195,7 @@ npm run fixtures  # makes the invented test archive in fixtures/generated/ (abou
 - `docs/DESIGN-BRIEF.md` — what it looks like, with the exact design values
 - `docs/ARCHITECTURE.md` — how it is built, and the build plan
 - `docs/STYLE.md` — how the code is written
+- `docs/RELEASE-NOTES.md` — what the 1.0 milestone holds, and what waits for later
 - `CLAUDE.md` — instructions for Claude Code, which builds this repo through pull requests
 
 ## License
