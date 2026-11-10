@@ -29,10 +29,10 @@ import type { Subcategory } from '#core/db/repositories/subcategories.js';
 import type { FieldValue } from '#core/fields/field-values.js';
 import type { FieldWithValue } from '#core/fields/fields.js';
 import type { Query } from '#core/query/query-types.js';
-import type { IssueOf } from './item-details.js';
-import type { ItemView } from './item-view.js';
 import type { Crumb } from '../../views/parts/breadcrumb.js';
 import type { ItemModel, ListNavModel, ViewerModel } from '../../views/templates/item-template.js';
+import type { IssueOf } from './item-details.js';
+import type { ItemView } from './item-view.js';
 
 /** An Item page's model, with the page title and the section whose tab it sits under. */
 export type ItemPage = {

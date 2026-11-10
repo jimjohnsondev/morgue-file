@@ -10,8 +10,8 @@ import { itemLabel } from '../views/format.js';
 
 import type { Db } from '#core/db/connection.js';
 import type { LibraryRuntime } from '../library-runtime.js';
-import type { PageContext } from './page-context.js';
 import type { OfflineNotice, PageStatus, SavedNotice } from '../views/parts/status-notices.js';
+import type { PageContext } from './page-context.js';
 
 /**
  * Any page can carry `saved=<item id>`, the item a drop just made, to show its notice (E6), and

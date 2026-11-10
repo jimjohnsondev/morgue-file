@@ -14,11 +14,11 @@ import { pagesOnShow, readerTargets } from './reader-pages.js';
 
 import type { Item } from '#core/db/repositories/items.js';
 import type { Root } from '#core/db/repositories/roots.js';
-import type { ItemView } from './item-view.js';
 import type { PageReaderModel, ReaderLink } from '../../views/parts/page-reader.js';
 import type { UnavailableViewerModel } from '../../views/parts/unavailable-viewer.js';
 import type { ViewerFrame } from '../../views/parts/viewers.js';
 import type { ViewerModel } from '../../views/templates/item-template.js';
+import type { ItemView } from './item-view.js';
 
 /** The frame rate frame-step uses when ffprobe hasn't measured the video yet. */
 const DEFAULT_FPS = 30;

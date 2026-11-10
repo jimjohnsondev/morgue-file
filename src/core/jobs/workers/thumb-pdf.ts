@@ -7,8 +7,8 @@ import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 import { cropToThumbnail } from './crop.js';
 
-import type { ThumbnailResult } from './crop.js';
 import type { ThumbnailSize } from '../thumbnail-files.js';
+import type { ThumbnailResult } from './crop.js';
 
 /**
  * pdf.js's copies of the 14 standard PDF fonts. PDFs that name Helvetica or Times without

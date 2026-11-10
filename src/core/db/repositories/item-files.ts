@@ -2,8 +2,8 @@
 // missing files, and the media details a thumbnail job finds.
 import { optional } from './sql-values.js';
 
-import type { ItemKind, ThumbState } from './items.js';
 import type { Db } from '../connection.js';
+import type { ItemKind, ThumbState } from './items.js';
 
 /**
  * What a scan compares with the file it finds at an item's path, and what tells a moved file

@@ -10,9 +10,9 @@ import { cropToThumbnail } from './crop.js';
 import { readZipPages } from './zip.js';
 
 import type { PagedOriginal } from '#core/archive/publication-pages.js';
+import type { ThumbnailSize } from '../thumbnail-files.js';
 import type { ThumbnailResult } from './crop.js';
 import type { OriginalRef } from './original-ref.js';
-import type { ThumbnailSize } from '../thumbnail-files.js';
 
 /** Makes a CBZ's cover from its first page and counts its pages. */
 export async function makeCbzThumbnail(

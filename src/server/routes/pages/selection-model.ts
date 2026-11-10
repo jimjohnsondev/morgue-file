@@ -13,14 +13,14 @@ import { listHref } from './list-view.js';
 
 import type { Db } from '#core/db/connection.js';
 import type { Section } from '#core/db/repositories/items.js';
-import type { ListSpec } from './list-model.js';
-import type { ListView } from './list-view.js';
 import type {
   Choice,
   ChoiceGroup,
   SelectionPanelModel,
 } from '../../views/parts/selection-panel.js';
 import type { ThumbCard } from '../../views/parts/thumb-grid.js';
+import type { ListSpec } from './list-model.js';
+import type { ListView } from './list-view.js';
 
 const SECTIONS: readonly Section[] = ['photos', 'video', 'library'];
 

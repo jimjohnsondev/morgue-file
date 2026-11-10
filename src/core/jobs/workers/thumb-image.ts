@@ -3,8 +3,8 @@ import sharp from 'sharp';
 
 import { cropToThumbnail } from './crop.js';
 
-import type { ThumbnailResult } from './crop.js';
 import type { ThumbnailSize } from '../thumbnail-files.js';
+import type { ThumbnailResult } from './crop.js';
 
 /** Makes a photo's thumbnail and reads its size as it is shown, after EXIF rotation. */
 export async function makeImageThumbnail(

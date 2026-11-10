@@ -1,8 +1,8 @@
 // The portrait chooser on the profile editor (frame 14): the model's photos, one radio button
 // each, the chosen one framed in magenta. The portrait can be any photo in the archive (R14), so
 // the current one shows here even when the model isn't linked to it.
-import type { StripLink } from './preview-strip.js';
 import type { PortraitChoice } from '../templates/model-edit-template.js';
+import type { StripLink } from './preview-strip.js';
 
 /** One photo to choose, with its file name beside its radio button. */
 function Choice(props: { readonly choice: PortraitChoice }) {

@@ -32,11 +32,11 @@ import type { Db } from '#core/db/connection.js';
 import type { Section } from '#core/db/repositories/items.js';
 import type { CompiledQuery } from '#core/query/compile-query.js';
 import type { Query } from '#core/query/query-types.js';
-import type { NamedGrouping } from './list-grouping.js';
-import type { ListAddress, ListView } from './list-view.js';
 import type { Crumb } from '../../views/parts/breadcrumb.js';
 import type { FilterPanelModel } from '../../views/parts/filter-panel.js';
 import type { EmptyHelp, IndexModel, ToolbarModel } from '../../views/templates/index-template.js';
+import type { NamedGrouping } from './list-grouping.js';
+import type { ListAddress, ListView } from './list-view.js';
 
 /** What a route says about its list; the rest is read from the library. */
 export type ListSpec = {

@@ -21,5 +21,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Same as npm: a major version of an action (release-please-action 5, say) can change how the
+    # pipeline behaves, so it is upgraded on purpose, not merged by Dependabot.
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
     commit-message:
       prefix: ci
