@@ -5,6 +5,7 @@ import Fastify from 'fastify';
 
 import { loadPageAssets } from './assets.js';
 import { registerErrorHandler } from './error-handler.js';
+import { registerCompareBoardApi } from './routes/api/compare-board.js';
 import { registerFieldApi } from './routes/api/fields.js';
 import { registerHistoryApi } from './routes/api/history.js';
 import { registerIndexingApi } from './routes/api/indexing.js';
@@ -22,6 +23,7 @@ import { registerHealthRoute } from './routes/healthz.js';
 import { registerOriginalRoutes } from './routes/media-originals.js';
 import { registerMediaRoutes } from './routes/media.js';
 import { registerCardListRoutes } from './routes/pages/card-lists.js';
+import { registerCompareRoute } from './routes/pages/compare-route.js';
 import { registerHomeRoute } from './routes/pages/home.js';
 import { registerIndexRoutes } from './routes/pages/index-routes.js';
 import { registerItemRoute } from './routes/pages/item-route.js';
@@ -61,6 +63,7 @@ function registerLibraryApis(app: FastifyInstance, library: LibraryRuntime | und
   registerModelProfileApi(app, library);
   registerFieldApi(app, library);
   registerItemFieldApi(app, library);
+  registerCompareBoardApi(app, library);
 }
 
 /** Creates the app with every route registered, ready to listen or to inject requests into. */
@@ -92,6 +95,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerSearchRoute(app, pageContext);
   registerSearchTipsRoute(app, pageContext);
   registerItemRoute(app, pageContext);
+  registerCompareRoute(app, pageContext);
   registerSettingsPage(app, pageContext);
   registerMediaRoutes(app, library);
   registerOriginalRoutes(app, library);

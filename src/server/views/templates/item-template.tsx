@@ -78,6 +78,21 @@ function ListNav(props: { readonly nav: ListNavModel }) {
   );
 }
 
+/**
+ * "add to compare board" (R22): client/compare.ts puts the item on the board and opens the
+ * board's window. A full board's refusal shows beside it.
+ */
+function CompareAdd(props: { readonly itemId: number }) {
+  return (
+    <span class="compare-add">
+      <button type="button" class="link-button" data-compare-add={String(props.itemId)}>
+        add to compare board
+      </button>
+      <span class="compare-add__result" role="status" data-compare-result hidden />
+    </span>
+  );
+}
+
 /** The viewer that suits the item: image viewer, video player or page reader. */
 function ViewerSlot(props: { readonly viewer: ViewerModel }) {
   const { viewer } = props;
@@ -107,7 +122,10 @@ export function ItemTemplate(props: { readonly model: ItemModel }) {
     >
       <div class="item-page__heading">
         <Breadcrumb crumbs={model.breadcrumb} />
-        {model.listNav && <ListNav nav={model.listNav} />}
+        <span class="item-page__tools">
+          {model.listNav && <ListNav nav={model.listNav} />}
+          <CompareAdd itemId={model.history.itemId} />
+        </span>
       </div>
       <div class={isFolded ? 'item-page__body item-page__body--folded' : 'item-page__body'}>
         <ViewerSlot viewer={model.viewer} />

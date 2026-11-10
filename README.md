@@ -74,6 +74,11 @@ you close Morgue File, it carries on where it stopped next time.
   compatibility** turned on (its default), never the separate layers.
 - **More folders:** under **Settings → Watched folders**, add another folder, such as
   `D:\Phone exports`. It is indexed and watched like the Reference folder.
+- **Compare board:** on any item's page, click **add to compare board** to put it side by side
+  with up to three others in a window of its own. Choose **side by side** or **2 × 2 grid** at
+  the top of that window, and **[remove]** under a reference to make room. The board keeps its
+  references, layout, size and place on screen until you change them, even after a restart. If
+  your browser blocks the window, allow pop-ups for Morgue File's address.
 
 More about browsing, tagging and searching is added here as those features arrive.
 
