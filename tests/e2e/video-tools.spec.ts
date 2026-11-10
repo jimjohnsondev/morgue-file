@@ -1,6 +1,7 @@
 // Frame-exact video tools (build plan row 22, R20): frame-step moves one frame at a time from the
 // frame on show, on MP4 and MOV, and a loop range plays only the frames between its in and out
-// points. The fixture videos are 30 fps, so the frame the browser shows is its media time × 30.
+// points. The fixture videos are 30 fps, so the frame the browser shows is its media time × 30,
+// counted from 0 here; the player's readout counts from 1, as the design brief's frame 7 does.
 import { expect, test } from '../support/shared-server-test.js';
 
 import type { Page } from '@playwright/test';
@@ -40,10 +41,10 @@ async function shownFrames(page: Page): Promise<number[]> {
   return page.evaluate(() => (window as unknown as FrameRecord).shownFrames);
 }
 
-/** Expects the browser to be showing this frame, and the player to say so. */
+/** Expects the browser to be showing this frame, and the player to say so, counting from 1. */
 async function expectFrameOnShow(page: Page, frame: number): Promise<void> {
   await expect(page.locator('[data-video-text="frame"]')).toHaveText(
-    `frame ${frame.toLocaleString('en-US')}`,
+    `frame ${(frame + 1).toLocaleString('en-US')}`,
   );
   await expect.poll(async () => (await shownFrames(page)).at(-1)).toBe(frame);
 }
@@ -64,7 +65,7 @@ for (const { format, indexUrl, label } of [
     await page.getByRole('button', { name: '‹ Frame' }).click();
     await page.keyboard.press(',');
     await expectFrameOnShow(page, 33);
-    await expect(page.locator('[data-video-text="time"]')).toContainText('0:01.10 /');
+    await expect(page.locator('[data-video-text="time"]')).toContainText('0:01.11 /');
   });
 }
 

@@ -4,8 +4,10 @@
 // (R20). The comma and period keys step, and I and O (or [ and ]) set the loop's in and out points.
 import { onPageKeys } from './keys.js';
 import {
+  FLOAT_SLACK,
   frameAtTime,
   frameHoldingTime,
+  frameNumber,
   lastFrame,
   seekTimeOfFrame,
   startOfFrame,
@@ -27,7 +29,7 @@ type Loop = { in: number | undefined; out: number | undefined; isOn: boolean };
 /** 0:42.12, or 1:02:07.50 past an hour: minutes, seconds and hundredths. */
 function formatTimecode(totalSeconds: number): string {
   // The slack keeps a frame's start, such as 7 ÷ 30 s, from reading a hundredth early.
-  const totalHundredths = Math.floor(totalSeconds * 100 + 1e-6);
+  const totalHundredths = Math.floor(totalSeconds * 100 + FLOAT_SLACK);
   const hundredths = totalHundredths % 100;
   const seconds = Math.floor(totalHundredths / 100) % 60;
   const minutes = Math.floor(totalHundredths / 6000);
@@ -55,12 +57,15 @@ function durationOf(video: HTMLVideoElement): number {
   return Number.isFinite(video.duration) ? video.duration : 0;
 }
 
-/** Brings the time, frame number, scrub bar and play button up to date with the frame on show. */
+/**
+ * Brings the time, frame number, scrub bar and play button up to date. The time is the one the
+ * player was scrubbed or stepped to, and the frame number names the frame on show.
+ */
 function showPosition(player: Player): void {
-  const { video, scrub, fps, shownFrame } = player;
+  const { video, scrub, shownFrame } = player;
   const duration = durationOf(video);
-  setText('time', `${formatTimecode(startOfFrame(shownFrame, fps))} / ${formatTimecode(duration)}`);
-  setText('frame', `frame ${shownFrame.toLocaleString('en-US')}`);
+  setText('time', `${formatTimecode(video.currentTime)} / ${formatTimecode(duration)}`);
+  setText('frame', `frame ${frameNumber(shownFrame).toLocaleString('en-US')}`);
   scrub.max = String(duration);
   if (!video.seeking) {
     scrub.value = String(video.currentTime);
@@ -93,17 +98,23 @@ function showLoop(player: Player, loop: Loop): void {
     return;
   }
   const startTime = startOfFrame(start, fps);
-  // The bar runs to the end of the out frame, since that frame plays.
-  const endTime = Math.min(duration, startOfFrame(end + 1, fps));
+  const endTime = startOfFrame(end, fps);
   player.loopBar.hidden = false;
   player.loopBar.style.left = `${String((startTime / duration) * 100)}%`;
   player.loopBar.style.width = `${String(((endTime - startTime) / duration) * 100)}%`;
 }
 
-/** Seeks so the browser shows exactly this frame, and counts it as on show straight away. */
+/** Steps to the middle of this frame, and counts it as on show straight away. */
 function showFrame(player: Player, frame: number): void {
   player.shownFrame = frame;
   player.video.currentTime = seekTimeOfFrame(frame, player.fps);
+  showPosition(player);
+}
+
+/** Seeks to a time from the scrub bar or the history, counting its frame as on show straight away. */
+function showTime(player: Player, seconds: number): void {
+  player.shownFrame = frameHoldingTime(seconds, player.fps);
+  player.video.currentTime = seconds;
   showPosition(player);
 }
 
@@ -200,19 +211,19 @@ function enableSettings(video: HTMLVideoElement): void {
  * length; a page with no start time plays from 0:00.
  */
 function startAtHistoryTime(player: Player): void {
-  const { video, fps } = player;
+  const { video } = player;
   const start = Number(video.dataset.start);
   if (video.dataset.start === undefined || !Number.isFinite(start)) {
     return;
   }
   if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
-    showFrame(player, frameHoldingTime(start, fps));
+    showTime(player, start);
     return;
   }
   video.addEventListener(
     'loadedmetadata',
     () => {
-      showFrame(player, frameHoldingTime(start, fps));
+      showTime(player, start);
     },
     { once: true },
   );
@@ -233,7 +244,7 @@ function enablePlayer(player: Player): void {
   }
   followFrames(player, loop);
   scrub.addEventListener('input', () => {
-    showFrame(player, frameHoldingTime(Number(scrub.value), player.fps));
+    showTime(player, Number(scrub.value));
   });
   enableSettings(video);
   startAtHistoryTime(player);

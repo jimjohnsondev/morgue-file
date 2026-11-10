@@ -52,15 +52,14 @@ async function firstPickUpCard(page: Page, text: string) {
 test('R35: reopening a video from Home lands at the same video time', async ({ page }) => {
   await openFromIndex(page, '/video/poses', 'pose_session_01_reclining.mp4');
   await expect(page.locator('[data-video-text="time"]')).toContainText('/ 0:02.');
-  // 1.25 s falls in frame 37 at 30 fps, and the timecode shows where that frame starts (R20).
   await page.locator('[data-video-scrub]').fill('1.25');
-  await expect(page.locator('[data-video-text="time"]')).toContainText('0:01.23 /');
+  await expect(page.locator('[data-video-text="time"]')).toContainText('0:01.25 /');
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Home' }).click();
 
   const card = await firstPickUpCard(page, 'Video › Poses · at 0:01');
   await expect(card).toContainText('pose_session_01_reclining.mp4');
   await card.locator('a').first().click();
-  await expect(page.locator('[data-video-text="time"]')).toContainText('0:01.23 /');
+  await expect(page.locator('[data-video-text="time"]')).toContainText('0:01.25 /');
   const time = await page
     .locator('[data-video-player]')
     .evaluate((video: HTMLVideoElement) => video.currentTime);

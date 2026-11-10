@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   frameAtTime,
   frameHoldingTime,
+  frameNumber,
   lastFrame,
   seekTimeOfFrame,
   steppedFrame,
@@ -28,6 +29,12 @@ describe('R20: frame arithmetic for frame-step and the loop range', () => {
     expect(frameHoldingTime(42, 30)).toBe(1260);
     expect(frameHoldingTime(60, 30)).toBe(1800);
     expect(frameHoldingTime(0.0499, 30)).toBe(1);
+  });
+
+  it("numbers frames from 1, as the design brief's frame 7 does", () => {
+    expect(frameNumber(frameHoldingTime(42.12, 30))).toBe(1264);
+    expect(frameNumber(frameHoldingTime(58.5, 30))).toBe(1756);
+    expect(frameNumber(frameHoldingTime(93.6, 30))).toBe(2809);
   });
 
   it('steps inside the video, from the first frame to the last', () => {
