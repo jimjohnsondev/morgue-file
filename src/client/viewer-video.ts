@@ -26,6 +26,9 @@ type Player = {
 /** The loop range, as its first and last frames, and whether the player keeps to it. */
 type Loop = { in: number | undefined; out: number | undefined; isOn: boolean };
 
+/** How far past a frame's start a seek to that start goes: far under a hundredth of a second. */
+const FRAME_START_HAIR = 1e-4;
+
 /** 0:42.12, or 1:02:07.50 past an hour: minutes, seconds and hundredths. */
 function formatTimecode(totalSeconds: number): string {
   // The slack keeps a frame's start, such as 7 ÷ 30 s, from reading a hundredth early.
@@ -113,8 +116,10 @@ function showFrame(player: Player, frame: number): void {
 
 /** Seeks to a time from the scrub bar or the history, counting its frame as on show straight away. */
 function showTime(player: Player, seconds: number): void {
-  player.shownFrame = frameHoldingTime(seconds, player.fps);
-  player.video.currentTime = seconds;
+  const frame = frameHoldingTime(seconds, player.fps);
+  player.shownFrame = frame;
+  // A time on a frame's exact start can land on the frame before it, so seek a hair past it.
+  player.video.currentTime = Math.max(seconds, startOfFrame(frame, player.fps) + FRAME_START_HAIR);
   showPosition(player);
 }
 

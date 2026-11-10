@@ -96,7 +96,7 @@ test('frame 7: a pose video plays, steps by frame and loops a range', async ({ p
   await expect(time).toContainText('/ 3:15.');
   await page.locator('[data-video-scrub]').fill('42');
   await page.getByRole('button', { name: 'Frame ›' }).click();
-  // 42 s starts the 1,261st frame, as 0:42.12 lies in frame 1,264 in the design brief (R20).
+  // 42 s is the start of frame 1,261 (counted from 1, as in the design brief); one step shows 1,262.
   await expect(page.locator('[data-video-text="frame"]')).toHaveText('frame 1,262');
   await page.getByRole('button', { name: 'Set in (I)' }).click();
   await page.locator('[data-video-scrub]').fill('60');
