@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.24.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.23.0...v1.24.0) (2026-11-10)
+
+
+### Features
+
+* back up the library as a zip with one click, and restore it from Settings ([#82](https://github.com/jimjohnsondev/morgue-file/issues/82)) ([07f7475](https://github.com/jimjohnsondev/morgue-file/commit/07f74751a481e1194513e777a119d75ae743f892))
+
 ## [1.23.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.22.0...v1.23.0) (2026-11-10)
 
 
