@@ -490,9 +490,9 @@ The search box, the filter bar and every Index URL share one query language. It 
 
 **As built in PR 25 (the 1.0 milestone).**
 
-- `tests/unit/acceptance-coverage.test.ts` reads the Feature requirements table of `docs/PRD.md` and fails if a P0 or P1 row has no test or describe title starting with its id (`'R18: ...'`) anywhere under `tests/`. It found R32 and R33, which lint enforced but no test named.
+- `tests/unit/acceptance-coverage.test.ts` reads the Feature requirements table of `docs/PRD.md` and fails if a P0 or P1 row has no test or describe title starting with its id (`'R18: ...'`) anywhere under `tests/`. Only a title counts, a quoted id right after a call's opening parenthesis, and the check skips its own file. It found R32 and R33, which lint enforced but no test named. A test for moving a chosen data folder by hand, as the README now describes, joins the R29 tests in `tests/integration/setup.test.ts`.
 - `tests/unit/code-rules.test.ts` covers them: it lints small samples with the repo's own `eslint.config.js` (type-checked rules off, since the samples aren't project files), so a function over 40 lines, a file over 300, complexity over 10, nesting past 3, an undocumented export, and each construct `docs/STYLE.md` rules out must fail lint (R32, R33). It also checks that `npm run check` runs Prettier's check and ESLint with zero warnings allowed, and that git tracks no `dist/`, minified or generated fixture files.
-- The README's status note and "added as those features arrive" line gave way to a guide to browsing, viewing, tagging, models, fields, search and drag and drop. Settings → Move data, which the install section above describes, isn't built: the README says how to move the data folder by hand (the setup page's missing-folder notice, then **Use a folder I choose**).
+- The README's status note and "added as those features arrive" line gave way to a guide to browsing, viewing, tagging, models, fields, search and drag and drop. Settings → Move data, which the install section below describes, isn't built: the README says how to move the data folder by hand (the setup page's missing-folder notice, then **Use a folder I choose**).
 - `docs/RELEASE-NOTES.md` sums up the milestone row by row and what's left for P2. The release that contains this PR is the 1.0 milestone, whatever number release-please gives it.
 
 ## Security

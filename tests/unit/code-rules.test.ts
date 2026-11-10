@@ -27,6 +27,11 @@ async function brokenRules(
   return (result?.messages ?? []).map((message) => message.ruleId ?? message.message);
 }
 
+/** Body lines for documentedFunction that make it `count` counted lines long in all. */
+function bodyOfLength(count: number): string[] {
+  return Array.from({ length: count - 3 }, () => '  flag += 1;');
+}
+
 /** A documented exported function whose body is the given lines. */
 function documentedFunction(bodyLines: readonly string[]): string {
   return `// Sample.\n/** Sample. */\nexport function sample(flag: number): number {\n${bodyLines.join('\n')}\n  return flag;\n}\n`;
@@ -37,18 +42,24 @@ describe('R32: lint limits on function length, file length, complexity and nesti
     expect(await brokenRules(documentedFunction(['  flag += 1;']))).toEqual([]);
   });
 
-  it('R32: a function over 40 lines fails', async () => {
-    const lines = Array.from({ length: 41 }, () => '  flag += 1;');
-    expect(await brokenRules(documentedFunction(lines))).toContain('max-lines-per-function');
+  // documentedFunction adds three counted lines to its body: the signature, return and brace.
+  it('R32: a function of 40 lines passes and one of 41 fails', async () => {
+    expect(await brokenRules(documentedFunction(bodyOfLength(40)))).toEqual([]);
+    expect(await brokenRules(documentedFunction(bodyOfLength(41)))).toContain(
+      'max-lines-per-function',
+    );
   });
 
-  it('R32: a file over 300 lines fails', async () => {
+  it('R32: a file of 300 lines passes and one of 301 fails', async () => {
+    // Three counted lines per function, as comments and blank lines aren't counted: 300 in all.
     const functions = Array.from(
-      { length: 101 }, // three counted lines each: 303 in all
+      { length: 100 },
       (_, index) =>
         `/** Sample. */\nexport function sample${String(index)}(): number {\n  return ${String(index)};\n}\n`,
     );
-    expect(await brokenRules(`// Sample.\n${functions.join('\n')}`)).toContain('max-lines');
+    const file = `// Sample.\n${functions.join('\n')}`;
+    expect(await brokenRules(file)).toEqual([]);
+    expect(await brokenRules(`${file}export const lastLine = 1;\n`)).toContain('max-lines');
   });
 
   it('R32: a function with complexity over 10 fails', async () => {

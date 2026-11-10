@@ -9,7 +9,8 @@ browsable gallery with a profile page for each model, styled like an early-2000s
 on your own Windows PC in your web browser, works offline, and never changes your files. Only your
 own PC can open it.
 
-Every feature planned for its first full release is in: watched folders, drag and drop, the
+Every feature planned for its first full release is in, apart from moving the data folder from
+Settings: watched folders, drag and drop, the
 Photos, Video, Library and Models pages, tags, collections, model profiles, search, the page
 reader and video tools, the compare board, and backup and restore.
 
@@ -81,10 +82,11 @@ you close Morgue File, it carries on where it stopped next time.
   references, layout, size and place on screen until you change them, even after a restart. If
   your browser blocks the window, allow pop-ups for Morgue File's address.
 
-- **Browsing:** the tabs at the top lead to Home, Photos, Video, Library, Models and Settings.
+- **Browsing:** the tabs at the top lead to Home, Photos, Video, Library, Models,
+  Collections, Unsorted and Search, with Settings at the right end.
   Home picks up where you left off, and shows what was added lately, what waits in Unsorted,
   your collections and a few random picks. Every list is pages of thumbnails with « Prev and
-  Next; the filter panel above it narrows the list and can group it, by rating or a field.
+  Next; the filter panel above it narrows the list and can group it, by subcategory or by a field such as rating.
 - **Viewing:** click a thumbnail to open it. Photos zoom with **−**, **+**, 100% and 200%, and
   pan by dragging. Videos play and scrub, step one frame at a time, and loop a range. Books and
   magazines open in a page reader, a page or a spread at a time, with a strip of pages to jump
@@ -100,8 +102,8 @@ you close Morgue File, it carries on where it stopped next time.
   agency link, model tags, and a strip of their photos, videos and Library items. Link items to a
   model with **add model** on the item's page, or from the selection panel. In the page reader,
   **add model to pages** links just the pages on show, and the profile opens the book there.
-- **Notes, rating and other fields:** an item's details hold its rating, source URL and notes,
-  each changed in place with **[change]**. Notes save as you leave the box. Add, rename, reorder
+- **Notes, rating and other fields:** an item's details hold its rating, source URL and notes.
+  Rating and source URL change in place with **[change]**; notes save as you leave the box. Add, rename, reorder
   or remove fields for items and models under **Settings → Fields**; a removed field and its
   values can be restored for 30 days.
 - **Searching:** type in the search box at the top. Words match file names, tags, collections,
@@ -111,7 +113,8 @@ you close Morgue File, it carries on where it stopped next time.
   finds nothing, lists every term.
 - **Drag and drop:** drop files, or an image from another browser tab, anywhere on a page, or
   paste one with Ctrl+V. They are saved in the Inbox, with the web address they came from. A
-  file that is already in the archive isn't copied again; Morgue File opens the one it has.
+  file that is already in the archive isn't copied again; a notice, **Already in the archive**, links to
+  the one it has.
 
 ## Update
 

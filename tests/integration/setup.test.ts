@@ -1,6 +1,7 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { buildApp } from '#server/app.js';
@@ -199,6 +200,45 @@ describe('R29: a data folder that has gone missing', () => {
     const response = await app.inject({ url: '/setup', headers: { host: OWN_HOST } });
     expect(response.headers.location).toBe('/');
     expect(state.current).toMatchObject({ kind: 'ready', dataDir });
+  });
+
+  it('R29: a data folder moved by hand is found again from the setup page, library and all', async () => {
+    const oldDir = path.join(install.rootDir, 'Old place', 'MorgueFile');
+    const choices = { referenceDir: install.referenceDir, dataChoice: 'chosen' };
+    expect((await post('/api/setup/save', { ...choices, chosenDataDir: oldDir })).statusCode).toBe(
+      200,
+    );
+    await app.close();
+    // Save makes the data folder; the launcher opens the library in it later. Stand in for that
+    // library with a database of one marked row, which must come through the move unchanged.
+    const marked = new Database(path.join(oldDir, 'library.db'));
+    marked.exec("CREATE TABLE marker (note TEXT); INSERT INTO marker VALUES ('moved by hand')");
+    marked.close();
+
+    // Close Morgue File, move the data folder, start it again: morgue-file.json still names the
+    // old place, so the setup page opens with its notice.
+    const newDir = path.join(install.rootDir, 'New place', 'MorgueFile');
+    await mkdir(path.dirname(newDir));
+    await rename(oldDir, newDir);
+    state = { current: { kind: 'data-missing', dataDir: oldDir } };
+    app = await buildApp({
+      config: { ...install.config, port: PORT },
+      install: state,
+      token: TOKEN,
+    });
+
+    expect((await post('/api/setup/save', { ...choices, chosenDataDir: newDir })).statusCode).toBe(
+      200,
+    );
+    expect(state.current).toMatchObject({ kind: 'ready', dataDir: newDir });
+    expect(await readJson(path.join(install.homeDir, 'morgue-file.json'))).toEqual({
+      dataDir: newDir,
+    });
+    await app.close();
+    const moved = new Database(path.join(newDir, 'library.db'), { readonly: true });
+    const rows = moved.prepare('SELECT note FROM marker').all();
+    moved.close();
+    expect(rows).toEqual([{ note: 'moved by hand' }]);
   });
 });
 

@@ -29,17 +29,21 @@ async function listTestFiles(): Promise<string[]> {
     recursive: true,
     withFileTypes: true,
   });
-  return entries
-    .filter((entry) => entry.isFile() && /\.(test|spec)\.tsx?$/.test(entry.name))
-    .map((entry) => path.join(entry.parentPath, entry.name));
+  return (
+    entries
+      .filter((entry) => entry.isFile() && /\.(test|spec)\.tsx?$/.test(entry.name))
+      // This file names rows in its own comments and samples; it tests none of them.
+      .filter((entry) => entry.name !== path.basename(import.meta.filename))
+      .map((entry) => path.join(entry.parentPath, entry.name))
+  );
 }
 
-/** Collects the row ids that open a quoted test or describe title, such as 'R18: ...'. */
+/** Collects the row ids that open a test or describe title, a quoted `R<n>:` right after `(`. */
 async function findNamedRows(files: readonly string[]): Promise<Set<string>> {
   const named = new Set<string>();
   for (const file of files) {
     const source = await readFile(file, 'utf8');
-    for (const match of source.matchAll(/['"`](R\d+):/g)) {
+    for (const match of source.matchAll(/\(\s*['"`](R\d+):/g)) {
       named.add(match[1]!);
     }
   }
