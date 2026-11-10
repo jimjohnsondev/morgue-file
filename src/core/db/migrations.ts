@@ -71,7 +71,7 @@ export function migrate(
     return [];
   }
   if (current > 0) {
-    backUpBeforeMigrating(db, options);
+    backUpLibrary(db, options);
   }
   db.transaction(() => {
     for (const migration of pending) {
@@ -82,15 +82,24 @@ export function migrate(
   return pending.map((migration) => migration.version);
 }
 
-/** Copies the database into the backups folder, then deletes all but the newest few copies. */
-function backUpBeforeMigrating(db: Db, options: MigrateOptions): void {
+/**
+ * Copies the database into the backups folder, then deletes all but the newest few copies.
+ * Migrations call it first, and so does a restore (R26). Returns the copy's path.
+ */
+export function backUpLibrary(db: Db, options: MigrateOptions): string {
   mkdirSync(options.backupsDir, { recursive: true });
   const stamp = options.now.toISOString().replaceAll(':', '-').replace('.', '-');
-  const fileName = `library-${options.appVersion}-${stamp}.db`;
-  backUpDatabase(db, path.join(options.backupsDir, fileName));
+  const file = path.join(options.backupsDir, `library-${options.appVersion}-${stamp}.db`);
+  backUpDatabase(db, file);
   for (const oldBackup of backupsOldestFirst(options.backupsDir).slice(0, -KEPT_BACKUPS)) {
     rmSync(path.join(options.backupsDir, oldBackup));
   }
+  return file;
+}
+
+/** The schema version the app's migrations bring a database to. */
+export function latestSchemaVersion(migrations: readonly Migration[] = readMigrations()): number {
+  return migrations.at(-1)?.version ?? 0;
 }
 
 /**

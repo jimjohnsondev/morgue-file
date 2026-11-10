@@ -5,6 +5,7 @@ import Fastify from 'fastify';
 
 import { loadPageAssets } from './assets.js';
 import { registerErrorHandler } from './error-handler.js';
+import { registerBackupApi } from './routes/api/backup.js';
 import { registerCompareBoardApi } from './routes/api/compare-board.js';
 import { registerFieldApi } from './routes/api/fields.js';
 import { registerHistoryApi } from './routes/api/history.js';
@@ -102,6 +103,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerEventsRoute(app, library);
   registerLibraryApis(app, library);
   registerWatchedFolderApi(app, { homeDir: config.homeDir, install, library });
+  registerBackupApi(app, { install, library, appVersion: config.version });
 
   return app;
 }

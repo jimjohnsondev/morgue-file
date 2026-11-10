@@ -98,9 +98,21 @@ are. Before its first launch after an update, Morgue File backs up its database.
   folder. Everything comes with it. On a USB drive it works under any drive letter.
 - **With a folder you chose:** move the **MorgueFile** folder freely; your data stays where it
   is. To move the data too, use Settings → Move data (coming in a later release).
-- **Backing up:** copy the **MorgueFile** folder (and your chosen data folder, if you use one)
-  while Morgue File is closed. A one-click backup and restore of the database is coming in a later
-  release.
+- **Backing up the library:** open **Settings**, then click **Back up now** under Backup and
+  restore. Your browser saves a zip named like `MorgueFile-backup-2026-11-10T14-32-05Z.zip`. It
+  holds your tags, collections, subcategories, fields, notes, model profiles and settings, but not
+  the files in your Reference folder or their thumbnails. Keep it somewhere other than this PC.
+- **Restoring a backup:**
+  1. Open **Settings** and find Backup and restore.
+  2. Click **Choose File** next to "Restore from a backup", and pick the backup zip.
+  3. Click **Restore**. Morgue File replaces the whole library with the backup's, then opens Home.
+     The library as it was is first copied to the `backups` folder inside the data folder.
+
+  On a new PC, install Morgue File and finish First run with your Reference folder, then restore.
+  Thumbnails are made again as you browse.
+
+- **Backing up everything:** copy the **MorgueFile** folder (and your chosen data folder, if you
+  use one) while Morgue File is closed.
 
 ## Uninstall
 

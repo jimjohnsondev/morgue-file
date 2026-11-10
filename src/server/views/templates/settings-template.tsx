@@ -1,15 +1,15 @@
-// The Settings page (frame 15): a side list of its sections beside the Fields, Subcategories and
-// Watched folders panels, each edited in a table in place (R36, R37).
+// The Settings page (frame 15): a side list of its sections beside the Fields, Subcategories,
+// Watched folders and Backup and restore panels, each edited in place (R26, R36, R37).
+import { BackupSettings } from '../parts/backup-settings.js';
 import { Breadcrumb } from '../parts/breadcrumb.js';
 import { FieldSettings } from '../parts/field-settings.js';
-import { PendingAction } from '../parts/pending-action.js';
 import { SubcategorySettings } from '../parts/subcategory-settings.js';
 import { WatchedFolderSettings } from '../parts/watched-folder-settings.js';
 
 import type { SettingsModel } from '../../routes/pages/settings-model.js';
 import type { FolderHint } from '../parts/subcategory-settings.js';
 
-/** The side list of the page's panels. Backup and restore arrives with PR 24. */
+/** The side list of the page's panels. */
 function SectionList() {
   return (
     <nav aria-label="Settings sections" class="panel settings-sections">
@@ -17,14 +17,12 @@ function SectionList() {
       <a href="#fields">Fields</a>
       <a href="#subcategories">Subcategories</a>
       <a href="#folders">Watched folders</a>
-      <span>
-        <PendingAction label="Backup and restore" />
-      </span>
+      <a href="#backup">Backup and restore</a>
     </nav>
   );
 }
 
-/** The Settings page: the side list of panels, then the three panels. */
+/** The Settings page: the side list of panels, then the four panels. */
 export function SettingsTemplate(props: {
   readonly model: SettingsModel;
   readonly folderHint: FolderHint;
@@ -40,6 +38,7 @@ export function SettingsTemplate(props: {
           <FieldSettings itemFields={model.itemFields} modelFields={model.modelFields} />
           <SubcategorySettings sections={model.sections} hint={props.folderHint} />
           <WatchedFolderSettings folders={model.folders} />
+          <BackupSettings />
         </div>
       </div>
     </div>

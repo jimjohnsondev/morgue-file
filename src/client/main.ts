@@ -30,3 +30,4 @@ import './model-choice.js';
 import './model-tag-editor.js';
 import './save-key.js';
 import './compare.js';
+import './restore-backup.js';

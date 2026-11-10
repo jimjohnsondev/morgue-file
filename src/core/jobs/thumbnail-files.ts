@@ -1,7 +1,7 @@
 // Where thumbnails live in the data folder and how big the default ones are
 // (docs/ARCHITECTURE.md, Thumbnails and media).
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { systemErrorCode } from '#core/errors.js';
@@ -103,4 +103,27 @@ export async function readCacheFile(file: string): Promise<Buffer | undefined> {
     }
     throw error;
   }
+}
+
+/**
+ * Empties the thumbnail cache, as a restore must (R26): its files are named by item id, and the
+ * restored library may give those ids to other files. The folder is renamed at once, so pages
+ * ask for fresh thumbnails straight away, and the old one is returned to be deleted at leisure.
+ */
+export async function setThumbnailCacheAside(thumbsDir: string): Promise<string | undefined> {
+  const asideDir = `${thumbsDir}-discarded-${randomUUID()}`;
+  try {
+    await rename(thumbsDir, asideDir);
+  } catch (error) {
+    if (systemErrorCode(error) === 'ENOENT') {
+      return undefined;
+    }
+    throw error;
+  }
+  return asideDir;
+}
+
+/** Deletes a thumbnail folder set aside by a restore. */
+export async function deleteThumbnailFolder(folder: string): Promise<void> {
+  await rm(folder, { recursive: true, force: true });
 }
