@@ -63,29 +63,38 @@ export function parseSizeLabel(label: string): ThumbnailSize | undefined {
   return sizes.find((size) => sizeToLabel(size) === label);
 }
 
-/**
- * The cache file for one item at one size, spread over 256 folders by item id so no folder
- * grows past a few hundred files: thumbs/1f/287-320.webp.
- */
+/** The cache folder of an item: 256 folders by item id, so none grows past a few hundred files. */
+function cacheFolder(thumbsDir: string, itemId: number): string {
+  return path.join(thumbsDir, (itemId % 256).toString(16).padStart(2, '0'));
+}
+
+/** The cache file for one item at one size: thumbs/1f/287-320.webp. */
 export function thumbnailPath(thumbsDir: string, itemId: number, size: ThumbnailSize): string {
-  const folder = (itemId % 256).toString(16).padStart(2, '0');
-  return path.join(thumbsDir, folder, `${String(itemId)}-${sizeToLabel(size)}.webp`);
+  return path.join(cacheFolder(thumbsDir, itemId), `${String(itemId)}-${sizeToLabel(size)}.webp`);
 }
 
 /**
- * Saves a thumbnail. It is written beside its final name and then renamed, so a page never
- * reads half a file and a crash never leaves one behind under the real name.
+ * The full-size JPEG copy of a photo the browser can't show (HEIC, TIFF, PSD), beside its
+ * thumbnails: thumbs/1f/287-view.jpg.
  */
-export async function saveThumbnail(file: string, webp: Buffer): Promise<void> {
+export function viewerCopyPath(thumbsDir: string, itemId: number): string {
+  return path.join(cacheFolder(thumbsDir, itemId), `${String(itemId)}-view.jpg`);
+}
+
+/**
+ * Saves a thumbnail or viewer copy. It is written beside its final name and then renamed, so a
+ * page never reads half a file and a crash never leaves one behind under the real name.
+ */
+export async function saveCacheFile(file: string, bytes: Buffer): Promise<void> {
   await mkdir(path.dirname(file), { recursive: true });
   // Unique per call: a page can ask for a size while another request is making it.
   const partial = `${file}.${String(process.pid)}-${randomUUID()}.partial`;
-  await writeFile(partial, webp);
+  await writeFile(partial, bytes);
   await rename(partial, file);
 }
 
-/** Reads a cached thumbnail, or returns undefined if it hasn't been made. */
-export async function readThumbnail(file: string): Promise<Buffer | undefined> {
+/** Reads a cached thumbnail or viewer copy, or returns undefined if it hasn't been made. */
+export async function readCacheFile(file: string): Promise<Buffer | undefined> {
   try {
     return await readFile(file);
   } catch (error) {

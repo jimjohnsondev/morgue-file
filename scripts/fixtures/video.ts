@@ -14,7 +14,7 @@ const runFile = promisify(execFile);
  * The ffmpeg binary's path. ffmpeg-static is CommonJS, so its default import is the path itself,
  * though its type declarations describe a module object; narrowing makes both agree.
  */
-function ffmpegPath(): string {
+export function ffmpegPath(): string {
   const exported: unknown = ffmpegModule;
   if (typeof exported !== 'string') {
     throw new Error('ffmpeg-static has no ffmpeg binary for this platform.');
@@ -31,6 +31,16 @@ export type Clip = {
   readonly outputPath: string;
 };
 
+/**
+ * The encoder for a clip's container: VP9 for WebM, which tests of the P1 formats (R7) write, and
+ * H.264 for MP4 and MOV, which the planned archive uses.
+ */
+function codecFor(outputPath: string): string[] {
+  return outputPath.toLowerCase().endsWith('.webm')
+    ? ['-c:v', 'libvpx-vp9', '-deadline', 'realtime', '-cpu-used', '8', '-b:v', '0', '-crf', '50']
+    : ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '35'];
+}
+
 /** Writes a clip of ffmpeg's test pattern, its hue shifted so clips look different. */
 export async function encodeClip(clip: Clip, random: Random): Promise<void> {
   const source = `testsrc=size=${String(clip.width)}x${String(clip.height)}:rate=${String(clip.fps)}`;
@@ -38,7 +48,7 @@ export async function encodeClip(clip: Clip, random: Random): Promise<void> {
   await runFile(ffmpegPath(), [
     ...['-hide_banner', '-loglevel', 'error', '-y'],
     ...['-f', 'lavfi', '-i', `${source}:duration=${String(clip.durationSeconds)}`],
-    ...['-vf', `hue=h=${String(hue)}`, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '35'],
+    ...['-vf', `hue=h=${String(hue)}`, ...codecFor(clip.outputPath)],
     ...['-pix_fmt', 'yuv420p', '-threads', '1', '-map_metadata', '-1'],
     ...['-fflags', '+bitexact', '-flags:v', '+bitexact', clip.outputPath],
   ]);

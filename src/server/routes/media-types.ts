@@ -7,8 +7,13 @@ const TYPES_BY_EXTENSION: Readonly<Record<string, string>> = {
   png: 'image/png',
   webp: 'image/webp',
   gif: 'image/gif',
+  heic: 'image/heic',
+  tif: 'image/tiff',
+  tiff: 'image/tiff',
+  psd: 'image/vnd.adobe.photoshop',
   mp4: 'video/mp4',
   mov: 'video/quicktime',
+  webm: 'video/webm',
   pdf: 'application/pdf',
   cbz: 'application/vnd.comicbook+zip',
 };

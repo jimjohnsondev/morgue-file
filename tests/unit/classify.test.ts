@@ -32,8 +32,20 @@ describe('classifying files', () => {
     ]);
   });
 
+  it('R7: HEIC, TIFF and PSD are photos and WebM is a video, whatever the case of the extension', () => {
+    const names = ['a.heic', 'b.HEIC', 'c.tif', 'd.TIFF', 'e.psd', 'f.webm'];
+    expect(names.map((name) => classifyFile(name))).toEqual([
+      'image',
+      'image',
+      'image',
+      'image',
+      'image',
+      'video',
+    ]);
+  });
+
   it('ignores files of no known format', () => {
-    for (const name of ['notes.txt', 'Thumbs.db', 'clip.webm', 'no-extension', 'photo.jpg.part']) {
+    for (const name of ['notes.txt', 'Thumbs.db', 'clip.mkv', 'no-extension', 'photo.jpg.part']) {
       expect(classifyFile(name)).toBeUndefined();
     }
   });

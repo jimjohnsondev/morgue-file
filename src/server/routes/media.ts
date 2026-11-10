@@ -1,6 +1,8 @@
 // GET /media/thumb/<id>/<size> serves an item's cached thumbnail by id, never by path
 // (docs/ARCHITECTURE.md, Thumbnails and media). A thumbnail that isn't made yet is answered with
 // a blank placeholder, and its job jumps the queue so the page's retry finds it.
+// GET /media/view/<id> serves the full-size JPEG copy the image viewer opens for a HEIC, TIFF or
+// PSD photo, which the browser can't show itself.
 import { Type } from '@sinclair/typebox';
 
 import { findItemById } from '#core/db/repositories/items.js';
@@ -9,12 +11,12 @@ import {
   defaultThumbnailSize,
   hasSquareThumbnail,
   parseSizeLabel,
-  readThumbnail,
+  readCacheFile,
   sizeToLabel,
   thumbnailPath,
 } from '#core/jobs/thumbnail-files.js';
 import { queueThumbnail } from '#core/jobs/thumbnail-jobs.js';
-import { makeThumbnailAtSize } from '#core/jobs/thumbnails.js';
+import { findOrMakeViewerCopy, makeThumbnailAtSize } from '#core/jobs/thumbnails.js';
 
 import { requireLibrary } from './require-library.js';
 
@@ -84,22 +86,44 @@ async function findOrMakeThumbnail(
   size: ThumbnailSize,
 ): Promise<FoundThumbnail> {
   const { thumbsDir } = library.thumbnails;
-  const cached = await readThumbnail(thumbnailPath(thumbsDir, item.id, size));
+  const cached = await readCacheFile(thumbnailPath(thumbsDir, item.id, size));
   if (cached !== undefined || isDefaultSize(item, size) || item.thumbState !== 'ready') {
     return found('exact', cached);
   }
   try {
     const made = await makeThumbnailAtSize(library.thumbnails, item.id, size);
-    return found('exact', await readThumbnail(made));
+    return found('exact', await readCacheFile(made));
   } catch {
     // The original may be offline or unreadable; the default size stands in until it is back.
     const fallback = thumbnailPath(thumbsDir, item.id, defaultThumbnailSize(item.kind));
-    return found('stand-in', await readThumbnail(fallback));
+    return found('stand-in', await readCacheFile(fallback));
   }
 }
 
-/** Registers GET /media/thumb/:id/:size. */
+/**
+ * Registers GET /media/view/:id. Its address carries the original's time and size (`?v=`), so the
+ * browser keeps each copy until the file changes, as it does the reader's strip pictures.
+ */
+function registerViewerCopyRoute(app: FastifyInstance, library: LibraryRuntime | undefined): void {
+  app
+    .withTypeProvider<TypeBoxTypeProvider>()
+    .get(
+      '/media/view/:id',
+      { schema: { params: Type.Object({ id: Type.Integer({ minimum: 1 }) }) } },
+      async (request, reply) => {
+        const open = requireLibrary(library);
+        const copy = await findOrMakeViewerCopy(open.thumbnails, request.params.id);
+        return reply
+          .type('image/jpeg')
+          .header('cache-control', 'public, max-age=31536000, immutable')
+          .send(copy);
+      },
+    );
+}
+
+/** Registers GET /media/thumb/:id/:size and GET /media/view/:id. */
 export function registerMediaRoutes(app: FastifyInstance, library: LibraryRuntime | undefined) {
+  registerViewerCopyRoute(app, library);
   app
     .withTypeProvider<TypeBoxTypeProvider>()
     .get('/media/thumb/:id/:size', { schema: { params: ThumbParams } }, async (request, reply) => {

@@ -68,6 +68,10 @@ you close Morgue File, it carries on where it stopped next time.
   and everything in it, now and later, files itself there. Anything else waits in **Unsorted**.
   To file one item by hand, click **[move]** beside its subcategory on the item's page; it then
   stays where you put it. Removing a subcategory moves its items to Unsorted, never on disk.
+- **File types:** photos in JPG, PNG, WebP, GIF, HEIC, TIFF and PSD; videos in MP4, MOV and
+  WebM; PDF and CBZ files and folders of numbered page scans. Anything else in the Reference
+  folder is left out. A PSD shows the flattened picture Photoshop saves with **Maximize
+  compatibility** turned on (its default), never the separate layers.
 - **More folders:** under **Settings → Watched folders**, add another folder, such as
   `D:\Phone exports`. It is indexed and watched like the Reference folder.
 

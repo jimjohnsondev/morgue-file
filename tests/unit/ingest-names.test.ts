@@ -66,7 +66,16 @@ describe('nameFetchedFile', () => {
     );
   });
 
-  it('refuses anything but the image and video types R6 keeps', () => {
+  it('R7: names a fetched HEIC, TIFF, PSD or WebM by its type', () => {
+    const page = url('https://example.com/download');
+    expect(nameFetchedFile(page, 'image/heic')).toBe('download.heic');
+    expect(nameFetchedFile(page, 'image/tiff')).toBe('download.tif');
+    expect(nameFetchedFile(page, 'image/vnd.adobe.photoshop')).toBe('download.psd');
+    expect(nameFetchedFile(page, 'video/webm')).toBe('download.webm');
+    expect(nameFetchedFile(url('https://example.com/scan.tiff'), 'image/tiff')).toBe('scan.tiff');
+  });
+
+  it('refuses anything but the image and video types R6 and R7 keep', () => {
     for (const type of ['text/html', 'image/svg+xml', 'application/pdf', undefined]) {
       expect(() => nameFetchedFile(url('https://example.com/a.jpg'), type)).toThrow(
         'not an image or video',

@@ -12,11 +12,18 @@ import { findRootById } from '#core/db/repositories/roots.js';
 import { AppError } from '#core/errors.js';
 import { readMoveHash } from '#core/indexer/moves.js';
 
-import { defaultThumbnailSize, saveThumbnail, thumbnailPath } from './thumbnail-files.js';
+import {
+  defaultThumbnailSize,
+  readCacheFile,
+  saveCacheFile,
+  thumbnailPath,
+  viewerCopyPath,
+} from './thumbnail-files.js';
 import { makeImageThumbnail } from './workers/thumb-image.js';
 import { makeCbzThumbnail, makePageFolderThumbnail } from './workers/thumb-pages.js';
 import { makePdfThumbnail } from './workers/thumb-pdf.js';
 import { makeVideoThumbnail } from './workers/thumb-video.js';
+import { makeViewerCopy, needsViewerCopy } from './workers/viewer-copy.js';
 
 import type { Db } from '#core/db/connection.js';
 import type { Item, ItemKind } from '#core/db/repositories/items.js';
@@ -40,6 +47,8 @@ type WorkerInput = {
   readonly original: OriginalRef;
   readonly size: ThumbnailSize;
   readonly mediaTools: MediaTools | undefined;
+  /** Reads the photo the thumbnail is cut from: the original, or its viewer copy. */
+  readonly readPhoto: () => Promise<Buffer>;
 };
 
 /** Sends an item to the worker for its kind. */
@@ -47,7 +56,7 @@ async function makeThumbnail(input: WorkerInput): Promise<ThumbnailResult> {
   const { original, size } = input;
   switch (input.kind) {
     case 'image':
-      return makeImageThumbnail(await readOriginal(original.rootPath, original.relPath), size);
+      return makeImageThumbnail(await input.readPhoto(), size);
     case 'pdf':
       return makePdfThumbnail(await readOriginal(original.rootPath, original.relPath), size);
     case 'cbz':
@@ -92,20 +101,56 @@ function refuseIfChangedMeanwhile(db: Db, before: Item): void {
   }
 }
 
+/** Makes a photo's viewer copy from its original and saves it to the cache. */
+async function makeAndSaveViewerCopy(
+  context: ThumbnailContext,
+  item: Item,
+  root: Root,
+): Promise<Buffer> {
+  const original = await readOriginal(root.path, item.relPath);
+  const copy = await makeViewerCopy(item.relPath, original, context.mediaTools);
+  await saveCacheFile(viewerCopyPath(context.thumbsDir, item.id), copy);
+  return copy;
+}
+
+/** How a thumbnail is made: at what size, and whether a viewer copy in the cache may be used. */
+type MakeRequest = {
+  readonly size: ThumbnailSize;
+  /** The queue remakes the copy, since it runs when the file has changed; pages reuse it. */
+  readonly reuseViewerCopy: boolean;
+};
+
+/** Reads the photo a thumbnail is cut from: the original, or its viewer copy, made if need be. */
+async function readPhoto(
+  context: ThumbnailContext,
+  { item, root }: { item: Item; root: Root },
+  reuseViewerCopy: boolean,
+): Promise<Buffer> {
+  if (!needsViewerCopy(item.relPath)) {
+    return readOriginal(root.path, item.relPath);
+  }
+  const cached = reuseViewerCopy
+    ? await readCacheFile(viewerCopyPath(context.thumbsDir, item.id))
+    : undefined;
+  return cached ?? makeAndSaveViewerCopy(context, item, root);
+}
+
 /** Makes one item's thumbnail at one size and saves it to the cache. */
 async function makeAndSave(
   context: ThumbnailContext,
   itemId: number,
-  size: ThumbnailSize,
+  request: MakeRequest,
 ): Promise<ThumbnailResult> {
   const { item, root } = requireItemAndRoot(context.db, itemId);
+  const { size } = request;
   const result = await makeThumbnail({
     kind: item.kind,
     original: { rootPath: root.path, relPath: item.relPath },
     size,
     mediaTools: context.mediaTools,
+    readPhoto: async () => readPhoto(context, { item, root }, request.reuseViewerCopy),
   });
-  await saveThumbnail(thumbnailPath(context.thumbsDir, item.id, size), result.webp);
+  await saveCacheFile(thumbnailPath(context.thumbsDir, item.id, size), result.webp);
   return result;
 }
 
@@ -118,7 +163,7 @@ export async function runThumbnailJob(context: ThumbnailContext, job: Job): Prom
   const { item, root } = requireItemAndRoot(context.db, job.itemId);
   setItemPartialHash(context.db, item.id, await readMoveHash(root.path, item));
   const size = defaultThumbnailSize(item.kind);
-  const result = await makeAndSave(context, job.itemId, size);
+  const result = await makeAndSave(context, job.itemId, { size, reuseViewerCopy: false });
   refuseIfChangedMeanwhile(context.db, item);
   setItemMediaDetails(context.db, job.itemId, result.details);
 }
@@ -132,8 +177,31 @@ export async function makeThumbnailAtSize(
   itemId: number,
   size: ThumbnailSize,
 ): Promise<string> {
-  await makeAndSave(context, itemId, size);
+  await makeAndSave(context, itemId, { size, reuseViewerCopy: true });
   return thumbnailPath(context.thumbsDir, itemId, size);
+}
+
+/**
+ * Returns the viewer copy of a photo the browser can't show (HEIC, TIFF, PSD). The cached one is
+ * used while the item's thumbnail is ready; a file that has changed since is copied again.
+ */
+export async function findOrMakeViewerCopy(
+  context: ThumbnailContext,
+  itemId: number,
+): Promise<Buffer> {
+  const { item, root } = requireItemAndRoot(context.db, itemId);
+  if (item.kind !== 'image' || !needsViewerCopy(item.relPath)) {
+    throw new AppError('not-found', 'Only HEIC, TIFF and PSD photos have viewer copies.');
+  }
+  if (item.thumbState === 'failed') {
+    // The queue already tried this file four times; trying again on every request would fail too.
+    throw new AppError('media-unreadable', `${item.relPath} couldn't be read to show it.`);
+  }
+  const cached =
+    item.thumbState === 'ready'
+      ? await readCacheFile(viewerCopyPath(context.thumbsDir, item.id))
+      : undefined;
+  return cached ?? makeAndSaveViewerCopy(context, item, root);
 }
 
 /** Records that an item's thumbnail couldn't be made, so the item page can show it instead of waiting. */

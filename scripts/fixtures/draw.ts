@@ -2,7 +2,11 @@
 // grey "lines of text". Nothing here resembles a real photo.
 import sharp from 'sharp';
 
+import { encodeHeic } from './heic.ts';
+import { encodePsd } from './psd.ts';
 import { pickFrom, type Random, wholeNumberBetween } from './random.ts';
+
+import type { Sharp } from 'sharp';
 
 /** The four figure silhouettes the mocks use, in a 100×100 box: head center and body path. */
 const POSES = [
@@ -19,8 +23,11 @@ const POSES = [
 /** The warm and cool hues of the mocks' placeholder thumbnails. */
 const HUES = [28, 35, 210, 18, 45, 195, 8, 32, 220, 40] as const;
 
-/** The image formats the generator writes, by file extension. */
-export const IMAGE_FORMATS = ['jpg', 'png', 'webp', 'gif'] as const;
+/**
+ * The image formats the generator writes, by file extension. The planned archive uses the first
+ * four; tests of the P1 formats (R7) write the rest.
+ */
+export const IMAGE_FORMATS = ['jpg', 'png', 'webp', 'gif', 'tif', 'psd', 'heic'] as const;
 
 /** One of the image formats the generator writes. */
 export type ImageFormat = (typeof IMAGE_FORMATS)[number];
@@ -100,17 +107,18 @@ function escapeXml(text: string): string {
   return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
+/** How each format is written from a picture sharp has drawn. */
+const ENCODERS: Readonly<Record<ImageFormat, (image: Sharp) => Promise<Buffer>>> = {
+  jpg: (image) => image.jpeg({ quality: 82 }).toBuffer(),
+  png: (image) => image.png().toBuffer(),
+  webp: (image) => image.webp({ quality: 80 }).toBuffer(),
+  gif: (image) => image.gif().toBuffer(),
+  tif: (image) => image.tiff({ compression: 'lzw' }).toBuffer(),
+  psd: async (image) => encodePsd(await image.png().toBuffer()),
+  heic: async (image) => encodeHeic(await image.png().toBuffer()),
+};
+
 /** Renders SVG markup to an image file's bytes in the given format. */
 export async function renderSvg(svg: string, format: ImageFormat): Promise<Buffer> {
-  const image = sharp(Buffer.from(svg));
-  if (format === 'png') {
-    return image.png().toBuffer();
-  }
-  if (format === 'webp') {
-    return image.webp({ quality: 80 }).toBuffer();
-  }
-  if (format === 'gif') {
-    return image.gif().toBuffer();
-  }
-  return image.jpeg({ quality: 82 }).toBuffer();
+  return ENCODERS[format](sharp(Buffer.from(svg)));
 }
