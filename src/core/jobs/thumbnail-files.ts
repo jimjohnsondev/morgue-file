@@ -82,8 +82,8 @@ export function viewerCopyPath(thumbsDir: string, itemId: number): string {
 }
 
 /**
- * Saves a thumbnail or viewer copy. It is written beside its final name and then renamed, so a page never
- * reads half a file and a crash never leaves one behind under the real name.
+ * Saves a thumbnail or viewer copy. It is written beside its final name and then renamed, so a
+ * page never reads half a file and a crash never leaves one behind under the real name.
  */
 export async function saveCacheFile(file: string, bytes: Buffer): Promise<void> {
   await mkdir(path.dirname(file), { recursive: true });
