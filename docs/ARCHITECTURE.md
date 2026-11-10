@@ -488,6 +488,13 @@ The search box, the filter bar and every Index URL share one query language. It 
 - The lint rule that keeps `node:fs` out of most modules now also exempts `core/backup/backup-zip.ts` and `restore-zip.ts`, which read and write only the data folder. A crash mid-download or mid-restore can leave a `backup-<uuid>.db` or `restore-<uuid>.*` file in the data folder; nothing deletes those yet.
 - Tests: `tests/integration/backup-restore.test.ts` and `backup-refusals.test.ts` run installs on the real runtime (`tests/support/backup-installs.ts`): one organized, backed up through `GET /settings/backup`, and restored onto a fresh one, whose pages then show the tag, collection, subcategory, note and model profile (R26), its own Reference folder online, no thumbnail from before, and the earlier library in `backups\`; a schema-2 backup migrates as it is restored and keeps its tag. They also refuse a non-zip, a zip with no library, a newer schema, and a library that won't open, each leaving the library as it was, and restore over a library that failed to open at launch, keeping its bytes in `backups\` and putting them back when the backup won't open either. `tests/e2e/settings.spec.ts` downloads a backup with one click, adds a subcategory, restores the zip from the form and finds the subcategory gone. Frame 15's baseline changes: the side list's last entry is a link and the new panel sits under Watched folders.
 
+**As built in PR 25 (the 1.0 milestone).**
+
+- `tests/unit/acceptance-coverage.test.ts` reads the Feature requirements table of `docs/PRD.md` and fails if a P0 or P1 row has no test or describe title starting with its id (`'R18: ...'`) anywhere under `tests/`. Only a title counts, a quoted id right after a call's opening parenthesis, and the check skips its own file. It found R32 and R33, which lint enforced but no test named. A test for moving a chosen data folder by hand, as the README now describes, joins the R29 tests in `tests/integration/setup.test.ts`.
+- `tests/unit/code-rules.test.ts` covers them: it lints small samples with the repo's own `eslint.config.js` (type-checked rules off, since the samples aren't project files), so a function over 40 lines, a file over 300, complexity over 10, nesting past 3, an undocumented export, and each construct `docs/STYLE.md` rules out must fail lint (R32, R33). It also checks that `npm run check` runs Prettier's check and ESLint with zero warnings allowed, and that git tracks no `dist/`, minified or generated fixture files.
+- The README's status note and "added as those features arrive" line gave way to a guide to browsing, viewing, tagging, models, fields, search and drag and drop. Settings → Move data, which the install section below describes, isn't built: the README says how to move the data folder by hand (the setup page's missing-folder notice, then **Use a folder I choose**).
+- `docs/RELEASE-NOTES.md` sums up the milestone row by row and what's left for P2. The release that contains this PR is the 1.0 milestone, whatever number release-please gives it.
+
 ## Security
 
 Only this PC's browser can reach the server, and only Morgue File's own pages can act on it (R27). The archive is never written to except through the Inbox.
@@ -636,12 +643,12 @@ Morgue File is one folder: unzip it anywhere, double-click it, then pick the Ref
 3. **Where to keep data:** two choices, Keep data with the app (selected by default) or Use a folder I choose, which has its own path field and Check button. Check confirms the app can create and write a test file there, and says if it found an existing library.
 4. Save writes `morgue-file.json`, creates the data folder and `Inbox\` in the Reference folder, starts indexing, and opens Home with the E5 progress bar.
 
-Both choices can be changed later in Settings. Move data copies everything to the new place, checks the copy, switches `morgue-file.json` over, and only then offers to delete the old copy. The setup page is built from template parts, and its screenshot baselines (one per data choice) are approved like any other.
+Both choices were to be changeable later in Settings, where Move data copies everything to the new place, checks the copy, switches `morgue-file.json` over, and only then offers to delete the old copy. Move data is not built for 1.0 (see As built in PR 25). The setup page is built from template parts, and its screenshot baselines (one per data choice) are approved like any other.
 
 **Update, move, uninstall.**
 
 - **Update:** close the "Morgue File server" window and unzip the new release over the old folder. Neither `morgue-file.json` nor `data\` is in the zip, so the choice and the data stay untouched. Migrations back up the database on first launch.
-- **Move or back up:** with the default, copy or move the whole folder. With a chosen data folder, the app folder can move freely, and Settings → Move data moves the data. Backup and restore (R26) covers the database alone.
+- **Move or back up:** with the default, copy or move the whole folder. With a chosen data folder, the app folder can move freely, and the data is moved by hand (Move data is not built; see As built in PR 25). Backup and restore (R26) covers the database alone.
 - **Uninstall:** delete the app folder, any shortcuts, and the chosen data folder if there is one. Originals are never touched.
 
 **README (R31).** `README.md` at the repo root is both the GitHub front page and the user manual. The build renders it to `README.html` in the zip, so it opens in any browser. It's written for someone who has never used a command line, with numbered steps and one action per step.
