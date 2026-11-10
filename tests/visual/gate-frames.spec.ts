@@ -103,7 +103,8 @@ test('frame 7: a pose video with a loop range', async ({ page }) => {
   await page.getByRole('button', { name: /^Set out/ }).click();
   await seekVideo(page, 42.12);
   await settlePointerAndFocus(page);
-  await expect(page.locator('[data-video-text="frame"]')).toHaveText('frame 1,264');
+  // 42.12 s falls in frame 1,263, which starts at 42.10 s (R20).
+  await expect(page.locator('[data-video-text="frame"]')).toHaveText('frame 1,263');
   await expect(page).toHaveScreenshot('frame-07-pose-video.png', SCREENSHOT_OPTIONS);
 });
 
