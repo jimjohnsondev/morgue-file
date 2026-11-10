@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.19.0...v1.20.0) (2026-11-10)
+
+
+### Features
+
+* index, thumbnail and open HEIC, TIFF, PSD and WebM files ([#72](https://github.com/jimjohnsondev/morgue-file/issues/72)) ([11b1734](https://github.com/jimjohnsondev/morgue-file/commit/11b173423a1d9674f95fe675b78c5fa5d8de32ac))
+
 ## [1.19.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.18.0...v1.19.0) (2026-11-09)
 
 
