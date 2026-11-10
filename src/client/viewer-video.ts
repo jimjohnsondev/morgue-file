@@ -1,24 +1,41 @@
 // The video player's controls (frame 7): play, scrub, step a frame at a time, loop a range,
-// speed and sound. Frame-step moves by 1 ÷ the frame rate ffprobe measured; the comma and period
-// keys step, and I and O (or [ and ]) set the loop's in and out points.
+// speed and sound. requestVideoFrameCallback says which frame is on show, so frame-step moves from
+// the frame the painter sees, and the loop jumps back after its out frame, not a few frames late
+// (R20). The comma and period keys step, and I and O (or [ and ]) set the loop's in and out points.
 import { onPageKeys } from './keys.js';
+import {
+  FLOAT_SLACK,
+  frameAtTime,
+  frameHoldingTime,
+  frameNumber,
+  lastFrame,
+  seekTimeOfFrame,
+  startOfFrame,
+  steppedFrame,
+} from './video-frames.js';
 
-/** The player's parts. */
+/** The player's parts, and the frame on show, which every control reads. */
 type Player = {
   readonly video: HTMLVideoElement;
   readonly scrub: HTMLInputElement;
   readonly loopBar: HTMLElement;
   readonly fps: number;
+  shownFrame: number;
 };
 
-/** The loop range, in seconds, and whether the player keeps to it. */
+/** The loop range, as its first and last frames, and whether the player keeps to it. */
 type Loop = { in: number | undefined; out: number | undefined; isOn: boolean };
+
+/** How far past a frame's start a seek to that start goes: far under a hundredth of a second. */
+const FRAME_START_HAIR = 1e-4;
 
 /** 0:42.12, or 1:02:07.50 past an hour: minutes, seconds and hundredths. */
 function formatTimecode(totalSeconds: number): string {
-  const hundredths = Math.floor(totalSeconds * 100) % 100;
-  const seconds = Math.floor(totalSeconds) % 60;
-  const minutes = Math.floor(totalSeconds / 60);
+  // The slack keeps a frame's start, such as 7 ÷ 30 s, from reading a hundredth early.
+  const totalHundredths = Math.floor(totalSeconds * 100 + FLOAT_SLACK);
+  const hundredths = totalHundredths % 100;
+  const seconds = Math.floor(totalHundredths / 100) % 60;
+  const minutes = Math.floor(totalHundredths / 6000);
   const fraction = `${String(seconds).padStart(2, '0')}.${String(hundredths).padStart(2, '0')}`;
   return minutes < 60
     ? `${String(minutes)}:${fraction}`
@@ -38,57 +55,109 @@ function actionButton(name: string): HTMLButtonElement | null {
   return document.querySelector<HTMLButtonElement>(`[data-video-action="${name}"]`);
 }
 
-/** Brings the time, frame number, scrub bar and play button up to date. */
+/** The video's length in seconds, or 0 before the browser knows it. */
+function durationOf(video: HTMLVideoElement): number {
+  return Number.isFinite(video.duration) ? video.duration : 0;
+}
+
+/**
+ * Brings the time, frame number, scrub bar and play button up to date. The time is the one the
+ * player was scrubbed or stepped to, and the frame number names the frame on show.
+ */
 function showPosition(player: Player): void {
-  const { video, scrub, fps } = player;
-  const duration = Number.isFinite(video.duration) ? video.duration : 0;
+  const { video, scrub, shownFrame } = player;
+  const duration = durationOf(video);
   setText('time', `${formatTimecode(video.currentTime)} / ${formatTimecode(duration)}`);
-  setText('frame', `frame ${Math.round(video.currentTime * fps).toLocaleString('en-US')}`);
+  setText('frame', `frame ${frameNumber(shownFrame).toLocaleString('en-US')}`);
   scrub.max = String(duration);
-  scrub.value = String(video.currentTime);
+  if (!video.seeking) {
+    scrub.value = String(video.currentTime);
+  }
   const play = actionButton('play');
   if (play !== null) {
     play.textContent = video.paused ? '▶ Play' : '❚❚ Pause';
   }
 }
 
+/** Writes a loop point's timecode: the start of its frame, or dashes before it is set. */
+function showLoopPoint(name: string, frame: number | undefined, fps: number): void {
+  setText(name, frame === undefined ? '–:––.––' : formatTimecode(startOfFrame(frame, fps)));
+}
+
 /** Draws the loop range on the scrub bar in magenta, and its in and out times. */
 function showLoop(player: Player, loop: Loop): void {
-  const duration = player.video.duration;
-  setText('loop-in', loop.in === undefined ? '–:––.––' : formatTimecode(loop.in));
-  setText('loop-out', loop.out === undefined ? '–:––.––' : formatTimecode(loop.out));
+  const { fps } = player;
+  const duration = durationOf(player.video);
+  showLoopPoint('loop-in', loop.in, fps);
+  showLoopPoint('loop-out', loop.out, fps);
   const toggle = actionButton('loop');
   if (toggle !== null) {
     toggle.setAttribute('aria-pressed', String(loop.isOn));
     toggle.textContent = loop.isOn ? 'Loop on' : 'Loop off';
   }
   const { in: start, out: end } = loop;
-  const canDraw = Number.isFinite(duration) && duration > 0;
-  if (start === undefined || end === undefined || end <= start || !canDraw) {
+  if (start === undefined || end === undefined || end <= start || duration === 0) {
     player.loopBar.hidden = true;
     return;
   }
+  const startTime = startOfFrame(start, fps);
+  const endTime = startOfFrame(end, fps);
   player.loopBar.hidden = false;
-  player.loopBar.style.left = `${String((start / duration) * 100)}%`;
-  player.loopBar.style.width = `${String(((end - start) / duration) * 100)}%`;
+  player.loopBar.style.left = `${String((startTime / duration) * 100)}%`;
+  player.loopBar.style.width = `${String(((endTime - startTime) / duration) * 100)}%`;
 }
 
-/** Pauses and moves one frame back or forward. */
+/** Steps to the middle of this frame, and counts it as on show straight away. */
+function showFrame(player: Player, frame: number): void {
+  player.shownFrame = frame;
+  player.video.currentTime = seekTimeOfFrame(frame, player.fps);
+  showPosition(player);
+}
+
+/** Seeks to a time from the scrub bar or the history, counting its frame as on show straight away. */
+function showTime(player: Player, seconds: number): void {
+  const frame = frameHoldingTime(seconds, player.fps);
+  player.shownFrame = frame;
+  // A time on a frame's exact start can land on the frame before it, so seek a hair past it.
+  player.video.currentTime = Math.max(seconds, startOfFrame(frame, player.fps) + FRAME_START_HAIR);
+  showPosition(player);
+}
+
+/** Pauses and moves one frame back or forward from the frame on show. */
 function stepFrame(player: Player, frames: number): void {
   const { video, fps } = player;
   video.pause();
-  const duration = Number.isFinite(video.duration) ? video.duration : 0;
-  video.currentTime = Math.min(duration, Math.max(0, video.currentTime + frames / fps));
+  showFrame(player, steppedFrame(player.shownFrame, frames, lastFrame(video.duration, fps)));
 }
 
-/** Keeps playback inside the loop range while the loop is on. */
-function keepInLoop(player: Player, loop: Loop): void {
-  const { video } = player;
-  if (loop.isOn && loop.in !== undefined && loop.out !== undefined && loop.out > loop.in) {
-    if (video.currentTime >= loop.out || video.currentTime < loop.in) {
-      video.currentTime = loop.in;
-    }
+/** The loop's first frame when the loop is on and this frame lies outside it, else undefined. */
+function loopRestart(loop: Loop, frame: number): number | undefined {
+  const { in: start, out: end } = loop;
+  if (!loop.isOn || start === undefined || end === undefined || end <= start) {
+    return undefined;
   }
+  // The out frame itself counts as outside: once it is on show, the next frame would overrun.
+  return frame < start || frame >= end ? start : undefined;
+}
+
+/**
+ * Follows every frame the browser shows: the readouts follow it, and while the loop plays, its
+ * out frame sends the video back to the in frame. A seek in flight was counted by showFrame.
+ */
+function followFrames(player: Player, loop: Loop): void {
+  const { video, fps } = player;
+  function onFrame(_now: number, metadata: VideoFrameCallbackMetadata): void {
+    if (!video.seeking) {
+      player.shownFrame = frameAtTime(metadata.mediaTime, fps);
+      const restart = video.paused ? undefined : loopRestart(loop, player.shownFrame);
+      if (restart !== undefined) {
+        showFrame(player, restart);
+      }
+      showPosition(player);
+    }
+    video.requestVideoFrameCallback(onFrame);
+  }
+  video.requestVideoFrameCallback(onFrame);
 }
 
 /** The player's buttons by their data-video-action name. */
@@ -100,6 +169,10 @@ function playerActions(player: Player, loop: Loop): Record<ActionName, () => voi
   return {
     play: () => {
       if (video.paused) {
+        const restart = loopRestart(loop, player.shownFrame);
+        if (restart !== undefined) {
+          showFrame(player, restart);
+        }
         void video.play();
       } else {
         video.pause();
@@ -112,11 +185,11 @@ function playerActions(player: Player, loop: Loop): Record<ActionName, () => voi
       stepFrame(player, 1);
     },
     'loop-in': () => {
-      loop.in = video.currentTime;
+      loop.in = player.shownFrame;
       showLoop(player, loop);
     },
     'loop-out': () => {
-      loop.out = video.currentTime;
+      loop.out = player.shownFrame;
       showLoop(player, loop);
     },
     loop: () => {
@@ -142,19 +215,20 @@ function enableSettings(video: HTMLVideoElement): void {
  * Starts the video at the time Home's history reopened it at (R35), once the browser knows its
  * length; a page with no start time plays from 0:00.
  */
-function startAtHistoryTime(video: HTMLVideoElement): void {
+function startAtHistoryTime(player: Player): void {
+  const { video } = player;
   const start = Number(video.dataset.start);
   if (video.dataset.start === undefined || !Number.isFinite(start)) {
     return;
   }
   if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
-    video.currentTime = start;
+    showTime(player, start);
     return;
   }
   video.addEventListener(
     'loadedmetadata',
     () => {
-      video.currentTime = start;
+      showTime(player, start);
     },
     { once: true },
   );
@@ -168,17 +242,17 @@ function enablePlayer(player: Player): void {
   for (const [name, action] of Object.entries(actions)) {
     actionButton(name)?.addEventListener('click', action);
   }
-  for (const event of ['loadedmetadata', 'timeupdate', 'play', 'pause', 'seeked']) {
+  for (const event of ['loadedmetadata', 'play', 'pause', 'seeked']) {
     video.addEventListener(event, () => {
-      keepInLoop(player, loop);
       showPosition(player);
     });
   }
+  followFrames(player, loop);
   scrub.addEventListener('input', () => {
-    video.currentTime = Number(scrub.value);
+    showTime(player, Number(scrub.value));
   });
   enableSettings(video);
-  startAtHistoryTime(video);
+  startAtHistoryTime(player);
   onPageKeys({
     ',': actions.back,
     '.': actions.forward,
@@ -193,5 +267,5 @@ const video = document.querySelector<HTMLVideoElement>('[data-video-player]');
 const scrub = document.querySelector<HTMLInputElement>('[data-video-scrub]');
 const loopBar = document.querySelector<HTMLElement>('[data-video-loop]');
 if (video !== null && scrub !== null && loopBar !== null) {
-  enablePlayer({ video, scrub, loopBar, fps: Number(video.dataset.fps ?? '30') });
+  enablePlayer({ video, scrub, loopBar, fps: Number(video.dataset.fps ?? '30'), shownFrame: 0 });
 }
