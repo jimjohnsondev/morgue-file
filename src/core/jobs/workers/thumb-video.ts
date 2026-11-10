@@ -6,9 +6,9 @@ import { cropToThumbnail } from './crop.js';
 import { runTool } from './run-tool.js';
 
 import type { MediaDetails } from '#core/db/repositories/item-files.js';
+import type { ThumbnailSize } from '../thumbnail-files.js';
 import type { ThumbnailResult } from './crop.js';
 import type { MediaTools } from './media-tools.js';
-import type { ThumbnailSize } from '../thumbnail-files.js';
 
 /** How far into the video the poster frame is taken. */
 const POSTER_POSITION = 0.1;

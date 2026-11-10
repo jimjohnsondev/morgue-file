@@ -14,8 +14,8 @@ import { ListViewQuerystring, toListView } from './list-view.js';
 import { sendIndexPage } from './render-index.js';
 
 import type { FilterKey, Query, Term } from '#core/query/query-types.js';
-import type { ListSpec } from './list-model.js';
 import type { PageContext } from '../page-context.js';
+import type { ListSpec } from './list-model.js';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { Static } from '@sinclair/typebox';
 import type { FastifyInstance } from 'fastify';

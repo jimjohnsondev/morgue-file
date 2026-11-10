@@ -26,9 +26,9 @@ import type { Item } from '#core/db/repositories/items.js';
 import type { ItemModelLink, PageRange } from '#core/db/repositories/models.js';
 import type { Subcategory } from '#core/db/repositories/subcategories.js';
 import type { FieldWithValue } from '#core/fields/fields.js';
-import type { ItemView } from './item-view.js';
 import type { DetailsModel, FactRow, FilingForm } from '../../views/parts/details-panel.js';
 import type { FieldRow } from '../../views/parts/item-fields.js';
+import type { ItemView } from './item-view.js';
 
 /** The grouped value an issue belongs to: its magazine title, and the issue's own name. */
 export type IssueOf = {

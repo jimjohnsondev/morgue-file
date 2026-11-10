@@ -6,6 +6,7 @@ import { findAppDir, LOOPBACK_HOST } from '#server/config.js';
 import type { ServerConfig } from '#server/config.js';
 import type { InstallStateHolder } from '#server/install/install-state.js';
 import type { FastifyInstance } from 'fastify';
+import type { AddressInfo } from 'node:net';
 
 const PORT = 47613;
 const TOKEN = 'test-token';
@@ -90,8 +91,12 @@ describe('R27: requests from another device or a foreign page are refused', () =
   it('listens on 127.0.0.1 only', async () => {
     const listening = await buildApp({ config, install, token: TOKEN });
     await listening.listen({ host: config.host, port: 0 });
-    const addresses = listening.addresses();
+    // fastify 5.12.8 types each address as a string or an AddressInfo.
+    const addresses: (string | AddressInfo)[] = listening.addresses();
     await listening.close();
-    expect(addresses.map((address) => address.address)).toEqual(['127.0.0.1']);
+    const hosts = addresses.map((address) =>
+      typeof address === 'string' ? address : address.address,
+    );
+    expect(hosts).toEqual(['127.0.0.1']);
   });
 });
