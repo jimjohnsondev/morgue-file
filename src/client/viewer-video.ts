@@ -123,6 +123,17 @@ function showTime(player: Player, seconds: number): void {
   showPosition(player);
 }
 
+/**
+ * Sends a playing loop back to its in frame. The seek goes to the frame's start, not its middle, so
+ * the in frame stays on show for its whole span: from the middle, a slow PC's clock can pass the
+ * frame before it is drawn, and the loop then starts a frame late.
+ */
+function restartLoop(player: Player, frame: number): void {
+  player.shownFrame = frame;
+  player.video.currentTime = startOfFrame(frame, player.fps) + FRAME_START_HAIR;
+  showPosition(player);
+}
+
 /** Pauses and moves one frame back or forward from the frame on show. */
 function stepFrame(player: Player, frames: number): void {
   const { video, fps } = player;
@@ -151,7 +162,7 @@ function followFrames(player: Player, loop: Loop): void {
       player.shownFrame = frameAtTime(metadata.mediaTime, fps);
       const restart = video.paused ? undefined : loopRestart(loop, player.shownFrame);
       if (restart !== undefined) {
-        showFrame(player, restart);
+        restartLoop(player, restart);
       }
       showPosition(player);
     }
@@ -170,10 +181,13 @@ function playerActions(player: Player, loop: Loop): Record<ActionName, () => voi
     play: () => {
       if (video.paused) {
         const restart = loopRestart(loop, player.shownFrame);
-        if (restart !== undefined) {
-          showFrame(player, restart);
+        if (restart === undefined) {
+          void video.play();
+          return;
         }
-        void video.play();
+        // Playing only once the seek lands draws the in frame first, before the clock runs.
+        showFrame(player, restart);
+        video.addEventListener('seeked', () => void video.play(), { once: true });
       } else {
         video.pause();
       }
