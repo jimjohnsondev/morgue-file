@@ -42,11 +42,14 @@ export type Install = {
   readonly restore: (zip: Buffer) => Promise<LightMyRequestResponse>;
 };
 
+/** The bytes of a library.db SQLite can't open, and of the write-ahead log beside it. */
+export type UnopenableLibrary = { readonly library: Buffer; readonly log: Buffer };
+
 /** A temporary folder of installs, and how to start one, zip a database, and remove them all. */
 export type BackupWorkspace = {
   readonly workDir: string;
-  /** Starts an install; with `unopenable`, its library.db holds those bytes and won't open. */
-  readonly startInstall: (name: string, unopenable?: Buffer) => Promise<Install>;
+  /** Starts an install; with `unopenable`, its library.db and log hold those bytes and won't open. */
+  readonly startInstall: (name: string, unopenable?: UnopenableLibrary) => Promise<Install>;
   readonly remove: () => Promise<void>;
 };
 
@@ -112,10 +115,15 @@ export async function makeBackupWorkspace(): Promise<BackupWorkspace> {
       const referenceDir = path.join(workDir, name, 'Reference');
       await mkdir(dataDir, { recursive: true });
       if (unopenable !== undefined) {
-        await writeFile(path.join(dataDir, LIBRARY_FILE_NAME), unopenable);
+        await writeFile(path.join(dataDir, LIBRARY_FILE_NAME), unopenable.library);
       }
       await cp(path.join(workDir, 'Reference'), referenceDir, { recursive: true });
       const { runtime, app } = await serveInstall(dataDir, referenceDir);
+      if (unopenable !== undefined) {
+        // Written once the failed open has closed SQLite, which deletes a log it can't use: this
+        // is the log a library left when it closed without a checkpoint.
+        await writeFile(path.join(dataDir, `${LIBRARY_FILE_NAME}-wal`), unopenable.log);
+      }
       served.push({ runtime, app });
       return {
         dataDir,

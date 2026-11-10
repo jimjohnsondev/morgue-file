@@ -48,7 +48,10 @@ function requireRestorable(context: RestoreContext): Ready {
  * migration a later release fixes) is copied as it lies on disk, with its write-ahead log, since
  * it may still hold the user's only copy of their work. Undefined when there is no library file.
  */
-async function keepCurrentLibrary(context: RestoreContext, install: ReadyInstall) {
+async function keepCurrentLibrary(
+  context: RestoreContext,
+  install: ReadyInstall,
+): Promise<string | undefined> {
   const options = {
     backupsDir: path.join(install.dataDir, BACKUPS_FOLDER_NAME),
     appVersion: context.appVersion,
@@ -84,7 +87,11 @@ async function deleteInBackground(folder: string, log: FastifyBaseLogger): Promi
  * Stops the library, puts a database file in its place, empties the thumbnail cache and starts
  * the library again, whatever happened in between. Says whether the library opened.
  */
-async function swapLibrary(ready: Ready, databaseFile: string, log: FastifyBaseLogger) {
+async function swapLibrary(
+  ready: Ready,
+  databaseFile: string,
+  log: FastifyBaseLogger,
+): Promise<boolean> {
   await ready.library.stop();
   try {
     await replaceLibraryFile(ready.install.dataDir, databaseFile);
@@ -96,25 +103,35 @@ async function swapLibrary(ready: Ready, databaseFile: string, log: FastifyBaseL
 }
 
 /**
- * Puts the library a restore replaced back, if it was copied first. A failure here is logged, so
- * the caller can report what went wrong first.
+ * Puts the library a restore replaced back, if it was copied first, and says whether it is back.
+ * A failure here is logged, so the caller can report what went wrong first.
  */
-async function putBack(ready: Ready, kept: string | undefined, log: FastifyBaseLogger) {
+async function putBack(
+  ready: Ready,
+  kept: string | undefined,
+  log: FastifyBaseLogger,
+): Promise<boolean> {
   if (kept === undefined) {
-    return;
+    return false;
   }
   try {
     await swapLibrary(ready, kept, log);
+    return true;
   } catch (error) {
     log.error({ err: error, kept }, 'Could not put the library back after a failed restore');
+    return false;
   }
 }
 
 /** Why a restored library that won't open was refused, and where the old one is. */
-function unopenedMessage(kept: string | undefined): string {
+function unopenedMessage(kept: string | undefined, isPutBack: boolean): string {
+  const refusal = 'The library in that backup could not be opened';
+  if (isPutBack) {
+    return `${refusal}, so the library was put back as it was.`;
+  }
   return kept === undefined
-    ? 'The library in that backup could not be opened.'
-    : 'The library in that backup could not be opened, so the library was put back as it was.';
+    ? `${refusal}.`
+    : `${refusal}, and the library could not be put back. It is kept in the data folder as ${kept}.`;
 }
 
 /** Swaps in the restored library, or puts the old one back if that fails or it won't open. */
@@ -128,8 +145,8 @@ async function swapInRestored(context: RestoreContext, ready: Ready, databaseFil
     throw error;
   }
   if (!isOpen) {
-    await putBack(ready, kept, context.log);
-    throw new AppError('invalid-backup', unopenedMessage(kept));
+    const isPutBack = await putBack(ready, kept, context.log);
+    throw new AppError('invalid-backup', unopenedMessage(kept, isPutBack));
   }
 }
 

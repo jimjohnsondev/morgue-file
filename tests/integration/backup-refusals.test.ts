@@ -94,7 +94,10 @@ describe('refusing what is not a backup', () => {
 });
 
 describe('restoring over a library that failed to open', () => {
-  const UNOPENABLE = Buffer.from('a library this release could not open');
+  const UNOPENABLE = {
+    library: Buffer.from('a library this release could not open'),
+    log: Buffer.from('changes still in its write-ahead log'),
+  };
 
   it('R26: the library that would not open is kept, with its log, and the backup restores', async () => {
     const stuck = await workspace.startInstall('stuck', UNOPENABLE);
@@ -103,10 +106,11 @@ describe('restoring over a library that failed to open', () => {
     await stuck.runtime.whenIndexed();
     expect((await stuck.get('/tags/backlit')).body).toContain('seated_backlit_017');
     const backups = path.join(stuck.dataDir, BACKUPS_FOLDER_NAME);
-    const kept = readdirSync(backups).filter((name) => name.endsWith('.db'));
-    expect(kept.some((name) => readFileSync(path.join(backups, name)).equals(UNOPENABLE))).toBe(
-      true,
+    const kept = readdirSync(backups).find((name) =>
+      readFileSync(path.join(backups, name)).equals(UNOPENABLE.library),
     );
+    expect(kept).toMatch(/\.db$/);
+    expect(readFileSync(path.join(backups, `${kept!}-wal`)).equals(UNOPENABLE.log)).toBe(true);
   });
 
   it('R26: when the backup will not open either, the library is put back as it lay on disk', async () => {
@@ -115,6 +119,9 @@ describe('restoring over a library that failed to open', () => {
     writeUnmigratableLibrary(broken);
     const refused = await stuck.restore(await zipOf(broken, workspace.workDir));
     expect(refused.statusCode).toBe(400);
-    expect(readFileSync(path.join(stuck.dataDir, LIBRARY_FILE_NAME)).equals(UNOPENABLE)).toBe(true);
+    expect(refused.json<{ message: string }>().message).toContain('put back as it was');
+    const libraryFile = path.join(stuck.dataDir, LIBRARY_FILE_NAME);
+    expect(readFileSync(libraryFile).equals(UNOPENABLE.library)).toBe(true);
+    expect(readFileSync(`${libraryFile}-wal`).equals(UNOPENABLE.log)).toBe(true);
   });
 });
