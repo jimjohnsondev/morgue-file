@@ -125,7 +125,8 @@ export default tseslint.config(
     ignores: [
       'src/core/archive/originals.ts',
       // Backup zips and the files a restore works with, all in the data folder.
-      'src/core/backup/**',
+      'src/core/backup/backup-zip.ts',
+      'src/core/backup/restore-zip.ts',
       'src/core/db/**',
       // The thumbnail cache, and the app's bin\ folder; workers read originals via originals.ts.
       'src/core/jobs/thumbnail-files.ts',

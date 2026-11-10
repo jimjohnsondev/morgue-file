@@ -88,13 +88,27 @@ export function migrate(
  */
 export function backUpLibrary(db: Db, options: MigrateOptions): string {
   mkdirSync(options.backupsDir, { recursive: true });
-  const stamp = options.now.toISOString().replaceAll(':', '-').replace('.', '-');
-  const file = path.join(options.backupsDir, `library-${options.appVersion}-${stamp}.db`);
+  const file = backupFilePath(options);
   backUpDatabase(db, file);
-  for (const oldBackup of backupsOldestFirst(options.backupsDir).slice(0, -KEPT_BACKUPS)) {
-    rmSync(path.join(options.backupsDir, oldBackup));
-  }
+  pruneBackups(options.backupsDir);
   return file;
+}
+
+/** Where a backup of library.db made at this time goes: `library-<app version>-<UTC time>.db`. */
+export function backupFilePath(options: MigrateOptions): string {
+  const stamp = options.now.toISOString().replaceAll(':', '-').replace('.', '-');
+  return path.join(options.backupsDir, `library-${options.appVersion}-${stamp}.db`);
+}
+
+/**
+ * Deletes all but the newest few backups, with the write-ahead log a restore's raw copy of a
+ * library that wouldn't open may have beside it.
+ */
+export function pruneBackups(backupsDir: string): void {
+  for (const oldBackup of backupsOldestFirst(backupsDir).slice(0, -KEPT_BACKUPS)) {
+    rmSync(path.join(backupsDir, oldBackup));
+    rmSync(path.join(backupsDir, `${oldBackup}-wal`), { force: true });
+  }
 }
 
 /** The schema version the app's migrations bring a database to. */

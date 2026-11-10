@@ -4,9 +4,13 @@
 import path from 'node:path';
 
 import { makeRestoreFiles, saveStream, unpackBackup } from '#core/backup/restore-zip.js';
-import { checkRestoredDatabase, replaceLibraryFile } from '#core/db/library-file.js';
+import {
+  checkRestoredDatabase,
+  copyLibraryFiles,
+  replaceLibraryFile,
+} from '#core/db/library-file.js';
 import { BACKUPS_FOLDER_NAME } from '#core/db/library.js';
-import { backUpLibrary } from '#core/db/migrations.js';
+import { backUpLibrary, backupFilePath, pruneBackups } from '#core/db/migrations.js';
 import { AppError } from '#core/errors.js';
 import {
   deleteThumbnailFolder,
@@ -39,19 +43,24 @@ function requireRestorable(context: RestoreContext): Ready {
 }
 
 /**
- * Copies the open library into the backups folder, as migrations do, so a restore can be undone
- * by hand. A library that failed to open has nothing to copy; restoring is how it gets fixed.
+ * Copies the library into the backups folder, as migrations do, so a restore can be undone. An
+ * open library is copied through SQLite; one that failed to open at launch (a held lock, a
+ * migration a later release fixes) is copied as it lies on disk, with its write-ahead log, since
+ * it may still hold the user's only copy of their work. Undefined when there is no library file.
  */
-function keepCurrentLibrary(context: RestoreContext, install: ReadyInstall): string | undefined {
-  const open = context.library?.open();
-  if (open === undefined) {
-    return undefined;
-  }
-  return backUpLibrary(open.db, {
+async function keepCurrentLibrary(context: RestoreContext, install: ReadyInstall) {
+  const options = {
     backupsDir: path.join(install.dataDir, BACKUPS_FOLDER_NAME),
     appVersion: context.appVersion,
     now: new Date(),
-  });
+  };
+  const open = context.library?.open();
+  if (open !== undefined) {
+    return backUpLibrary(open.db, options);
+  }
+  const kept = await copyLibraryFiles(install.dataDir, backupFilePath(options));
+  pruneBackups(options.backupsDir);
+  return kept;
 }
 
 /** Empties the thumbnail cache, deleting the old files in the background. */
@@ -86,16 +95,31 @@ async function swapLibrary(ready: Ready, databaseFile: string, log: FastifyBaseL
   return ready.library.open() !== undefined;
 }
 
-/** Puts the library a restore replaced back, if it was copied first. */
+/**
+ * Puts the library a restore replaced back, if it was copied first. A failure here is logged, so
+ * the caller can report what went wrong first.
+ */
 async function putBack(ready: Ready, kept: string | undefined, log: FastifyBaseLogger) {
-  if (kept !== undefined) {
-    await swapLibrary(ready, kept, log);
+  if (kept === undefined) {
+    return;
   }
+  try {
+    await swapLibrary(ready, kept, log);
+  } catch (error) {
+    log.error({ err: error, kept }, 'Could not put the library back after a failed restore');
+  }
+}
+
+/** Why a restored library that won't open was refused, and where the old one is. */
+function unopenedMessage(kept: string | undefined): string {
+  return kept === undefined
+    ? 'The library in that backup could not be opened.'
+    : 'The library in that backup could not be opened, so the library was put back as it was.';
 }
 
 /** Swaps in the restored library, or puts the old one back if that fails or it won't open. */
 async function swapInRestored(context: RestoreContext, ready: Ready, databaseFile: string) {
-  const kept = keepCurrentLibrary(context, ready.install);
+  const kept = await keepCurrentLibrary(context, ready.install);
   let isOpen: boolean;
   try {
     isOpen = await swapLibrary(ready, databaseFile, context.log);
@@ -105,10 +129,7 @@ async function swapInRestored(context: RestoreContext, ready: Ready, databaseFil
   }
   if (!isOpen) {
     await putBack(ready, kept, context.log);
-    throw new AppError(
-      'invalid-backup',
-      'The library in that backup could not be opened, so the library was put back as it was.',
-    );
+    throw new AppError('invalid-backup', unopenedMessage(kept));
   }
 }
 

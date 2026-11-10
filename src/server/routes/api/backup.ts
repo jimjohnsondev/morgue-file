@@ -6,9 +6,10 @@ import { AppError } from '#core/errors.js';
 import { restoreLibrary } from '../../library-restore.js';
 import { requireLibrary } from '../require-library.js';
 
+import type { BackupZip } from '#core/backup/backup-zip.js';
 import type { InstallStateHolder } from '../../install/install-state.js';
 import type { LibraryRuntime } from '../../library-runtime.js';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 
 /** What the backup routes need from the app. */
 export type BackupApiContext = {
@@ -20,9 +21,18 @@ export type BackupApiContext = {
 /** The body type a backup is sent back as; its bytes are streamed to disk, never buffered. */
 const BACKUP_CONTENT_TYPE = 'application/zip';
 
+/** Deletes a backup's database copy; a failure (Windows holding the file) is only logged. */
+async function discardCopy(backup: BackupZip, log: FastifyBaseLogger): Promise<void> {
+  try {
+    await backup.discard();
+  } catch (error) {
+    log.warn({ err: error }, 'Could not delete the database copy a backup was made from');
+  }
+}
+
 /** Registers GET /settings/backup: one click saves the whole library as a zip. */
 function registerBackupDownload(app: FastifyInstance, context: BackupApiContext): void {
-  app.get('/settings/backup', async (_request, reply) => {
+  app.get('/settings/backup', async (request, reply) => {
     const { db } = requireLibrary(context.library);
     const install = context.install.current;
     if (install.kind !== 'ready') {
@@ -34,7 +44,7 @@ function registerBackupDownload(app: FastifyInstance, context: BackupApiContext)
       now: new Date(),
     });
     // The copy is deleted once the response is over, whether it was sent in full or not.
-    reply.raw.once('close', () => void backup.discard());
+    reply.raw.once('close', () => void discardCopy(backup, request.log));
     return reply
       .type(BACKUP_CONTENT_TYPE)
       .header('content-disposition', `attachment; filename="${backup.fileName}"`)
