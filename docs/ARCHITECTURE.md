@@ -73,6 +73,7 @@ morgue-file/
       fields/         the shared field system for items and models
       filing/         subcategory changes from Settings and filing by hand; typed folders to root paths
       organize/       bulk changes to tags, collections and filing for a selection or one item
+      compare/        the compare board's references, layout and window place, kept in settings
       models/         creating a model profile (unique slug, Name field)
       slug.ts         URL slugs for subcategories and models
       archive/        originals.ts (only fs access to roots), classify.ts, pagefolder.ts
@@ -81,7 +82,7 @@ morgue-file/
       ingest/         ingest.ts, duplicates.ts, fetch-url.ts, file-names.ts, public-address.ts
       backup/         zip export and restore
     client/           Vite entries: main, selection and bulk-actions (with selection-state), tag-suggest, drop-outline and paste (with ingest-upload), inline-edit, api-forms (with api-request) and save-on-change, keyboard, viewer-image, viewer-video, reader, compare
-    styles/           tokens.css (approved design values), base.css, templates.css, banner.svg
+    styles/           tokens.css (approved design values), base.css, templates.css, compare.css and the other template sheets, banner.svg
   scripts/            make-fixtures.ts, seed-fixtures.ts, make-perf-db.ts, copy-migrations.ts, package-win.ts, setup-repo.ts, check-readme.ts
     fixtures/         the fixture planners and writers make-fixtures.ts and make-perf-db.ts run
   packaging/          Morgue File.cmd and Install shortcuts.cmd, copied into the zip as they are
@@ -261,7 +262,7 @@ Every page is plain HTML rendered on the server from one of three templates. Eve
 
 **Keys.** ← and → move to Prev and Next. V toggles viewing mode and Esc leaves it (the final key is set at the design gate). + and − zoom, 0 fits. Comma and period step frames, and \[ and \] set the loop range. Ctrl+S saves an edit form.
 
-**Compare board (P1).** It opens with `window.open('/compare', 'morgue-compare')`, and its layout is saved in `settings` so it survives restarts.
+**Compare board (P1).** It opens with `window.open('/compare', 'morgue-compare')`, and its layout is saved in `settings` so it survives restarts. (As built: see As built in PR 23.)
 
 **As built in PR 7.**
 
@@ -466,6 +467,15 @@ The search box, the filter bar and every Index URL share one query language. It 
 - A frame-step seeks to the middle of its frame, (n + ½) ÷ fps, because a seek to a frame's exact start can land on the frame before it. The scrub bar and the history start time seek to the time given, or a ten-thousandth of a second past it when it is a frame's exact start. Either way the player counts the new frame as on show straight away and ignores frame callbacks while a seek is in flight, so several quick presses of the period key step that many frames.
 - The loop range is a first and a last frame, both played; the in and out readouts and the magenta bar use where those frames start. While the loop is on and the video plays, the callback for the out frame (or any frame outside the range) seeks back to the start of the in frame (not its middle, so a slow PC's clock can't pass the in frame before it is drawn): the out frame is the trigger because it is the last one that may show. Play from outside the range seeks to the in frame and starts playing once that seek lands; playing straight away let the Windows CI runner skip the in frame. The `timeupdate` check is gone.
 - Tests: `tests/unit/video-frames.test.ts` covers the arithmetic, and `tests/e2e/video-tools.spec.ts` records the frames Chromium shows from the page: five quick steps then two back land on the exact frame on MP4 (`pose_session_04_seated.mp4`) and MOV (`timelapse_002.mov`), and a 10–20 loop on the MOV plays three rounds without showing a frame outside it. No screenshot changes: frame 7 renders the same readouts, picture and loop bar as before.
+
+**As built in PR 23 (R22).**
+
+- An Item page's heading has "add to compare board" beside Prev and Next. `client/compare.ts` posts `POST /api/compare/items` with `{ itemId }`, then opens `/compare` with `window.open('/compare', 'morgue-compare', 'popup,width=1600,height=1000')`: the one window the app opens, which `tests/unit/no-dialogs.test.ts` allows in that module alone (R37). A window already open under that name reloads with the new reference instead of a second one opening. A full board refuses (`compare-board-full`, 409, "Remove one from it first") and the board opens anyway, so one can be taken off; the refusal shows beside the button.
+- The board (`core/compare/compare-board.ts`) is one `settings` row, `compare-board`, holding JSON checked by a TypeBox schema on every read: the item ids in the order they were added (at most 4), the layout (`row` or `grid`) and the window's place. A value of another shape reads as an empty board. Adding an item already on it changes nothing.
+- `GET /compare` (`routes/pages/compare-route.tsx`, `compare-model.ts`, `views/templates/compare-template.tsx`) has no banner, tabs or footer, so the references get the whole window: the trim strip, then one panel titled "Compare board · 3 of 4 references" with the layout choices in its title bar, and each reference on the viewer's gray with its name and [remove]. It shares the document head with every other page (`DocumentHead` in `page-layout.tsx`). A photo shows its original (or a HEIC, TIFF or PSD photo its JPEG copy), a video plays in a looping, muted `<video>`, a CBZ or page folder shows page 1 and a PDF its cover thumbnail; an offline or missing original shows its thumbnail with a note. Picking a page of a book for the board waits for a design that shows where.
+- Remove (`DELETE /api/compare/items/<id>`) and the layout choices (`POST /api/compare/layout` with `{ layout }`) are ordinary API forms, so the board reloads with the change. The window's place is the outer size and screen position: the board saves it (`POST /api/compare/window`, whole pixels, each side at least 200) when a resize pauses for half a second and as the window closes or reloads, if it changed. The board's markup carries the saved place (`data-compare-window`), and a window opened by the button moves and resizes itself there on its first load only, noted in `sessionStorage`, so its own reloads never move it back. Only a window the button opened (`window.opener`) saves or takes a place, so `/compare` opened in a browser tab by its address never saves the main window's size as the board's.
+- No migration: `settings` has been there since `001_initial.sql`.
+- Tests: `tests/integration/compare-board.test.ts` covers the four-reference limit, order, removal, layouts, offline and missing originals, the window's place and the R22 restart (the board written, the library closed and opened again from its data folder, the page the same). `tests/e2e/compare-board.spec.ts` opens the board from an Item page, adds a second item into the same window, switches to the grid, closes it and opens it again as it was left. `tests/visual/compare-board.spec.ts` captures four Figure photos side by side and in the grid at the window's opening size (new baselines, approved in this PR). The heading's new button changes the Item frames' baselines: frames 5, 6, 7 and 8 and E4; frame 9 hides the heading.
 
 ## Security
 

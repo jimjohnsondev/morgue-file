@@ -129,23 +129,37 @@ function Footer(props: {
   );
 }
 
+/**
+ * The document head every page shares, the compare board's window too: the launch token the
+ * page's writes carry, its title, and the built styles and scripts.
+ */
+export function DocumentHead(props: {
+  readonly title: string;
+  readonly token: string;
+  readonly assets: PageAssets;
+}) {
+  return (
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width" />
+      <meta name="morgue-token" content={props.token} />
+      <title>{`${props.title} · Morgue File`}</title>
+      {props.assets.styles.map((href) => (
+        <link key={href} rel="stylesheet" href={href} />
+      ))}
+      {props.assets.scripts.map((src) => (
+        <script key={src} type="module" src={src} />
+      ))}
+    </head>
+  );
+}
+
 /** Renders the full HTML document around a page's content. */
 export function PageLayout(props: PageLayoutProps) {
   const { status } = props;
   return (
     <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width" />
-        <meta name="morgue-token" content={props.token} />
-        <title>{`${props.title} · Morgue File`}</title>
-        {props.assets.styles.map((href) => (
-          <link key={href} rel="stylesheet" href={href} />
-        ))}
-        {props.assets.scripts.map((src) => (
-          <script key={src} type="module" src={src} />
-        ))}
-      </head>
+      <DocumentHead title={props.title} token={props.token} assets={props.assets} />
       <body class={props.isViewing === true ? 'viewing-mode' : undefined}>
         <Banner searchText={props.searchText} />
         <div class="trim" />

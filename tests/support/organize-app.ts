@@ -74,8 +74,8 @@ function seedLibrary(db: Db) {
   return { figureIds, handsId, bookId };
 }
 
-/** A runtime around the temp library, with nothing running in the background. */
-function runtimeFor(temp: TempLibrary): LibraryRuntime {
+/** A runtime around a library, with nothing running in the background. */
+export function runtimeFor(temp: Pick<TempLibrary, 'db' | 'dataDir'>): LibraryRuntime {
   return {
     open: () => ({
       db: temp.db,
