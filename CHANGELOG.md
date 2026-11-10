@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.20.0...v1.21.0) (2026-11-10)
+
+
+### Features
+
+* link a model to the reader's pages on show, and open the profile's Library covers at them ([#74](https://github.com/jimjohnsondev/morgue-file/issues/74)) ([83abd83](https://github.com/jimjohnsondev/morgue-file/commit/83abd8382364e70a2b6086b30926a31554ec0603))
+
 ## [1.20.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.19.0...v1.20.0) (2026-11-10)
 
 
