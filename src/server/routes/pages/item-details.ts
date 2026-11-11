@@ -7,6 +7,7 @@ import {
   findCollectionSummaries,
 } from '#core/db/repositories/collections.js';
 import { findModelLinksByItem } from '#core/db/repositories/models.js';
+import { isPublicationFolder } from '#core/db/repositories/publication-folders.js';
 import { findSubcategoriesBySection } from '#core/db/repositories/subcategories.js';
 import { findTagNamesByItem } from '#core/db/repositories/tags.js';
 
@@ -258,5 +259,9 @@ export function buildDetailsModel(db: Db, source: DetailsSource): DetailsModel {
     fields: fieldRows(source),
     fieldAction: fieldAction(item.id),
     hideHref: itemPageHref(item.id, view, { isDetailsHidden: true }),
+    ...(item.kind === 'pagefolder' &&
+      isPublicationFolder(db, item.rootId, item.relPath) && {
+        publicationUndo: `/api/items/${String(item.id)}/publication/undo`,
+      }),
   };
 }

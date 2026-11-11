@@ -281,3 +281,8 @@ function toItem(row: ItemRow): Item {
     thumbState: row.thumb_state,
   };
 }
+
+/** Clears an item's hand filing, so the rules (folder mappings, scans) decide it again. */
+export function clearHandFiling(db: Db, itemId: number): void {
+  db.prepare('UPDATE items SET subcategory_manual = 0 WHERE id = ?').run(itemId);
+}

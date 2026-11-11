@@ -3,6 +3,7 @@
 // the folder an event names (step 3).
 import { isReferenceFolderPresent } from '#core/archive/originals.js';
 import { findScanStates, findScanStatesUnder } from '#core/db/repositories/item-files.js';
+import { findPublicationFolderPaths } from '#core/db/repositories/publication-folders.js';
 import { markRootScanned, setRootStatus } from '#core/db/repositories/roots.js';
 import { systemErrorCode } from '#core/errors.js';
 
@@ -65,10 +66,21 @@ export async function scanRoot(options: ScanOptions): Promise<ScanSummary> {
   }
   const stored = findScanStates(run.db, run.rootId);
   const onFilesListed = options.onFilesFound;
-  const walk = walkRoot(run.rootPath, onFilesListed === undefined ? {} : { onFilesListed });
+  const walk = walkRoot(run.rootPath, {
+    isPublicationFolder: publicationFolderTest(run.db, run.rootId),
+    ...(onFilesListed === undefined ? {} : { onFilesListed }),
+  });
   const summary = await reconcileEntries(run, walk, stored);
   markRootScanned(run.db, run.rootId, run.now.toISOString());
   return { isOffline: false, ...summary };
+}
+
+/** Says, for a walk, whether a folder was made a publication by hand. */
+function publicationFolderTest(db: Db, rootId: number): (relDir: string) => boolean {
+  const folders = new Set(
+    findPublicationFolderPaths(db, rootId).map((relPath) => foldPathCase(relPath)),
+  );
+  return (relDir) => folders.has(foldPathCase(relDir));
 }
 
 /** The parent folder of a path relative to a root; the root itself is ''. */
@@ -100,12 +112,17 @@ function isGone(error: unknown): boolean {
  * Walks a folder for a partial scan, or finds nothing if the folder is gone, so its items are
  * marked missing. Returns undefined if the folder is there but can't be read.
  */
-async function walkScope(rootPath: string, scope: ScanScope): Promise<FoundEntry[] | undefined> {
+async function walkScope(
+  rootPath: string,
+  scope: ScanScope,
+  isPublicationFolder: (relDir: string) => boolean,
+): Promise<FoundEntry[] | undefined> {
   const found: FoundEntry[] = [];
   try {
     for await (const entry of walkRoot(rootPath, {
       startDir: scope.relDir,
       isShallow: scope.isShallow,
+      isPublicationFolder,
     })) {
       found.push(entry);
     }
@@ -129,7 +146,7 @@ export async function scanFolder(options: ScanOptions, scope: ScanScope): Promis
     setRootStatus(run.db, run.rootId, 'offline');
     return untouched(true);
   }
-  const found = await walkScope(run.rootPath, scope);
+  const found = await walkScope(run.rootPath, scope, publicationFolderTest(run.db, run.rootId));
   if (found === undefined) {
     return untouched(false);
   }

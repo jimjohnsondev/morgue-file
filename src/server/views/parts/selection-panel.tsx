@@ -34,6 +34,8 @@ export type SelectionPanelModel = {
   /** The collection this page lists, which its items can be taken out of. */
   readonly currentCollection: Choice | undefined;
   readonly subcategories: readonly ChoiceGroup[];
+  /** Library subcategories a folder of the selected scans can become a publication in. */
+  readonly publicationChoices: readonly Choice[];
 };
 
 /** One labelled group of controls, set off from the next by a dotted rule. */
@@ -263,6 +265,38 @@ function FilingGroup(props: { readonly groups: readonly ChoiceGroup[] }) {
   );
 }
 
+/**
+ * Make a publication: turns the folder of the selected scans into one Library item, read page by
+ * page (R21), for scans the page-folder rule can't recognize from their names.
+ */
+function PublicationGroup(props: { readonly choices: readonly Choice[] }) {
+  return (
+    <Group
+      label={
+        <label for="selection-publication" class="selection-group__label">
+          Make a publication
+        </label>
+      }
+    >
+      <BulkForm label="Make the folder of the selected scans one publication">
+        <select id="selection-publication" name="subcategory" class="field">
+          <ChoiceOptions choices={props.choices} />
+        </select>
+        <BulkButton
+          action="/api/selection/publication"
+          done="Made the folder of {items} one publication in Library."
+        >
+          Make
+        </BulkButton>
+      </BulkForm>
+      <span class="caption">
+        the folder of these scans becomes one item you read page by page; scans you tagged or noted
+        stay as missing items
+      </span>
+    </Group>
+  );
+}
+
 /** The action panel, its title bar in the edit-mode magenta. */
 export function SelectionPanel(props: { readonly model: SelectionPanelModel }) {
   const { model } = props;
@@ -284,6 +318,9 @@ export function SelectionPanel(props: { readonly model: SelectionPanelModel }) {
         <ModelGroup models={model.models} />
         <CollectionGroup model={model} />
         <FilingGroup groups={model.subcategories} />
+        {model.publicationChoices.length > 0 && (
+          <PublicationGroup choices={model.publicationChoices} />
+        )}
       </div>
       <p class="selection-panel__result" role="status" data-selection-result hidden />
     </section>

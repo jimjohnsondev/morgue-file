@@ -45,6 +45,8 @@ export type DetailsModel = {
   /** Where each field's form posts (R11). */
   readonly fieldAction: string;
   readonly hideHref: string;
+  /** Where "Turn back into photos" posts, for a folder made a publication by hand. */
+  readonly publicationUndo?: string;
 };
 
 /** The [move] form, in place of the subcategory's name while it is open. */
@@ -134,8 +136,21 @@ export function DetailsPanel(props: { readonly model: DetailsModel }) {
         <span class="caption">
           <a href="/settings">Edit fields</a>
         </span>
+        {model.publicationUndo !== undefined && <PublicationUndo action={model.publicationUndo} />}
       </div>
     </aside>
+  );
+}
+
+/** For a folder made a publication by hand: a note, and the way back to loose photos. */
+function PublicationUndo(props: { readonly action: string }) {
+  return (
+    <ApiForm action={props.action} next="/photos" label="Turn back into photos">
+      <span class="caption">Made from a folder of photos.</span>{' '}
+      <button type="submit" class="button">
+        Turn back into photos
+      </button>
+    </ApiForm>
   );
 }
 

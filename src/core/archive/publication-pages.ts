@@ -3,8 +3,9 @@
 import { AppError } from '#core/errors.js';
 import { readZipPage } from '#core/jobs/workers/zip.js';
 
+import { isImageFileName, isSystemEntry } from './classify.js';
 import { listFolder, openOriginal, readOriginal } from './originals.js';
-import { isPageFileName, sortPageNames } from './pagefolder.js';
+import { sortPageNames } from './pagefolder.js';
 
 /** A publication whose pages are pictures: a zip of them, or a folder of them. */
 export type PagedOriginal = {
@@ -19,12 +20,19 @@ export type PagePicture = {
   readonly bytes: Buffer;
 };
 
-/** The file names of a page folder's pages, in reading order. */
+/**
+ * The file names of a page folder's pages, in reading order: every picture in it, so a folder made
+ * a publication by hand reads whatever its scans are named. A page folder found by the page-folder
+ * rule holds nothing else anyway.
+ */
 export async function listFolderPages(rootPath: string, relPath: string): Promise<string[]> {
   const entries = await listFolder(rootPath, relPath);
   return sortPageNames(
     entries
-      .filter((entry) => !entry.isFolder && isPageFileName(entry.name))
+      .filter(
+        (entry) =>
+          !entry.isFolder && !isSystemEntry(entry.name, false) && isImageFileName(entry.name),
+      )
       .map((entry) => entry.name),
   );
 }
