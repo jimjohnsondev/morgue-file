@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.27.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.26.0...v1.27.0) (2026-11-11)
+
+
+### Features
+
+* keep the scroll position when paging and moving between items ([#89](https://github.com/jimjohnsondev/morgue-file/issues/89)) ([e1575e9](https://github.com/jimjohnsondev/morgue-file/commit/e1575e90029c4dc8c0058660b00bee6ffe17d082))
+
 ## [1.26.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.25.0...v1.26.0) (2026-11-11)
 
 
