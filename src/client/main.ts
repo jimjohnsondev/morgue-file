@@ -12,6 +12,7 @@ import '../styles/profile-edit.css';
 import '../styles/compare.css';
 import './setup-form.js';
 import './thumb-retry.js';
+import './keep-scroll.js';
 import './keyboard.js';
 import './viewer-image.js';
 import './viewer-video.js';

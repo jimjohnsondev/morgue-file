@@ -49,7 +49,8 @@ export function followFirstKeyLink(names: readonly string[]): void {
   for (const name of names) {
     const link = document.querySelector<HTMLAnchorElement>(`a[data-key-link="${name}"]`);
     if (link !== null) {
-      window.location.assign(link.href);
+      // A click, not a plain navigation, so the link's own behaviors (keep-scroll) run too.
+      link.click();
       return;
     }
   }

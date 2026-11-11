@@ -42,7 +42,7 @@ function MaybeLink(props: { readonly link: ReaderLink; readonly keyLink?: string
   return link.href === undefined ? (
     <span>{link.label}</span>
   ) : (
-    <a href={link.href} data-key-link={props.keyLink}>
+    <a href={link.href} data-key-link={props.keyLink} data-keep-scroll>
       {link.label}
     </a>
   );
@@ -95,9 +95,23 @@ function ReaderToolbar(props: { readonly model: PageReaderModel }) {
         <MaybeLink link={model.last} /> »
       </span>
       <span class="viewer-toolbar__group">
-        View: {model.isSpread ? <a href={model.singleHref}>Single</a> : <b>Single</b>} ·{' '}
-        {model.isSpread ? <b>Spread</b> : <a href={model.spreadHref}>Spread</a>}
-        <form method="get" action={model.jump.action} class="reader-jump">
+        View:{' '}
+        {model.isSpread ? (
+          <a href={model.singleHref} data-keep-scroll>
+            Single
+          </a>
+        ) : (
+          <b>Single</b>
+        )}{' '}
+        ·{' '}
+        {model.isSpread ? (
+          <b>Spread</b>
+        ) : (
+          <a href={model.spreadHref} data-keep-scroll>
+            Spread
+          </a>
+        )}
+        <form method="get" action={model.jump.action} class="reader-jump" data-keep-scroll>
           {Object.entries(model.jump.keep).map(([name, value]) => (
             <input key={name} type="hidden" name={name} value={value} />
           ))}
@@ -143,6 +157,7 @@ export function PageReader(props: { readonly model: PageReaderModel }) {
             <li key={page}>
               <a
                 href={model.pageHref(page)}
+                data-keep-scroll
                 class="page-strip__link"
                 aria-label={`Page ${String(page)}`}
                 aria-current={model.shownPages.includes(page) ? 'page' : undefined}
