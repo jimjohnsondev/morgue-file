@@ -43,6 +43,34 @@ test('R19: arrow keys move between items in the order of the Index you came from
   await expect(page.locator('.breadcrumb')).toContainText('figure_0002.jpg');
 });
 
+test('R19: in the page reader the arrow keys turn pages, then move to the next item', async ({
+  page,
+}) => {
+  await openFromIndex(page, '/library/magazines/life-drawing-quarterly', 'No. 12 · Winter 2023');
+  const nav = page.locator('.reader-nav');
+  await reloadUntil(page, nav, 'of 72');
+  const issue = (await page.locator('.breadcrumb b').textContent()) ?? '';
+  await page.keyboard.press('ArrowRight');
+  await expect(nav).toContainText('Pages 2–3 of 72');
+  await page.keyboard.press('ArrowLeft');
+  await expect(nav).not.toContainText('Pages 2–3');
+  await expect(page.locator('.breadcrumb b')).toHaveText(issue);
+
+  // From the last page, → leaves the issue for the next item in the list.
+  await page.getByLabel('Go to page').fill('72');
+  await page.getByRole('button', { name: 'Go', exact: true }).last().click();
+  await expect(nav).toContainText('of 72');
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.breadcrumb b')).not.toHaveText(issue);
+});
+
+test('R19: on a publication’s first page, ← moves to the previous item', async ({ page }) => {
+  await openFromIndex(page, '/library/magazines/life-drawing-quarterly', 'No. 11');
+  await expect(page.locator('.breadcrumb b')).toContainText('No. 11');
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('.breadcrumb b')).toContainText('No. 12');
+});
+
 test('R19: the arrow keys follow a search the item was opened from', async ({ page }) => {
   await openFromIndex(page, '/search?q=tag%3Ahands+model%3AElena', 'seated_backlit_017.jpg');
   await expect(page.locator('.list-nav')).toContainText('of 38 in search results');

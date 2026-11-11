@@ -260,7 +260,7 @@ Every page is plain HTML rendered on the server from one of three templates. Eve
 - If a drag carries only a URL, the server fetches it, with the limits in Security.
 - Files are saved to `Inbox\YYYY-MM\<clean name>`, with " (2)" added on a name clash. They are indexed straight away, and the response returns the item id for the "Saved to Unsorted" notice.
 
-**Keys.** ← and → move to Prev and Next. V toggles viewing mode and Esc leaves it (the final key is set at the design gate). + and − zoom, 0 fits. Comma and period step frames, and \[ and \] set the loop range. Ctrl+S saves an edit form.
+**Keys.** ← and → move to Prev and Next; in the page reader they turn the pages first, and move to the previous or next item only from the first or last page. V toggles viewing mode and Esc leaves it (the final key is set at the design gate). + and − zoom, 0 fits. Comma and period step frames, and \[ and \] set the loop range. Ctrl+S saves an edit form.
 
 **Compare board (P1).** It opens with `window.open('/compare', 'morgue-compare')`, and its layout is saved in `settings` so it survives restarts. (As built: see As built in PR 23.)
 
