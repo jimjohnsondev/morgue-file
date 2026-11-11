@@ -4,7 +4,9 @@
 // the watcher's partial scans share it, so a file is judged the same way by both.
 import {
   clearItemMissing,
+  findUnattachedItemIds,
   markItemMissing,
+  removeItems,
   updateItemFile,
 } from '#core/db/repositories/item-files.js';
 import { findItemByPath, insertItem, moveItem } from '#core/db/repositories/items.js';
@@ -46,6 +48,8 @@ export type ReconcileSummary = {
   /** New paths recognized as items that moved there, which keep everything attached to them. */
   readonly moved: number;
   readonly missing: number;
+  /** Photos removed because their folder is now one page-folder item (a publication). */
+  readonly absorbed: number;
   /** Files of no known format, which the archive leaves out. */
   readonly ignored: number;
   readonly unreadableFolders: number;
@@ -66,6 +70,8 @@ type WalkTally = {
   ignored: number;
   /** Folded paths found so far, so a second file whose name differs only in case is skipped. */
   readonly seenPaths: Set<string>;
+  /** Folded paths of the page folders found, whose pages can't also be photos. */
+  readonly pageFolders: Set<string>;
   readonly unreadableFolders: string[];
   /** New entries held back until the walk ends, since each may be an item moved there. */
   readonly maybeMoved: IndexedEntry[];
@@ -152,6 +158,9 @@ function recordEntry(
     return {};
   }
   tally.seenPaths.add(foldedPath);
+  if (entry.kind === 'pagefolder') {
+    tally.pageFolders.add(foldedPath);
+  }
   // Copied so its type records that the kind is now an item kind.
   const indexed = { ...entry, kind: entry.kind };
   const stored = context.known.get(foldedPath);
@@ -180,6 +189,7 @@ function emptyTally(): WalkTally {
     moved: 0,
     ignored: 0,
     seenPaths: new Set(),
+    pageFolders: new Set(),
     unreadableFolders: [],
     maybeMoved: [],
   };
@@ -255,12 +265,40 @@ function isInUnreadableFolder(foldedPath: string, unreadableFolders: readonly st
   );
 }
 
-/** Marks every stored item the walk didn't see as missing, and returns how many it marked. */
-function markUnseenMissing(
+/** Says whether an item is a photo in a folder that is now a page folder. */
+function isInPageFolder(state: ScanState, pageFolders: ReadonlySet<string>): boolean {
+  const foldedPath = foldPathCase(state.relPath);
+  const folder = foldedPath.slice(0, Math.max(foldedPath.lastIndexOf('/'), 0));
+  return state.kind === 'image' && pageFolders.has(folder);
+}
+
+/**
+ * Splits the unseen items into photos to remove and items to mark missing. A photo whose folder
+ * is now a page folder (system clutter that hid it is skipped, or the folder was made a
+ * publication) is that publication's page, not a vanished file, so it is removed, but only with
+ * nothing attached: a photo with tags, collections, models or notes stays, as a missing item, and
+ * nothing Jim filed is lost.
+ */
+function splitUnseen(
+  db: Db,
+  unseen: readonly ScanState[],
+  pageFolders: ReadonlySet<string>,
+): { readonly absorbedIds: number[]; readonly missing: ScanState[] } {
+  const pages = unseen.filter((state) => isInPageFolder(state, pageFolders));
+  const absorbedIds = findUnattachedItemIds(
+    db,
+    pages.map((state) => state.id),
+  );
+  const absorbed = new Set(absorbedIds);
+  return { absorbedIds, missing: unseen.filter((state) => !absorbed.has(state.id)) };
+}
+
+/** Marks the unseen items missing or removes absorbed page photos, and returns how many of each. */
+function settleUnseen(
   run: ReconcileRun,
   stored: readonly ScanState[],
   tally: WalkTally,
-): number {
+): { readonly missing: number; readonly absorbed: number } {
   const unseen = stored.filter((state) => {
     const foldedPath = foldPathCase(state.relPath);
     return (
@@ -269,15 +307,17 @@ function markUnseenMissing(
       !isInUnreadableFolder(foldedPath, tally.unreadableFolders)
     );
   });
+  const { absorbedIds, missing } = splitUnseen(run.db, unseen, tally.pageFolders);
+  removeItems(run.db, absorbedIds);
   const now = run.now.toISOString();
-  for (let start = 0; start < unseen.length; start += BATCH_SIZE) {
+  for (let start = 0; start < missing.length; start += BATCH_SIZE) {
     run.db.transaction(() => {
-      for (const state of unseen.slice(start, start + BATCH_SIZE)) {
+      for (const state of missing.slice(start, start + BATCH_SIZE)) {
         markItemMissing(run.db, state.id, now);
       }
     })();
   }
-  return unseen.length;
+  return { missing: missing.length, absorbed: absorbedIds.length };
 }
 
 /**
@@ -293,7 +333,7 @@ export async function reconcileEntries(
   const moves = createMovePool(run, stored);
   const tally = await walkAndWrite(run, entries, { known, moves });
   await settleMoves(run, tally, moves);
-  const missing = markUnseenMissing(run, stored, tally);
+  const { missing, absorbed } = settleUnseen(run, stored, tally);
   run.onBatchWritten?.();
   return {
     added: tally.added,
@@ -301,6 +341,7 @@ export async function reconcileEntries(
     unchanged: tally.unchanged,
     moved: tally.moved,
     missing,
+    absorbed,
     ignored: tally.ignored,
     unreadableFolders: tally.unreadableFolders.length,
   };

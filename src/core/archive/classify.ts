@@ -36,3 +36,32 @@ export function classifyFile(fileName: string): FileKind | undefined {
 export function isImageFileName(fileName: string): boolean {
   return classifyFile(fileName) === 'image';
 }
+
+/** Files Windows keeps beside pictures; never part of an archive. */
+const SYSTEM_FILE_NAMES: ReadonlySet<string> = new Set([
+  'thumbs.db',
+  'ehthumbs.db',
+  'ehthumbs_vista.db',
+  'desktop.ini',
+]);
+
+/** Folders operating systems and archive tools make; nothing in them is a reference. */
+const SYSTEM_FOLDER_NAMES: ReadonlySet<string> = new Set([
+  '__macosx',
+  '$recycle.bin',
+  'system volume information',
+]);
+
+/**
+ * Says whether a file or folder is operating-system clutter the archive skips. A name starting
+ * with a dot is one: macOS writes "._name.jpg" beside every file it copies to a Windows drive, a
+ * few bytes of metadata with an image's extension, which would otherwise index as a broken photo
+ * and stop a folder of page scans from counting as a page folder.
+ */
+export function isSystemEntry(name: string, isFolder: boolean): boolean {
+  if (name.startsWith('.')) {
+    return true;
+  }
+  const lowerName = name.toLowerCase();
+  return isFolder ? SYSTEM_FOLDER_NAMES.has(lowerName) : SYSTEM_FILE_NAMES.has(lowerName);
+}

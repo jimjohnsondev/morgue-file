@@ -192,3 +192,43 @@ export function findCopyCandidates(
     partialHash: optional(row.partial_hash),
   }));
 }
+
+/**
+ * Removes items for good, with what nothing else cleans up: their field values (which have no
+ * foreign key, so they would pass to a new item given a reused id) and their search rows. Tags,
+ * collections, model links, views and jobs go with them by cascade. Only for items that were never
+ * references (system clutter) or whose file now belongs to a page folder; a vanished file is
+ * marked missing instead.
+ */
+export function removeItems(db: Db, ids: readonly number[]): void {
+  const deleteFields = db.prepare(
+    "DELETE FROM field_values WHERE entity = 'item' AND entity_id = ?",
+  );
+  const deleteSearch = db.prepare('DELETE FROM item_search WHERE rowid = ?');
+  const deleteItem = db.prepare('DELETE FROM items WHERE id = ?');
+  db.transaction(() => {
+    for (const id of ids) {
+      deleteFields.run(id);
+      deleteSearch.run(id);
+      deleteItem.run(id);
+    }
+  })();
+}
+
+/**
+ * Keeps only the items with nothing attached: no tags, collections, model links or field values,
+ * not filed by hand, and no model's portrait. The scanner removes only those; anything Jim has
+ * filed, chosen or written stays (as a missing item).
+ */
+export function findUnattachedItemIds(db: Db, ids: readonly number[]): number[] {
+  const isAttached = db.prepare(
+    `SELECT EXISTS (SELECT 1 FROM item_tags WHERE item_id = :id)
+         OR EXISTS (SELECT 1 FROM collection_items WHERE item_id = :id)
+         OR EXISTS (SELECT 1 FROM item_models WHERE item_id = :id)
+         OR EXISTS (SELECT 1 FROM field_values WHERE entity = 'item' AND entity_id = :id)
+         OR EXISTS (SELECT 1 FROM items WHERE id = :id AND subcategory_manual = 1)
+         OR EXISTS (SELECT 1 FROM models WHERE portrait_item_id = :id)
+         AS attached`,
+  );
+  return ids.filter((id) => (isAttached.get({ id }) as { attached: number }).attached === 0);
+}

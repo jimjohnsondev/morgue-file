@@ -39,9 +39,10 @@ function shorten(stem: string, extension: string): string {
 }
 
 /**
- * Cleans a file name for the Inbox: characters Windows refuses become `_`, trailing dots and
- * spaces go (Windows drops them, so two names could collide), reserved device names get a `_`, and
- * long names are shortened, keeping the extension. Nothing of a path survives, only the last name.
+ * Cleans a file name for the Inbox: characters Windows refuses become `_`, leading dots go,
+ * trailing dots and spaces go (Windows drops them, so two names could collide), reserved device
+ * names get a `_`, and long names are shortened, keeping the extension. Nothing of a path
+ * survives, only the last name.
  */
 export function cleanFileName(name: string): string {
   const lastPart = name.split(/[/\\]/).at(-1) ?? '';
@@ -51,7 +52,12 @@ export function cleanFileName(name: string): string {
     .replace(/[. ]+$/, '');
   // A name that is only an extension (`.jpg`) has none to Node; read it as if it had a stem.
   const extension = path.extname(`${FALLBACK_STEM}${cleaned}`);
-  let stem = cleaned.slice(0, cleaned.length - extension.length).trim();
+  // Leading dots go too: the scanner skips a name starting with one as system clutter (macOS's
+  // "._name.jpg"), so a file saved under it would never be indexed again.
+  let stem = cleaned
+    .slice(0, cleaned.length - extension.length)
+    .replace(/^[.\s]+/, '')
+    .trim();
   if (stem === '' || /^_+$/.test(stem)) {
     stem = FALLBACK_STEM;
   } else if (RESERVED_STEMS.test(stem)) {

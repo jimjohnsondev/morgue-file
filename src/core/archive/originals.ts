@@ -19,6 +19,9 @@ import { pipeline } from 'node:stream/promises';
 
 import { AppError, systemErrorCode } from '#core/errors.js';
 
+import { isSystemEntry } from './classify.js';
+import { numberedName } from './inbox-names.js';
+
 import type { Stats } from 'node:fs';
 import type { Readable } from 'node:stream';
 
@@ -152,6 +155,9 @@ async function countFolder(folder: string, subfolders: string[]): Promise<number
   let count = 0;
   try {
     for await (const entry of await opendir(folder)) {
+      if (isSystemEntry(entry.name, entry.isDirectory())) {
+        continue;
+      }
       if (entry.isDirectory()) {
         subfolders.push(path.join(folder, entry.name));
       } else if (entry.isFile()) {
@@ -346,15 +352,6 @@ function requireSingleName(name: string): void {
   if (isPath || name === '' || name === '.' || name === '..') {
     throw new AppError('invalid-input', `${name} is not a plain file name.`);
   }
-}
-
-/** Returns `name (n).ext`, the name a file is saved under when `name.ext` is taken. */
-function numberedName(fileName: string, number: number): string {
-  if (number === 1) {
-    return fileName;
-  }
-  const extension = path.extname(fileName);
-  return `${fileName.slice(0, fileName.length - extension.length)} (${String(number)})${extension}`;
 }
 
 /**

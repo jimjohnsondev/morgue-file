@@ -1,6 +1,6 @@
 // Walks a root folder by folder and says what each file or page folder is, without touching the
 // database. The scanner compares what it finds with the items table.
-import { classifyFile } from '#core/archive/classify.js';
+import { classifyFile, isSystemEntry } from '#core/archive/classify.js';
 import { INBOX_FOLDER_NAME, listFolder } from '#core/archive/originals.js';
 import { isPageFolder } from '#core/archive/pagefolder.js';
 
@@ -111,14 +111,22 @@ export async function* walkRoot(
   options: WalkOptions = {},
 ): AsyncGenerator<FoundEntry> {
   const startDir = options.startDir ?? '';
+  // The watcher can start a walk inside a system folder (a change under .Trashes, say); nothing
+  // there belongs to the archive.
+  if (startDir.split('/').some((part) => part !== '' && isSystemEntry(part, true))) {
+    return;
+  }
   // A stack of folders still to read, so the walk goes depth first.
   const folders = [startDir];
   for (let relDir = folders.pop(); relDir !== undefined; relDir = folders.pop()) {
-    const entries = await listFolderIfReadable(rootPath, relDir, startDir);
-    if (entries === undefined) {
+    const listed = await listFolderIfReadable(rootPath, relDir, startDir);
+    if (listed === undefined) {
       yield { relPath: relDir, kind: 'unreadable-folder', size: 0, mtimeMs: 0 };
       continue;
     }
+    // System clutter is skipped before anything else, so it neither shows up as an item nor stops
+    // a folder of page scans from being a page folder.
+    const entries = listed.filter((entry) => !isSystemEntry(entry.name, entry.isFolder));
     entries.sort((left, right) => left.name.localeCompare(right.name));
     options.onFilesListed?.(entries.filter((entry) => !entry.isFolder).length);
     const { found, subfolders } = readFolderEntries(relDir, entries);

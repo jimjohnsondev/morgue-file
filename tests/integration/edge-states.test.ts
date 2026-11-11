@@ -11,6 +11,7 @@ import { REFERENCE_ROOT_ID, setRootStatus } from '#core/db/repositories/roots.js
 import { insertFolderMapping, insertSubcategory } from '#core/db/repositories/subcategories.js';
 import { tagItems } from '#core/db/repositories/tags.js';
 import { setFieldValue } from '#core/fields/fields.js';
+import { saveCacheFile, thumbnailPath } from '#core/jobs/thumbnail-files.js';
 import { buildApp } from '#server/app.js';
 import { findAppDir, LOOPBACK_HOST } from '#server/config.js';
 
@@ -292,5 +293,34 @@ describe('E6: drop in progress', () => {
   it('shows no notice for an item that doesn’t exist', async () => {
     const body = await getPage('/photos?saved=999999');
     expect(body).not.toContain('Saved to Unsorted');
+  });
+});
+
+describe('a thumbnail cached under an id before its item was made', () => {
+  it('R6: is shown only once the item’s own thumbnail is ready, not while pending or failed', async () => {
+    const id = idOf('Figure/figure_0001.jpg');
+    const stale = Buffer.from('a picture of some other, removed item');
+    const thumbsDir = path.join(library.dataDir, 'thumbs');
+    await saveCacheFile(thumbnailPath(thumbsDir, id, { width: 320, height: 320 }), stale);
+    library.db.prepare("UPDATE items SET thumb_state = 'pending' WHERE id = ?").run(id);
+    const pending = await app.inject({
+      url: `/media/thumb/${String(id)}/320`,
+      headers: { host: HOST },
+    });
+    expect(pending.rawPayload.equals(stale)).toBe(false);
+
+    library.db.prepare("UPDATE items SET thumb_state = 'failed' WHERE id = ?").run(id);
+    const failed = await app.inject({
+      url: `/media/thumb/${String(id)}/320`,
+      headers: { host: HOST },
+    });
+    expect(failed.rawPayload.equals(stale)).toBe(false);
+
+    library.db.prepare("UPDATE items SET thumb_state = 'ready' WHERE id = ?").run(id);
+    const ready = await app.inject({
+      url: `/media/thumb/${String(id)}/320`,
+      headers: { host: HOST },
+    });
+    expect(ready.rawPayload.equals(stale)).toBe(true);
   });
 });

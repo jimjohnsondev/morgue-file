@@ -14,6 +14,7 @@ import { readMoveHash } from '#core/indexer/moves.js';
 
 import {
   defaultThumbnailSize,
+  deleteItemCacheFiles,
   readCacheFile,
   saveCacheFile,
   thumbnailPath,
@@ -164,6 +165,14 @@ export async function runThumbnailJob(context: ThumbnailContext, job: Job): Prom
   setItemPartialHash(context.db, item.id, await readMoveHash(root.path, item));
   const size = defaultThumbnailSize(item.kind);
   const result = await makeAndSave(context, job.itemId, { size, reuseViewerCopy: false });
+  // Other sizes and the viewer copy were made from an earlier version of the file, or belong to a
+  // removed item that had this id; they go only now that the new default exists, so a job that
+  // fails (an offline drive) leaves the cached pictures E3 and E4 show.
+  await deleteItemCacheFiles(
+    context.thumbsDir,
+    item.id,
+    thumbnailPath(context.thumbsDir, item.id, size),
+  );
   refuseIfChangedMeanwhile(context.db, item);
   setItemMediaDetails(context.db, job.itemId, result.details);
 }

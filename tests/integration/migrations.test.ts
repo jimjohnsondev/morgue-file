@@ -201,7 +201,11 @@ describe('R24: migrating a released library to full-text search', () => {
   it('R24: backs it up, then fills the search rows from what it already holds', () => {
     const db = makeSchemaTwoLibrary();
     const now = new Date('2026-11-07T10:00:00.000Z');
-    expect(migrate(db, { backupsDir: backupsDir(), appVersion: '1.11.0', now })).toEqual([3]);
+    // Migrations up to 3 only, so later ones don't change what this test checks.
+    const throughSearch = readMigrations().slice(0, 3);
+    expect(
+      migrate(db, { backupsDir: backupsDir(), appVersion: '1.11.0', now }, throughSearch),
+    ).toEqual([3]);
     expect(readdirSync(backupsDir())).toEqual(['library-1.11.0-2026-11-07T10-00-00-000Z.db']);
 
     function search(text: string): number[] {
