@@ -23,7 +23,8 @@ import type { FastifyInstance } from 'fastify';
 const SUGGESTION_COUNT = 8;
 
 const NAME = Type.String({ minLength: 1, maxLength: 120 });
-const ID = Type.Integer({ minimum: 1 });
+/** A database id in a URL or body. */
+export const ID = Type.Integer({ minimum: 1 });
 
 /** The ids ticked on a page, or the query of a whole list ("all 1,236 in Figure"). */
 export const SelectionSchema = Type.Union([
@@ -31,8 +32,10 @@ export const SelectionSchema = Type.Union([
   Type.Object({ query: Type.String({ minLength: 1, maxLength: 2000 }) }),
 ]);
 
-/** Forms send their fields as text, so a collection's id comes as digits. */
-const COLLECTION_CHOICE = Type.String({ pattern: '^[1-9][0-9]{0,15}$' });
+/** An id chosen from a select list, which sends it as text. */
+export const ID_CHOICE = Type.String({ pattern: '^[1-9][0-9]{0,15}$' });
+// Forms send their fields as text, so a collection's id comes as digits.
+const COLLECTION_CHOICE = ID_CHOICE;
 
 const TagBody = Type.Object({ selection: SelectionSchema, tag: NAME });
 const CollectBody = Type.Object({ selection: SelectionSchema, collection: COLLECTION_CHOICE });

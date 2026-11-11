@@ -15,6 +15,7 @@ import { registerItemFieldApi } from './routes/api/item-fields.js';
 import { registerModelLinkApi } from './routes/api/model-links.js';
 import { registerModelProfileApi } from './routes/api/model-profiles.js';
 import { registerOrganizeApi } from './routes/api/organize.js';
+import { registerPublicationApi } from './routes/api/publications.js';
 import { registerSetupApi } from './routes/api/setup.js';
 import { registerSubcategoryApi } from './routes/api/subcategories.js';
 import { registerWatchedFolderApi } from './routes/api/watched-folders.js';
@@ -60,6 +61,7 @@ function registerLibraryApis(app: FastifyInstance, library: LibraryRuntime | und
   registerIngestApi(app, library);
   registerSubcategoryApi(app, library);
   registerOrganizeApi(app, library);
+  registerPublicationApi(app, library);
   registerModelLinkApi(app, library);
   registerModelProfileApi(app, library);
   registerFieldApi(app, library);

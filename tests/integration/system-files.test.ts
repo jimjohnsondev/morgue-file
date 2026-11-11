@@ -92,11 +92,15 @@ describe('migrating a library that already indexed clutter', () => {
     expect(version).toBeDefined();
     // Re-applying only this migration, as if the library came from the release before it.
     db.pragma(`user_version = ${String(version!.version - 1)}`);
-    migrate(db, {
-      backupsDir: path.join(dataDir, 'backups'),
-      appVersion: '1.25.0',
-      now: new Date(),
-    });
+    // Only migrations up to this one, so later ones (which create tables) don't run twice.
+    const throughThis = readMigrations().filter(
+      (migration) => migration.version <= version!.version,
+    );
+    migrate(
+      db,
+      { backupsDir: path.join(dataDir, 'backups'), appVersion: '1.25.0', now: new Date() },
+      throughThis,
+    );
 
     expect(
       (db.prepare('SELECT id FROM items ORDER BY id').all() as { id: number }[]).map(

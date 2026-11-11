@@ -1,6 +1,6 @@
 // Walks a root folder by folder and says what each file or page folder is, without touching the
 // database. The scanner compares what it finds with the items table.
-import { classifyFile, isSystemEntry } from '#core/archive/classify.js';
+import { classifyFile, isImageFileName, isSystemEntry } from '#core/archive/classify.js';
 import { INBOX_FOLDER_NAME, listFolder } from '#core/archive/originals.js';
 import { isPageFolder } from '#core/archive/pagefolder.js';
 
@@ -33,6 +33,16 @@ function canBePageFolder(relDir: string): boolean {
   return relDir !== '' && topFolder.toLowerCase() !== INBOX_FOLDER_NAME.toLowerCase();
 }
 
+/** One file as found: its kind by extension, or ignored. */
+function fileEntry(relDir: string, file: FolderEntry): FoundEntry {
+  return {
+    relPath: joinRelPath(relDir, file.name),
+    kind: classifyFile(file.name) ?? 'ignored',
+    size: file.size,
+    mtimeMs: file.mtimeMs,
+  };
+}
+
 /** One page-folder item standing for all its pages: their total size and newest time. */
 function pageFolderEntry(relDir: string, files: readonly FolderEntry[]): FoundEntry {
   let size = 0;
@@ -44,25 +54,33 @@ function pageFolderEntry(relDir: string, files: readonly FolderEntry[]): FoundEn
   return { relPath: relDir, kind: 'pagefolder', size, mtimeMs };
 }
 
-/** What one folder holds: its own items, and the subfolders still to walk. */
+/**
+ * What one folder holds: its own items, and the subfolders still to walk. A folder made a
+ * publication by hand is one page folder of its pictures, however they are named; its subfolders
+ * are still walked as usual.
+ */
 function readFolderEntries(
   relDir: string,
   entries: readonly FolderEntry[],
+  isPublication: boolean,
 ): { found: FoundEntry[]; subfolders: string[] } {
   const files = entries.filter((entry) => !entry.isFolder);
   const subfolders = entries
     .filter((entry) => entry.isFolder)
     .map((entry) => joinRelPath(relDir, entry.name));
   const shape = { subfolderCount: subfolders.length, fileNames: files.map((file) => file.name) };
+  const pictures = files.filter((file) => isImageFileName(file.name));
+  if (canBePageFolder(relDir) && isPublication && pictures.length > 0) {
+    // Its pictures are the pages; anything else in it (a video, a PDF) is still its own item.
+    const others = files
+      .filter((file) => !isImageFileName(file.name))
+      .map((file) => fileEntry(relDir, file));
+    return { found: [pageFolderEntry(relDir, pictures), ...others], subfolders };
+  }
   if (canBePageFolder(relDir) && isPageFolder(shape)) {
     return { found: [pageFolderEntry(relDir, files)], subfolders };
   }
-  const found = files.map((file): FoundEntry => ({
-    relPath: joinRelPath(relDir, file.name),
-    kind: classifyFile(file.name) ?? 'ignored',
-    size: file.size,
-    mtimeMs: file.mtimeMs,
-  }));
+  const found = files.map((file) => fileEntry(relDir, file));
   return { found, subfolders };
 }
 
@@ -77,6 +95,8 @@ export type WalkOptions = {
   readonly isShallow?: boolean;
   /** Hears how many files each listed folder held, for the progress bar (E5). */
   readonly onFilesListed?: (fileCount: number) => void;
+  /** Says whether a folder was made a publication by hand (publication_folders). */
+  readonly isPublicationFolder?: (relDir: string) => boolean;
 };
 
 /**
@@ -129,7 +149,8 @@ export async function* walkRoot(
     const entries = listed.filter((entry) => !isSystemEntry(entry.name, entry.isFolder));
     entries.sort((left, right) => left.name.localeCompare(right.name));
     options.onFilesListed?.(entries.filter((entry) => !entry.isFolder).length);
-    const { found, subfolders } = readFolderEntries(relDir, entries);
+    const isPublication = options.isPublicationFolder?.(relDir) ?? false;
+    const { found, subfolders } = readFolderEntries(relDir, entries, isPublication);
     yield* found;
     if (options.isShallow !== true) {
       folders.push(...subfolders.reverse());

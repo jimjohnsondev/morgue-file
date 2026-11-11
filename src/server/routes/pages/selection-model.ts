@@ -77,6 +77,11 @@ function panelFor(db: Db, list: { spec: ListSpec; view: ListView; total: number 
       label: spec.collection.name,
     },
     subcategories: filingChoices(db, spec.section),
+    // Only a list that can hold photos offers it; videos and Library items aren't scans.
+    publicationChoices:
+      spec.section === undefined || spec.section === 'photos'
+        ? subcategoryChoices(db, 'library')
+        : [],
   };
   return panel;
 }
