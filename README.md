@@ -90,7 +90,8 @@ you close Morgue File, it carries on where it stopped next time.
 - **Viewing:** click a thumbnail to open it. Photos zoom with **−**, **+**, 100% and 200%, and
   pan by dragging. Videos play and scrub, step one frame at a time, and loop a range. Books and
   magazines open in a page reader, a page or a spread at a time, with a strip of pages to jump
-  to. **←** and **→** move to the previous and next item of the list you came from, and **V**
+  to. **←** and **→** move to the previous and next item of the list you came from (in the page
+  reader they turn the pages first, then move on past the last page), and **V**
   turns viewing mode (the picture alone) on and off. A video or book you reopen from Home starts
   at the time or page you reached.
 - **Tags and collections:** on an item's page, type a tag under its details; suggestions appear

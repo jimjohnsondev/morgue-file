@@ -38,8 +38,19 @@ export function onPageKeys(handlers: Readonly<Record<string, () => void>>): void
 
 /** Follows the link marked with this data-key-link name, if the page has one. */
 export function followKeyLink(name: string): void {
-  const link = document.querySelector<HTMLAnchorElement>(`a[data-key-link="${name}"]`);
-  if (link !== null) {
-    window.location.assign(link.href);
+  followFirstKeyLink([name]);
+}
+
+/**
+ * Follows the first of these data-key-link names the page has a link for, so one key can do the
+ * nearer thing first: turn a reader's page, and only past the last page go to the next item.
+ */
+export function followFirstKeyLink(names: readonly string[]): void {
+  for (const name of names) {
+    const link = document.querySelector<HTMLAnchorElement>(`a[data-key-link="${name}"]`);
+    if (link !== null) {
+      window.location.assign(link.href);
+      return;
+    }
   }
 }

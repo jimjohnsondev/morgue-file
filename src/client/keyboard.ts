@@ -1,7 +1,8 @@
 // The Item page's keys (R19): ← and → follow Prev and Next through the list the item was opened
-// from, V switches viewing mode (frame 9) on and off, and Esc leaves it. Viewing mode is kept in
-// the URL, so it lasts from one reference to the next.
-import { followKeyLink, onPageKeys } from './keys.js';
+// from, V switches viewing mode (frame 9) on and off, and Esc leaves it. In the page reader, ← and
+// → turn the pages first, and only before the first or past the last page move to another item.
+// Viewing mode is kept in the URL, so it lasts from one reference to the next.
+import { followFirstKeyLink, onPageKeys } from './keys.js';
 
 /** The class on <body> that hides every part of the page but the viewer. */
 const VIEWING_CLASS = 'viewing-mode';
@@ -52,11 +53,12 @@ function isViewing(): boolean {
 
 if (document.querySelector('.item-page') !== null) {
   onPageKeys({
+    // The reader's page links are absent on its first and last pages, so the item links take over.
     ArrowLeft: () => {
-      followKeyLink('previous');
+      followFirstKeyLink(['page-previous', 'previous']);
     },
     ArrowRight: () => {
-      followKeyLink('next');
+      followFirstKeyLink(['page-next', 'next']);
     },
     v: () => {
       setViewing(!isViewing());
