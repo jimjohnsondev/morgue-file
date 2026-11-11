@@ -14,6 +14,7 @@ import './setup-form.js';
 import './thumb-retry.js';
 import './keep-scroll.js';
 import './keyboard.js';
+import './index-keys.js';
 import './viewer-image.js';
 import './viewer-video.js';
 import './reader.js';

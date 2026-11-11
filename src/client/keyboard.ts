@@ -2,7 +2,7 @@
 // from, V switches viewing mode (frame 9) on and off, and Esc leaves it. In the page reader, ← and
 // → turn the pages first, and only before the first or past the last page move to another item.
 // Viewing mode is kept in the URL, so it lasts from one reference to the next.
-import { followFirstKeyLink, followKeyLink, onPageKeys } from './keys.js';
+import { followFirstKeyLink, onPageKeys } from './keys.js';
 
 /** The class on <body> that hides every part of the page but the viewer. */
 const VIEWING_CLASS = 'viewing-mode';
@@ -76,16 +76,4 @@ if (document.querySelector('.item-page') !== null) {
       setViewing(true);
     });
   }
-}
-
-// An Index page: ← and → turn its pages, through the pager's Prev and Next.
-if (document.querySelector('.item-page') === null && document.querySelector('.pager') !== null) {
-  onPageKeys({
-    ArrowLeft: () => {
-      followKeyLink('previous');
-    },
-    ArrowRight: () => {
-      followKeyLink('next');
-    },
-  });
 }

@@ -42,15 +42,22 @@ function isPlainClick(event: MouseEvent): boolean {
 }
 
 document.addEventListener('click', (event) => {
-  const link = event.target instanceof Element ? event.target.closest('a[data-keep-scroll]') : null;
-  if (link instanceof HTMLAnchorElement && isPlainClick(event)) {
+  if (!(event.target instanceof Element) || event.defaultPrevented || !isPlainClick(event)) {
+    return;
+  }
+  const link = event.target.closest('a[data-keep-scroll]');
+  if (link instanceof HTMLAnchorElement) {
     saveScrollFor(link.href);
   }
 });
 
 document.addEventListener('submit', (event) => {
   const form = event.target;
-  if (form instanceof HTMLFormElement && form.hasAttribute('data-keep-scroll')) {
+  if (
+    !event.defaultPrevented &&
+    form instanceof HTMLFormElement &&
+    form.hasAttribute('data-keep-scroll')
+  ) {
     const url = new URL(form.action, window.location.href);
     for (const [name, value] of new FormData(form)) {
       url.searchParams.append(name, typeof value === 'string' ? value : value.name);
