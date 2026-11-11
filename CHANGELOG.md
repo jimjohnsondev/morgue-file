@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.26.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.25.0...v1.26.0) (2026-11-11)
+
+
+### Features
+
+* arrow keys turn a reader's pages before moving to the next item ([#88](https://github.com/jimjohnsondev/morgue-file/issues/88)) ([3430f40](https://github.com/jimjohnsondev/morgue-file/commit/3430f40d19d1254e6147020dedad1216e188c333))
+
+
+### Bug Fixes
+
+* skip operating-system clutter so it never shows as broken thumbnails ([#86](https://github.com/jimjohnsondev/morgue-file/issues/86)) ([48b3363](https://github.com/jimjohnsondev/morgue-file/commit/48b3363967aff347753f611b9ac4f0d36a93c09e))
+
 ## [1.25.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.24.0...v1.25.0) (2026-11-10)
 
 
