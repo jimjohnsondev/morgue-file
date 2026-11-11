@@ -17,6 +17,7 @@ import {
 import { findRootById } from '#core/db/repositories/roots.js';
 import { findSubcategoryById } from '#core/db/repositories/subcategories.js';
 import { AppError } from '#core/errors.js';
+import { foldPathCase } from '#core/indexer/reconcile.js';
 import { parentFolder, scanFolder } from '#core/indexer/scanner.js';
 
 import { selectedItemIds } from './bulk-changes.js';
@@ -28,10 +29,10 @@ import type { Selection } from './bulk-changes.js';
 /** A folder of one root. */
 type Folder = { readonly rootId: number; readonly relPath: string };
 
-/** What making publications did: how many photos were chosen, and the publications made. */
+/** What making a publication did: how many photos were chosen, and the publication made. */
 export type PublicationResult = {
   readonly itemCount: number;
-  readonly publicationIds: readonly number[];
+  readonly publicationId: number;
 };
 
 /** The photos of a selection, refusing anything else: only a photo's folder can become one. */
@@ -47,24 +48,34 @@ function requirePhotos(db: Db, selection: Selection): Item[] {
   return photos;
 }
 
-/** The folders the photos sit in, each once, refusing the Reference folder itself and the Inbox. */
-function photoFolders(photos: readonly Item[]): Folder[] {
+/**
+ * The one folder the photos sit in, refusing the Reference folder itself, the Inbox, and photos
+ * from more than one folder: one action makes one publication, and is undone as one.
+ */
+function photoFolder(photos: readonly Item[]): Folder {
   const folders = new Map<string, Folder>();
   for (const photo of photos) {
     const relPath = parentFolder(photo.relPath);
-    const topFolder = relPath.split('/')[0] ?? '';
-    if (relPath === '' || topFolder.toLowerCase() === INBOX_FOLDER_NAME.toLowerCase()) {
-      throw new AppError(
-        'invalid-input',
-        'Scans directly in the Reference folder or in the Inbox can’t be a publication. Move them into a folder of their own first.',
-      );
-    }
-    folders.set(`${String(photo.rootId)}:${relPath.toLowerCase()}`, {
+    folders.set(`${String(photo.rootId)}:${foldPathCase(relPath)}`, {
       rootId: photo.rootId,
       relPath,
     });
   }
-  return [...folders.values()];
+  const [folder, ...others] = folders.values();
+  if (folder === undefined || others.length > 0) {
+    throw new AppError(
+      'invalid-input',
+      `The selected scans are in ${String(folders.size)} folders. Select scans from one folder at a time.`,
+    );
+  }
+  const topFolder = folder.relPath.split('/')[0] ?? '';
+  if (folder.relPath === '' || foldPathCase(topFolder) === foldPathCase(INBOX_FOLDER_NAME)) {
+    throw new AppError(
+      'invalid-input',
+      'Scans directly in the Reference folder or in the Inbox can’t be a publication. Move them into a folder of their own first.',
+    );
+  }
+  return folder;
 }
 
 /** The path of a root, refusing one that isn't online, since its folder has to be read. */
@@ -89,11 +100,12 @@ async function rescanFolder(db: Db, folder: Folder, now: Date): Promise<void> {
 }
 
 /**
- * Makes the folder of each selected photo one publication, filed in a Library subcategory. Its
+ * Makes the folder of the selected photos one publication, filed in a Library subcategory. Its
  * photos are then that publication's pages: those with nothing attached go, and any with tags,
- * notes or other links stay as missing items, as the scanner does for any page folder.
+ * notes or other links stay as missing items, as the scanner does for any page folder. Anything
+ * else in the folder (a video, a PDF) stays its own item.
  */
-export async function makeFolderPublications(
+export async function makeFolderPublication(
   db: Db,
   request: { readonly selection: Selection; readonly subcategoryId: number; readonly now: Date },
 ): Promise<PublicationResult> {
@@ -102,21 +114,21 @@ export async function makeFolderPublications(
     throw new AppError('invalid-input', 'A publication goes in a Library subcategory.');
   }
   const photos = requirePhotos(db, request.selection);
-  const folders = photoFolders(photos);
-  for (const folder of folders) {
-    onlineRootPath(db, folder.rootId);
+  const folder = photoFolder(photos);
+  onlineRootPath(db, folder.rootId);
+  insertPublicationFolder(db, { ...folder, now: request.now.toISOString() });
+  await rescanFolder(db, folder, request.now);
+  const publication = findItemByPath(db, folder.rootId, folder.relPath);
+  if (publication?.kind !== 'pagefolder') {
+    // The folder couldn't be read just now; forget it rather than change it on a later scan.
+    deletePublicationFolder(db, folder.rootId, folder.relPath);
+    throw new AppError(
+      'invalid-input',
+      'That folder couldn’t be read just now, so nothing changed.',
+    );
   }
-  const publicationIds: number[] = [];
-  for (const folder of folders) {
-    insertPublicationFolder(db, { ...folder, now: request.now.toISOString() });
-    await rescanFolder(db, folder, request.now);
-    const publication = findItemByPath(db, folder.rootId, folder.relPath);
-    if (publication?.kind === 'pagefolder') {
-      fileItemsByHand(db, [publication.id], subcategory.id);
-      publicationIds.push(publication.id);
-    }
-  }
-  return { itemCount: photos.length, publicationIds };
+  fileItemsByHand(db, [publication.id], subcategory.id);
+  return { itemCount: photos.length, publicationId: publication.id };
 }
 
 /**
@@ -136,8 +148,13 @@ export async function unmakeFolderPublication(db: Db, itemId: number, now: Date)
   onlineRootPath(db, folder.rootId);
   deletePublicationFolder(db, folder.rootId, folder.relPath);
   await rescanFolder(db, folder, now);
-  // Making the publication filed it by hand; that alone shouldn't keep it as a missing item.
+  // Making the publication filed it by hand; that alone shouldn't keep it as a missing item. If
+  // something else keeps it, it keeps its filing too.
   clearHandFiling(db, item.id);
-  removeItems(db, findUnattachedItemIds(db, [item.id]));
+  if (findUnattachedItemIds(db, [item.id]).length > 0) {
+    removeItems(db, [item.id]);
+  } else if (item.isFiledByHand) {
+    fileItemsByHand(db, [item.id], item.subcategoryId);
+  }
   return folder.relPath;
 }

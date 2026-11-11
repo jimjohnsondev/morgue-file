@@ -1,3 +1,5 @@
+// Making a folder of scans one publication by hand, and turning it back (PRD R6, folders of
+// scanned pages; docs/ARCHITECTURE.md, Publications made by hand).
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -11,7 +13,7 @@ import { findSubcategoryBySlug } from '#core/db/repositories/subcategories.js';
 import { tagItems } from '#core/db/repositories/tags.js';
 import { scanRoot } from '#core/indexer/scanner.js';
 import {
-  makeFolderPublications,
+  makeFolderPublication,
   unmakeFolderPublication,
 } from '#core/organize/publication-folders.js';
 
@@ -81,9 +83,45 @@ afterEach(async () => {
 });
 
 describe('making a folder of scans one publication', () => {
-  it('R21: turns the folder into one Library item read in page order, filed where Jim chose', async () => {
+  it('R6: keeps a video and a PDF in the folder as items of their own', async () => {
+    const folder = path.join(referenceDir, ...ISSUE.split('/'));
+    await writeFile(path.join(folder, 'pose_session_04_seated.mp4'), 'a video');
+    await writeFile(path.join(folder, 'Studies in Hands.pdf'), 'a PDF');
+    await scanAll();
+    await makeFolderPublication(library.db, {
+      selection: { itemIds: [idAt(`${ISSUE}/ldq_b 1.jpg`)] },
+      subcategoryId: magazinesId(),
+      now: NOW,
+    });
+    await scanAll();
+    expect(items()).toEqual([
+      { rel_path: 'loose.jpg', kind: 'image', missing: 0 },
+      { rel_path: ISSUE, kind: 'pagefolder', missing: 0 },
+      { rel_path: `${ISSUE}/pose_session_04_seated.mp4`, kind: 'video', missing: 0 },
+      { rel_path: `${ISSUE}/Studies in Hands.pdf`, kind: 'pdf', missing: 0 },
+    ]);
+  });
+
+  it('R6: refuses scans from more than one folder, so one action is one publication', async () => {
+    const other = path.join(referenceDir, 'Scans', 'LDQ No. 11');
+    await mkdir(other, { recursive: true });
+    await writeFile(path.join(other, 'ldq_a 1.jpg'), 'another scan');
+    await scanAll();
+    await expect(
+      makeFolderPublication(library.db, {
+        selection: {
+          itemIds: [idAt(`${ISSUE}/ldq_b 1.jpg`), idAt('Scans/LDQ No. 11/ldq_a 1.jpg')],
+        },
+        subcategoryId: magazinesId(),
+        now: NOW,
+      }),
+    ).rejects.toThrow('The selected scans are in 2 folders.');
+    expect(items().some((row) => row.kind === 'pagefolder')).toBe(false);
+  });
+
+  it('R6: turns the folder into one Library item read in page order, filed where Jim chose', async () => {
     expect(items().filter((row) => row.kind === 'image')).toHaveLength(4);
-    const result = await makeFolderPublications(library.db, {
+    const result = await makeFolderPublication(library.db, {
       selection: { itemIds: [idAt(`${ISSUE}/ldq_b 2.jpg`)] },
       subcategoryId: magazinesId(),
       now: NOW,
@@ -95,7 +133,7 @@ describe('making a folder of scans one publication', () => {
       isFiledByHand: true,
     });
     expect(publication?.subcategoryId).toBe(magazinesId());
-    expect(result).toEqual({ itemCount: 1, publicationIds: [publication?.id] });
+    expect(result).toEqual({ itemCount: 1, publicationId: publication?.id });
     expect(items()).toEqual([
       { rel_path: 'loose.jpg', kind: 'image', missing: 0 },
       { rel_path: ISSUE, kind: 'pagefolder', missing: 0 },
@@ -107,9 +145,9 @@ describe('making a folder of scans one publication', () => {
     ]);
   });
 
-  it('R21: stays a publication through later scans, and keeps scans Jim tagged as missing items', async () => {
+  it('R6: stays a publication through later scans, and keeps scans Jim tagged as missing items', async () => {
     tagItems(library.db, [idAt(`${ISSUE}/ldq_b 10.jpg`)], 'hands');
-    await makeFolderPublications(library.db, {
+    await makeFolderPublication(library.db, {
       selection: { itemIds: [idAt(`${ISSUE}/ldq_b 1.jpg`)] },
       subcategoryId: magazinesId(),
       now: NOW,
@@ -122,13 +160,13 @@ describe('making a folder of scans one publication', () => {
     ]);
   });
 
-  it('R21: turns back into loose photos, and the publication goes', async () => {
-    const { publicationIds } = await makeFolderPublications(library.db, {
+  it('R6: turns back into loose photos, and the publication goes', async () => {
+    const { publicationId } = await makeFolderPublication(library.db, {
       selection: { itemIds: [idAt(`${ISSUE}/ldq_b 1.jpg`)] },
       subcategoryId: magazinesId(),
       now: NOW,
     });
-    const folder = await unmakeFolderPublication(library.db, publicationIds[0]!, NOW);
+    const folder = await unmakeFolderPublication(library.db, publicationId, NOW);
     expect(folder).toBe(ISSUE);
     await scanAll();
     expect(items().map((row) => [row.rel_path, row.kind, row.missing])).toEqual([
@@ -139,9 +177,9 @@ describe('making a folder of scans one publication', () => {
     ]);
   });
 
-  it('refuses scans directly in the Reference folder, things that aren’t photos, and other sections', async () => {
+  it('R6: refuses scans directly in the Reference folder, things that aren’t photos, and other sections', async () => {
     await expect(
-      makeFolderPublications(library.db, {
+      makeFolderPublication(library.db, {
         selection: { itemIds: [idAt('loose.jpg')] },
         subcategoryId: magazinesId(),
         now: NOW,
@@ -153,7 +191,7 @@ describe('making a folder of scans one publication', () => {
       )
       .get() as { id: number };
     await expect(
-      makeFolderPublications(library.db, {
+      makeFolderPublication(library.db, {
         selection: { itemIds: [idAt(`${ISSUE}/ldq_b 1.jpg`)] },
         subcategoryId: figure.id,
         now: NOW,

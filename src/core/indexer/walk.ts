@@ -33,6 +33,16 @@ function canBePageFolder(relDir: string): boolean {
   return relDir !== '' && topFolder.toLowerCase() !== INBOX_FOLDER_NAME.toLowerCase();
 }
 
+/** One file as found: its kind by extension, or ignored. */
+function fileEntry(relDir: string, file: FolderEntry): FoundEntry {
+  return {
+    relPath: joinRelPath(relDir, file.name),
+    kind: classifyFile(file.name) ?? 'ignored',
+    size: file.size,
+    mtimeMs: file.mtimeMs,
+  };
+}
+
 /** One page-folder item standing for all its pages: their total size and newest time. */
 function pageFolderEntry(relDir: string, files: readonly FolderEntry[]): FoundEntry {
   let size = 0;
@@ -61,17 +71,16 @@ function readFolderEntries(
   const shape = { subfolderCount: subfolders.length, fileNames: files.map((file) => file.name) };
   const pictures = files.filter((file) => isImageFileName(file.name));
   if (canBePageFolder(relDir) && isPublication && pictures.length > 0) {
-    return { found: [pageFolderEntry(relDir, pictures)], subfolders };
+    // Its pictures are the pages; anything else in it (a video, a PDF) is still its own item.
+    const others = files
+      .filter((file) => !isImageFileName(file.name))
+      .map((file) => fileEntry(relDir, file));
+    return { found: [pageFolderEntry(relDir, pictures), ...others], subfolders };
   }
   if (canBePageFolder(relDir) && isPageFolder(shape)) {
     return { found: [pageFolderEntry(relDir, files)], subfolders };
   }
-  const found = files.map((file): FoundEntry => ({
-    relPath: joinRelPath(relDir, file.name),
-    kind: classifyFile(file.name) ?? 'ignored',
-    size: file.size,
-    mtimeMs: file.mtimeMs,
-  }));
+  const found = files.map((file) => fileEntry(relDir, file));
   return { found, subfolders };
 }
 

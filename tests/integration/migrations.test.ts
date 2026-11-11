@@ -223,3 +223,32 @@ describe('R24: migrating a released library to full-text search', () => {
     db.close();
   });
 });
+
+describe('R6: migrating a released library to publications made by hand', () => {
+  it('R6: backs it up, keeps its items, and starts with no folder made a publication', () => {
+    const db = openRaw();
+    const before = { backupsDir: backupsDir(), appVersion: '1.25.0', now: new Date() };
+    const throughSystemFiles = readMigrations().filter((migration) => migration.version <= 4);
+    migrate(db, before, throughSystemFiles);
+    db.exec(`
+      INSERT INTO roots (id, path, label, status) VALUES (1, 'C:\\Reference', 'Reference', 'online');
+      INSERT INTO items (id, root_id, rel_path, kind, section, size, mtime, added_at)
+      VALUES (1, 1, 'Figure/seated_backlit_017.jpg', 'image', 'photos', 1, 1, '2026-10-31'),
+        (2, 1, 'Magazines/LDQ No. 12', 'pagefolder', 'library', 1, 1, '2026-10-31');
+    `);
+    const now = new Date('2026-11-11T10:00:00.000Z');
+    const version = readMigrations().find((migration) =>
+      migration.fileName.includes('publication'),
+    );
+    expect(migrate(db, { backupsDir: backupsDir(), appVersion: '1.26.0', now })).toEqual([
+      version?.version,
+    ]);
+    expect(readdirSync(backupsDir())).toContain('library-1.26.0-2026-11-11T10-00-00-000Z.db');
+    expect(db.prepare('SELECT id, rel_path FROM items ORDER BY id').all()).toEqual([
+      { id: 1, rel_path: 'Figure/seated_backlit_017.jpg' },
+      { id: 2, rel_path: 'Magazines/LDQ No. 12' },
+    ]);
+    expect(db.prepare('SELECT count(*) AS n FROM publication_folders').get()).toEqual({ n: 0 });
+    db.close();
+  });
+});

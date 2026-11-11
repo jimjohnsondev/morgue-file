@@ -22,7 +22,7 @@ import { addTestItem, makeTempLibrary } from './temp-library.js';
 import type { Db } from '#core/db/connection.js';
 import type { LibraryRuntime } from '#server/library-runtime.js';
 import type { TempLibrary } from './temp-library.js';
-import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
+import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
 
 const PORT = 47613;
 const HOST = `127.0.0.1:${String(PORT)}`;
@@ -46,6 +46,8 @@ export type OrganizeApp = {
     url: string,
     payload?: object,
   ) => Promise<LightMyRequestResponse>;
+  /** Sends any request, for checks of what the security hooks refuse. */
+  readonly inject: (options: InjectOptions) => Promise<LightMyRequestResponse>;
   /** Puts the seeded tags back and empties the collections, so each test starts the same. */
   readonly reset: () => void;
   readonly remove: () => Promise<void>;
@@ -126,6 +128,7 @@ export async function startOrganizeApp(): Promise<OrganizeApp> {
     referenceDir,
     ...seeded,
     get: (url) => app.inject({ url, headers: { host: HOST } }),
+    inject: (options) => app.inject(options),
     send: (method, url, payload) =>
       app.inject({ method, url, headers: writeHeaders, ...(payload && { payload }) }),
     reset: () => {

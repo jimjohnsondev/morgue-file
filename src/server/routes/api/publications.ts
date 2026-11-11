@@ -3,24 +3,21 @@
 import { Type } from '@sinclair/typebox';
 
 import {
-  makeFolderPublications,
+  makeFolderPublication,
   unmakeFolderPublication,
 } from '#core/organize/publication-folders.js';
 
 import { requireLibrary } from '../require-library.js';
 
-import { SelectionSchema } from './organize.js';
+import { ID, ID_CHOICE, SelectionSchema } from './organize.js';
 
 import type { LibraryRuntime } from '../../library-runtime.js';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance } from 'fastify';
 
-const PublicationBody = Type.Object({
-  selection: SelectionSchema,
-  subcategory: Type.String({ pattern: '^[1-9][0-9]{0,15}$' }),
-});
+const PublicationBody = Type.Object({ selection: SelectionSchema, subcategory: ID_CHOICE });
 
-const ItemParams = Type.Object({ id: Type.Integer({ minimum: 1 }) });
+const ItemParams = Type.Object({ id: ID });
 
 /** Registers the two publication actions; each rescans the folder, so the change shows at once. */
 export function registerPublicationApi(app: FastifyInstance, library: LibraryRuntime | undefined) {
@@ -30,7 +27,7 @@ export function registerPublicationApi(app: FastifyInstance, library: LibraryRun
     { schema: { body: PublicationBody } },
     async (request, reply) => {
       const open = requireLibrary(library);
-      const result = await makeFolderPublications(open.db, {
+      const result = await makeFolderPublication(open.db, {
         selection: request.body.selection,
         subcategoryId: Number(request.body.subcategory),
         now: new Date(),
