@@ -24,6 +24,12 @@ describe('cleanFileName', () => {
     expect(cleanFileName(name)).toBe(cleaned);
   });
 
+  it('R2: drops leading dots, so a saved file is never skipped as system clutter', () => {
+    expect(cleanFileName('._seated_backlit_017.jpg')).toBe('_seated_backlit_017.jpg');
+    expect(cleanFileName('.hidden pose.png')).toBe('hidden pose.png');
+    expect(cleanFileName('...jpg')).toBe('image.jpg');
+  });
+
   it('shortens a long name to 120 characters, keeping its extension', () => {
     const cleaned = cleanFileName(`${'a'.repeat(300)}.jpeg`);
     expect(cleaned).toHaveLength(120);

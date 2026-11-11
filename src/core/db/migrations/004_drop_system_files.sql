@@ -2,7 +2,9 @@
 -- isSystemEntry in src/core/archive/classify.ts): anything with a path part starting with a dot,
 -- such as macOS's "._name.jpg" metadata files or a ".Trashes" folder, and anything in a
 -- __MACOSX, $RECYCLE.BIN or System Volume Information folder. None of them were real
--- references, so their tags, collections and other links are removed with them.
+-- references, so their tags, collections and other links are removed with them. Field values
+-- have no foreign key and are deleted here, so an item given a reused id can't inherit them.
+-- The patterns rely on LIKE's default ASCII case-insensitivity (case_sensitive_like is never set).
 CREATE TEMP TABLE system_items AS
 SELECT id FROM items
 WHERE ('/' || rel_path) LIKE '%/.%'
@@ -10,6 +12,7 @@ WHERE ('/' || rel_path) LIKE '%/.%'
   OR ('/' || rel_path || '/') LIKE '%/$recycle.bin/%'
   OR ('/' || rel_path || '/') LIKE '%/system volume information/%';
 
+DELETE FROM field_values WHERE entity = 'item' AND entity_id IN (SELECT id FROM system_items);
 DELETE FROM item_search WHERE rowid IN (SELECT id FROM system_items);
 DELETE FROM items WHERE id IN (SELECT id FROM system_items);
 DROP TABLE system_items;

@@ -1,7 +1,7 @@
 // Where thumbnails live in the data folder and how big the default ones are
 // (docs/ARCHITECTURE.md, Thumbnails and media).
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 
@@ -72,6 +72,28 @@ function cacheFolder(thumbsDir: string, itemId: number): string {
 /** The cache file for one item at one size: thumbs/1f/287-320.webp. */
 export function thumbnailPath(thumbsDir: string, itemId: number, size: ThumbnailSize): string {
   return path.join(cacheFolder(thumbsDir, itemId), `${String(itemId)}-${sizeToLabel(size)}.webp`);
+}
+
+/**
+ * Deletes every cached file of an item (each thumbnail size and its viewer copy). A thumbnail job
+ * starts with this: the job remakes them from the file as it is now, and anything older may belong
+ * to an earlier version of the file, or to a removed item that had the same id.
+ */
+export async function deleteItemCacheFiles(thumbsDir: string, itemId: number): Promise<void> {
+  const folder = cacheFolder(thumbsDir, itemId);
+  let names: string[];
+  try {
+    names = await readdir(folder);
+  } catch (error) {
+    if (systemErrorCode(error) === 'ENOENT') {
+      return;
+    }
+    throw error;
+  }
+  const prefix = `${String(itemId)}-`;
+  for (const name of names.filter((fileName) => fileName.startsWith(prefix))) {
+    await rm(path.join(folder, name), { force: true });
+  }
 }
 
 /**

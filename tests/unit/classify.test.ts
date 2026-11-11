@@ -101,9 +101,9 @@ describe('the fixture archive', () => {
 });
 
 describe('skipping operating-system clutter', () => {
-  it('skips macOS metadata files, dot files and Windows thumbnail caches', () => {
+  it('R4: skips macOS metadata files, dot files and Windows thumbnail caches', () => {
     for (const name of [
-      '._Nara_b 19.jpg',
+      '._seated_backlit_017.jpg',
       '.DS_Store',
       'Thumbs.db',
       'DESKTOP.INI',
@@ -113,14 +113,14 @@ describe('skipping operating-system clutter', () => {
     }
   });
 
-  it('skips system and archive-tool folders, whatever their case', () => {
+  it('R4: skips system and archive-tool folders, whatever their case', () => {
     for (const name of ['__MACOSX', '.Trashes', '$RECYCLE.BIN', 'System Volume Information']) {
       expect(isSystemEntry(name, true)).toBe(true);
     }
   });
 
-  it('keeps ordinary pictures and folders, including ones with dots inside their names', () => {
-    expect(isSystemEntry('Nara_b 19.jpg', false)).toBe(false);
+  it('R4: keeps ordinary pictures and folders, including ones with dots inside their names', () => {
+    expect(isSystemEntry('seated_backlit_017.jpg', false)).toBe(false);
     expect(isSystemEntry('v.2 cover.jpg', false)).toBe(false);
     expect(isSystemEntry('Life Drawing Quarterly', true)).toBe(false);
     expect(isSystemEntry('Thumbs.db', true)).toBe(false);

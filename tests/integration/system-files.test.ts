@@ -51,7 +51,7 @@ afterAll(async () => {
 });
 
 describe('operating-system clutter in the Reference folder', () => {
-  it('is never indexed, and a page folder with "._" files beside its pages is still one', async () => {
+  it('R6: is never indexed, and a page folder with "._" files beside its pages is still one', async () => {
     await scanRoot({
       db: library.db,
       rootId: REFERENCE_ROOT_ID,
@@ -64,13 +64,13 @@ describe('operating-system clutter in the Reference folder', () => {
     ]);
   });
 
-  it('is left out of the file count the progress bar uses (E5)', async () => {
+  it('R4: is left out of the file count the progress bar uses (E5)', async () => {
     expect(await countFiles(referenceDir)).toBe(3);
   });
 });
 
 describe('migrating a library that already indexed clutter', () => {
-  it('removes those items and their search rows, and keeps everything else', async () => {
+  it('R4: removes those items with their fields and search rows, and keeps everything else', async () => {
     const dataDir = await mkdtemp(path.join(os.tmpdir(), 'morgue-system-migrate-'));
     const other = await makeTempLibrary(referenceDir);
     const db = other.db;
@@ -84,6 +84,9 @@ describe('migrating a library that already indexed clutter', () => {
         (15, 1, '.Trashes/501/old.jpg', 'image', 'photos', 1, 1, '2026-11-01'),
         (16, 1, 'Notes on v.2/page_1.jpg', 'image', 'photos', 1, 1, '2026-11-01');
       INSERT INTO item_search (rowid, name) VALUES (11, 'seated'), (12, 'seated'), (13, 'cover');
+      INSERT INTO field_values (entity, entity_id, field_id, value_text)
+      SELECT 'item', item_id, id, 'Rim light.' FROM fields, (SELECT 11 AS item_id UNION SELECT 12)
+      WHERE entity = 'item' AND key = 'notes';
     `);
     const version = readMigrations().find((migration) => migration.fileName.includes('system'));
     expect(version).toBeDefined();
@@ -105,7 +108,51 @@ describe('migrating a library that already indexed clutter', () => {
         (row) => row.rowid,
       ),
     ).toEqual([11]);
+    const notes = db
+      .prepare("SELECT entity_id FROM field_values WHERE entity = 'item' ORDER BY entity_id")
+      .all() as { entity_id: number }[];
+    expect(notes.map((row) => row.entity_id)).toEqual([11]);
     await other.remove();
     await rm(dataDir, { recursive: true, force: true });
+  });
+});
+
+describe('a folder that becomes a page folder once its clutter is skipped', () => {
+  it('R6: replaces the page photos indexed before with one publication, leaving none missing', async () => {
+    const issueDir = await mkdtemp(path.join(os.tmpdir(), 'morgue-absorb-'));
+    const pages = path.join(issueDir, 'Magazines', 'Issue 2');
+    await mkdir(pages, { recursive: true });
+    for (const name of ['001.jpg', '002.jpg', '._001.jpg']) {
+      await writeFile(path.join(pages, name), `bytes of ${name}`);
+    }
+    const before = await makeTempLibrary(issueDir);
+    // As the release before this one indexed it: the clutter kept the pages as photos.
+    before.db.exec(`
+      INSERT INTO items (id, root_id, rel_path, kind, section, size, mtime, added_at) VALUES
+        (21, 1, 'Magazines/Issue 2/001.jpg', 'image', 'photos', 1, 1, '2026-11-01'),
+        (22, 1, 'Magazines/Issue 2/002.jpg', 'image', 'photos', 1, 1, '2026-11-01');
+      INSERT INTO field_values (entity, entity_id, field_id, value_text)
+      SELECT 'item', 21, id, 'Cover.' FROM fields WHERE entity = 'item' AND key = 'notes';
+    `);
+    const summary = await scanRoot({
+      db: before.db,
+      rootId: REFERENCE_ROOT_ID,
+      rootPath: issueDir,
+      now: () => new Date('2026-11-11T12:00:00.000Z'),
+    });
+    const rows = before.db
+      .prepare('SELECT rel_path, kind, missing_since FROM items ORDER BY rel_path')
+      .all() as { rel_path: string; kind: string; missing_since: string | null }[];
+    expect(rows).toEqual([
+      { rel_path: 'Magazines/Issue 2', kind: 'pagefolder', missing_since: null },
+    ]);
+    expect(summary).toMatchObject({ added: 1, missing: 0, absorbed: 2 });
+    expect(
+      before.db.prepare('SELECT count(*) AS n FROM field_values WHERE entity_id = 21').get(),
+    ).toEqual({
+      n: 0,
+    });
+    await before.remove();
+    await rm(issueDir, { recursive: true, force: true });
   });
 });

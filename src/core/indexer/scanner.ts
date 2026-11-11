@@ -42,6 +42,7 @@ function untouched(isOffline: boolean): ScanSummary {
     unchanged: 0,
     moved: 0,
     missing: 0,
+    absorbed: 0,
     ignored: 0,
     unreadableFolders: 0,
   };

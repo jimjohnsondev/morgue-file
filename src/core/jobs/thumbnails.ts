@@ -14,6 +14,7 @@ import { readMoveHash } from '#core/indexer/moves.js';
 
 import {
   defaultThumbnailSize,
+  deleteItemCacheFiles,
   readCacheFile,
   saveCacheFile,
   thumbnailPath,
@@ -161,6 +162,7 @@ async function makeAndSave(
  */
 export async function runThumbnailJob(context: ThumbnailContext, job: Job): Promise<void> {
   const { item, root } = requireItemAndRoot(context.db, job.itemId);
+  await deleteItemCacheFiles(context.thumbsDir, item.id);
   setItemPartialHash(context.db, item.id, await readMoveHash(root.path, item));
   const size = defaultThumbnailSize(item.kind);
   const result = await makeAndSave(context, job.itemId, { size, reuseViewerCopy: false });
