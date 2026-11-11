@@ -297,7 +297,7 @@ describe('E6: drop in progress', () => {
 });
 
 describe('a thumbnail cached under an id before its item was made', () => {
-  it('R6: is not shown while the item waits for its own thumbnail, and is once that is ready', async () => {
+  it('R6: is shown only once the item’s own thumbnail is ready, not while pending or failed', async () => {
     const id = idOf('Figure/figure_0001.jpg');
     const stale = Buffer.from('a picture of some other, removed item');
     const thumbsDir = path.join(library.dataDir, 'thumbs');
@@ -308,6 +308,13 @@ describe('a thumbnail cached under an id before its item was made', () => {
       headers: { host: HOST },
     });
     expect(pending.rawPayload.equals(stale)).toBe(false);
+
+    library.db.prepare("UPDATE items SET thumb_state = 'failed' WHERE id = ?").run(id);
+    const failed = await app.inject({
+      url: `/media/thumb/${String(id)}/320`,
+      headers: { host: HOST },
+    });
+    expect(failed.rawPayload.equals(stale)).toBe(false);
 
     library.db.prepare("UPDATE items SET thumb_state = 'ready' WHERE id = ?").run(id);
     const ready = await app.inject({

@@ -86,12 +86,12 @@ async function findOrMakeThumbnail(
   size: ThumbnailSize,
 ): Promise<FoundThumbnail> {
   const { thumbsDir } = library.thumbnails;
-  // Nothing cached is shown while the item waits for its thumbnail job: until the job clears them,
-  // the files under its id may be of an earlier version of the file, or of a removed item.
+  // Cached files are shown only once the item's own thumbnail is ready: before then (pending, or
+  // failed), files under its id may be of an earlier version of the file, or of a removed item.
   const cached =
-    item.thumbState === 'pending'
-      ? undefined
-      : await readCacheFile(thumbnailPath(thumbsDir, item.id, size));
+    item.thumbState === 'ready'
+      ? await readCacheFile(thumbnailPath(thumbsDir, item.id, size))
+      : undefined;
   if (cached !== undefined || isDefaultSize(item, size) || item.thumbState !== 'ready') {
     return found('exact', cached);
   }

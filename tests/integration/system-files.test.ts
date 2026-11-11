@@ -122,17 +122,22 @@ describe('a folder that becomes a page folder once its clutter is skipped', () =
     const issueDir = await mkdtemp(path.join(os.tmpdir(), 'morgue-absorb-'));
     const pages = path.join(issueDir, 'Magazines', 'Issue 2');
     await mkdir(pages, { recursive: true });
-    for (const name of ['001.jpg', '002.jpg', '003.jpg', '._001.jpg']) {
+    for (const name of ['001.jpg', '002.jpg', '003.jpg', '004.jpg', '005.jpg', '._001.jpg']) {
       await writeFile(path.join(pages, name), `bytes of ${name}`);
     }
     const before = await makeTempLibrary(issueDir);
     // As the release before this one indexed it: the clutter kept the pages as photos. Page 1 has
-    // a note and page 3 a tag; page 2 has nothing attached.
+    // a note, page 3 a tag, page 4 was filed by hand and page 5 is a model's portrait; page 2 has
+    // nothing attached.
     before.db.exec(`
       INSERT INTO items (id, root_id, rel_path, kind, section, size, mtime, added_at) VALUES
         (21, 1, 'Magazines/Issue 2/001.jpg', 'image', 'photos', 1, 1, '2026-11-01'),
         (22, 1, 'Magazines/Issue 2/002.jpg', 'image', 'photos', 1, 1, '2026-11-01'),
-        (23, 1, 'Magazines/Issue 2/003.jpg', 'image', 'photos', 1, 1, '2026-11-01');
+        (23, 1, 'Magazines/Issue 2/003.jpg', 'image', 'photos', 1, 1, '2026-11-01'),
+        (24, 1, 'Magazines/Issue 2/004.jpg', 'image', 'photos', 1, 1, '2026-11-01'),
+        (25, 1, 'Magazines/Issue 2/005.jpg', 'image', 'photos', 1, 1, '2026-11-01');
+      UPDATE items SET subcategory_manual = 1 WHERE id = 24;
+      INSERT INTO models (id, slug, portrait_item_id) VALUES (1, 'elena-varga', 25);
       INSERT INTO field_values (entity, entity_id, field_id, value_text)
       SELECT 'item', 21, id, 'Cover.' FROM fields WHERE entity = 'item' AND key = 'notes';
       INSERT INTO tags (id, name) VALUES (1, 'hands');
@@ -159,8 +164,18 @@ describe('a folder that becomes a page folder once its clutter is skipped', () =
         kind: 'image',
         missing_since: '2026-11-11T12:00:00.000Z',
       },
+      {
+        rel_path: 'Magazines/Issue 2/004.jpg',
+        kind: 'image',
+        missing_since: '2026-11-11T12:00:00.000Z',
+      },
+      {
+        rel_path: 'Magazines/Issue 2/005.jpg',
+        kind: 'image',
+        missing_since: '2026-11-11T12:00:00.000Z',
+      },
     ]);
-    expect(summary).toMatchObject({ added: 1, missing: 2, absorbed: 1 });
+    expect(summary).toMatchObject({ added: 1, missing: 4, absorbed: 1 });
     await before.remove();
     await rm(issueDir, { recursive: true, force: true });
   });
