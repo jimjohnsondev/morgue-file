@@ -60,7 +60,7 @@ function ListNav(props: { readonly nav: ListNavModel }) {
       {nav.previousHref === undefined ? (
         'Prev'
       ) : (
-        <a href={nav.previousHref} rel="prev" data-key-link="previous">
+        <a href={nav.previousHref} rel="prev" data-key-link="previous" data-keep-scroll>
           Prev
         </a>
       )}{' '}
@@ -69,7 +69,7 @@ function ListNav(props: { readonly nav: ListNavModel }) {
       {nav.nextHref === undefined ? (
         'Next'
       ) : (
-        <a href={nav.nextHref} rel="next" data-key-link="next">
+        <a href={nav.nextHref} rel="next" data-key-link="next" data-keep-scroll>
           Next
         </a>
       )}{' '}
