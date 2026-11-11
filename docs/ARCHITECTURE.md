@@ -76,7 +76,7 @@ morgue-file/
       compare/        the compare board's references, layout and window place, kept in settings
       models/         creating a model profile (unique slug, Name field)
       slug.ts         URL slugs for subcategories and models
-      archive/        originals.ts (only fs access to roots), classify.ts, pagefolder.ts
+      archive/        originals.ts (only fs access to roots), classify.ts, pagefolder.ts, inbox-names.ts
       indexer/        walk.ts, scanner.ts, watcher.ts, reconcile.ts, moves.ts, roots.ts
       jobs/           queue.ts, thumbnails.ts, workers/ (thumb-image, thumb-pdf, thumb-video, thumb-pages, hash)
       ingest/         ingest.ts, duplicates.ts, fetch-url.ts, file-names.ts, public-address.ts
@@ -151,13 +151,14 @@ The server starts answering before indexing begins, then indexes in the backgrou
 4. **Moves:** if a new path matches a missing item on size and partial hash, the item is re-pointed and keeps its tags, collections, fields and models. The missing item must be from the same scan or the last 10 minutes. The partial hash is SHA-256 over the size and the first, middle and last 64 KiB.
 5. **Missing items:** they keep their cached thumbnail and show state E4 in the viewer. They are purged only by hand, from Settings.
 
-| File                                                                                    | Section and kind                                          |
-| --------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| .jpg .jpeg .png .webp .gif, and since PR 20 (P1) .heic .tif .tiff .psd                  | Photos, image                                             |
-| .mp4 .mov, and since PR 20 (P1) .webm                                                   | Video, video                                              |
-| .pdf / .cbz                                                                             | Library, pdf / cbz                                        |
-| A folder with no subfolders and 2+ files, every file an image with a number in its name | Library, pagefolder; its images are not indexed as photos |
-| Anything else                                                                           | Ignored and counted in the scan log                       |
+| File                                                                                                                                                                                         | Section and kind                                                                                                                                                                                |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| .jpg .jpeg .png .webp .gif, and since PR 20 (P1) .heic .tif .tiff .psd                                                                                                                       | Photos, image                                                                                                                                                                                   |
+| .mp4 .mov, and since PR 20 (P1) .webm                                                                                                                                                        | Video, video                                                                                                                                                                                    |
+| .pdf / .cbz                                                                                                                                                                                  | Library, pdf / cbz                                                                                                                                                                              |
+| A folder with no subfolders and 2+ files, every file an image with a number in its name                                                                                                      | Library, pagefolder; its images are not indexed as photos                                                                                                                                       |
+| Anything else                                                                                                                                                                                | Ignored and counted in the scan log                                                                                                                                                             |
+| A name starting with a dot (macOS's `._name.jpg` metadata files, `.DS_Store`, `.Trashes`), `Thumbs.db`, `desktop.ini`, and `__MACOSX`, `$RECYCLE.BIN` or `System Volume Information` folders | Skipped before anything else: never indexed or counted, and never stop a folder of pages from being a page folder (`isSystemEntry` in `classify.ts`; migration 004 removed ones indexed before) |
 
 **Subcategories.** A new item takes the subcategory of the longest folder mapping that matches its path, or none (Unsorted). Filing an item by hand sets `subcategory_manual`, so later scans leave it alone.
 

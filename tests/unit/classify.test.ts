@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { classifyFile } from '#core/archive/classify.js';
+import { classifyFile, isSystemEntry } from '#core/archive/classify.js';
 import { isPageFolder, sortPageNames } from '#core/archive/pagefolder.js';
 import { SECTION_BY_KIND } from '#core/db/repositories/items.js';
 
@@ -97,5 +97,32 @@ describe('the fixture archive', () => {
       counts[SECTION_BY_KIND[file.kind]] += 1;
     }
     expect(counts).toEqual({ photos: 4312, video: 186, library: 74 });
+  });
+});
+
+describe('skipping operating-system clutter', () => {
+  it('skips macOS metadata files, dot files and Windows thumbnail caches', () => {
+    for (const name of [
+      '._Nara_b 19.jpg',
+      '.DS_Store',
+      'Thumbs.db',
+      'DESKTOP.INI',
+      '.hidden.png',
+    ]) {
+      expect(isSystemEntry(name, false)).toBe(true);
+    }
+  });
+
+  it('skips system and archive-tool folders, whatever their case', () => {
+    for (const name of ['__MACOSX', '.Trashes', '$RECYCLE.BIN', 'System Volume Information']) {
+      expect(isSystemEntry(name, true)).toBe(true);
+    }
+  });
+
+  it('keeps ordinary pictures and folders, including ones with dots inside their names', () => {
+    expect(isSystemEntry('Nara_b 19.jpg', false)).toBe(false);
+    expect(isSystemEntry('v.2 cover.jpg', false)).toBe(false);
+    expect(isSystemEntry('Life Drawing Quarterly', true)).toBe(false);
+    expect(isSystemEntry('Thumbs.db', true)).toBe(false);
   });
 });
