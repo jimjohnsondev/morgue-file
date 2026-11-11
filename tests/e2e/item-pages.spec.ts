@@ -50,6 +50,7 @@ test('R19: in the page reader the arrow keys turn pages, then move to the next i
   const nav = page.locator('.reader-nav');
   await reloadUntil(page, nav, 'of 72');
   const issue = (await page.locator('.breadcrumb b').textContent()) ?? '';
+  await page.waitForLoadState('load');
   await page.keyboard.press('ArrowRight');
   await expect(nav).toContainText('Pages 2–3 of 72');
   await page.keyboard.press('ArrowLeft');
@@ -67,6 +68,8 @@ test('R19: in the page reader the arrow keys turn pages, then move to the next i
 test('R19: on a publication’s first page, ← moves to the previous item', async ({ page }) => {
   await openFromIndex(page, '/library/magazines/life-drawing-quarterly', 'No. 11');
   await expect(page.locator('.breadcrumb b')).toContainText('No. 11');
+  // The key handler is attached once the page's scripts have run.
+  await page.waitForLoadState('load');
   await page.keyboard.press('ArrowLeft');
   await expect(page.locator('.breadcrumb b')).toContainText('No. 12');
 });
