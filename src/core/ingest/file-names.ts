@@ -39,9 +39,10 @@ function shorten(stem: string, extension: string): string {
 }
 
 /**
- * Cleans a file name for the Inbox: characters Windows refuses become `_`, leading dots and
- * trailing dots and spaces go (Windows drops them, so two names could collide), reserved device names get a `_`, and
- * long names are shortened, keeping the extension. Nothing of a path survives, only the last name.
+ * Cleans a file name for the Inbox: characters Windows refuses become `_`, leading dots go,
+ * trailing dots and spaces go (Windows drops them, so two names could collide), reserved device
+ * names get a `_`, and long names are shortened, keeping the extension. Nothing of a path
+ * survives, only the last name.
  */
 export function cleanFileName(name: string): string {
   const lastPart = name.split(/[/\\]/).at(-1) ?? '';

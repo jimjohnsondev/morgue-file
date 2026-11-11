@@ -4,6 +4,7 @@
 // the watcher's partial scans share it, so a file is judged the same way by both.
 import {
   clearItemMissing,
+  findUnattachedItemIds,
   markItemMissing,
   removeItems,
   updateItemFile,
@@ -264,22 +265,35 @@ function isInUnreadableFolder(foldedPath: string, unreadableFolders: readonly st
   );
 }
 
-/**
- * Says whether an unseen item is a photo whose folder is now a page folder: its file is a page of
- * that publication, not a vanished photo, so it is removed rather than marked missing. That
- * happens when a folder starts counting as one (system clutter that hid it is skipped, or Jim
- * turns the folder into a publication).
- */
-function isAbsorbedPage(state: ScanState, pageFolders: ReadonlySet<string>): boolean {
+/** Says whether an item is a photo in a folder that is now a page folder. */
+function isInPageFolder(state: ScanState, pageFolders: ReadonlySet<string>): boolean {
   const foldedPath = foldPathCase(state.relPath);
   const folder = foldedPath.slice(0, Math.max(foldedPath.lastIndexOf('/'), 0));
   return state.kind === 'image' && pageFolders.has(folder);
 }
 
 /**
- * Marks every stored item the walk didn't see as missing, except photos now pages of a page
- * folder, which are removed. Returns how many of each.
+ * Splits the unseen items into photos to remove and items to mark missing. A photo whose folder
+ * is now a page folder (system clutter that hid it is skipped, or the folder was made a
+ * publication) is that publication's page, not a vanished file, so it is removed, but only with
+ * nothing attached: a photo with tags, collections, models or notes stays, as a missing item, and
+ * nothing Jim filed is lost.
  */
+function splitUnseen(
+  db: Db,
+  unseen: readonly ScanState[],
+  pageFolders: ReadonlySet<string>,
+): { readonly absorbedIds: number[]; readonly missing: ScanState[] } {
+  const pages = unseen.filter((state) => isInPageFolder(state, pageFolders));
+  const absorbedIds = findUnattachedItemIds(
+    db,
+    pages.map((state) => state.id),
+  );
+  const absorbed = new Set(absorbedIds);
+  return { absorbedIds, missing: unseen.filter((state) => !absorbed.has(state.id)) };
+}
+
+/** Marks the unseen items missing or removes absorbed page photos, and returns how many of each. */
 function settleUnseen(
   run: ReconcileRun,
   stored: readonly ScanState[],
@@ -293,12 +307,8 @@ function settleUnseen(
       !isInUnreadableFolder(foldedPath, tally.unreadableFolders)
     );
   });
-  const absorbed = unseen.filter((state) => isAbsorbedPage(state, tally.pageFolders));
-  removeItems(
-    run.db,
-    absorbed.map((state) => state.id),
-  );
-  const missing = unseen.filter((state) => !isAbsorbedPage(state, tally.pageFolders));
+  const { absorbedIds, missing } = splitUnseen(run.db, unseen, tally.pageFolders);
+  removeItems(run.db, absorbedIds);
   const now = run.now.toISOString();
   for (let start = 0; start < missing.length; start += BATCH_SIZE) {
     run.db.transaction(() => {
@@ -307,7 +317,7 @@ function settleUnseen(
       }
     })();
   }
-  return { missing: missing.length, absorbed: absorbed.length };
+  return { missing: missing.length, absorbed: absorbedIds.length };
 }
 
 /**

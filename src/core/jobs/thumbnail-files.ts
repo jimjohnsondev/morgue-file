@@ -75,11 +75,15 @@ export function thumbnailPath(thumbsDir: string, itemId: number, size: Thumbnail
 }
 
 /**
- * Deletes every cached file of an item (each thumbnail size and its viewer copy). A thumbnail job
- * starts with this: the job remakes them from the file as it is now, and anything older may belong
- * to an earlier version of the file, or to a removed item that had the same id.
+ * Deletes the cached files of an item (thumbnail sizes and viewer copy), except `keep`. A thumbnail
+ * job calls it once the new default is saved: anything older may belong to an earlier version of
+ * the file, or to a removed item that had the same id.
  */
-export async function deleteItemCacheFiles(thumbsDir: string, itemId: number): Promise<void> {
+export async function deleteItemCacheFiles(
+  thumbsDir: string,
+  itemId: number,
+  keep?: string,
+): Promise<void> {
   const folder = cacheFolder(thumbsDir, itemId);
   let names: string[];
   try {
@@ -92,7 +96,10 @@ export async function deleteItemCacheFiles(thumbsDir: string, itemId: number): P
   }
   const prefix = `${String(itemId)}-`;
   for (const name of names.filter((fileName) => fileName.startsWith(prefix))) {
-    await rm(path.join(folder, name), { force: true });
+    const file = path.join(folder, name);
+    if (file !== keep) {
+      await rm(file, { force: true });
+    }
   }
 }
 

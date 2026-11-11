@@ -214,3 +214,18 @@ export function removeItems(db: Db, ids: readonly number[]): void {
     }
   })();
 }
+
+/**
+ * Keeps only the items with nothing attached: no tags, collections, model links or field values.
+ * The scanner removes only those; anything Jim has filed or written stays (as a missing item).
+ */
+export function findUnattachedItemIds(db: Db, ids: readonly number[]): number[] {
+  const isAttached = db.prepare(
+    `SELECT EXISTS (SELECT 1 FROM item_tags WHERE item_id = :id)
+         OR EXISTS (SELECT 1 FROM collection_items WHERE item_id = :id)
+         OR EXISTS (SELECT 1 FROM item_models WHERE item_id = :id)
+         OR EXISTS (SELECT 1 FROM field_values WHERE entity = 'item' AND entity_id = :id)
+         AS attached`,
+  );
+  return ids.filter((id) => (isAttached.get({ id }) as { attached: number }).attached === 0);
+}
