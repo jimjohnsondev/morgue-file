@@ -1,4 +1,4 @@
-// The pages and routes for making a folder of scans one publication (PRD R6, R37): the action
+// The pages and routes for making a folder of scans one publication (PRD R6): the action
 // panel's Make a publication, the two API routes, and Turn back into photos on its details panel.
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';

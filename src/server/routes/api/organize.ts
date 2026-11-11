@@ -32,9 +32,9 @@ export const SelectionSchema = Type.Union([
   Type.Object({ query: Type.String({ minLength: 1, maxLength: 2000 }) }),
 ]);
 
-/** Forms send their fields as text, so a collection's id comes as digits. */
 /** An id chosen from a select list, which sends it as text. */
 export const ID_CHOICE = Type.String({ pattern: '^[1-9][0-9]{0,15}$' });
+// Forms send their fields as text, so a collection's id comes as digits.
 const COLLECTION_CHOICE = ID_CHOICE;
 
 const TagBody = Type.Object({ selection: SelectionSchema, tag: NAME });

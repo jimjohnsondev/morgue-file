@@ -177,6 +177,19 @@ describe('making a folder of scans one publication', () => {
     ]);
   });
 
+  it('R6: keeps a publication Jim tagged as a missing item, still filed, when turned back', async () => {
+    const { publicationId } = await makeFolderPublication(library.db, {
+      selection: { itemIds: [idAt(`${ISSUE}/ldq_b 1.jpg`)] },
+      subcategoryId: magazinesId(),
+      now: NOW,
+    });
+    tagItems(library.db, [publicationId], 'hands');
+    await unmakeFolderPublication(library.db, publicationId, NOW);
+    const kept = findItemByPath(library.db, REFERENCE_ROOT_ID, ISSUE);
+    expect(kept?.missingSince).toBeDefined();
+    expect(kept).toMatchObject({ isFiledByHand: true, subcategoryId: magazinesId() });
+  });
+
   it('R6: refuses scans directly in the Reference folder, things that aren’t photos, and other sections', async () => {
     await expect(
       makeFolderPublication(library.db, {
