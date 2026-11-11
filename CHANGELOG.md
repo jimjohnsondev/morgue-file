@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.28.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.27.0...v1.28.0) (2026-11-11)
+
+
+### Features
+
+* make a folder of scans one publication from the action panel, and turn it back ([#91](https://github.com/jimjohnsondev/morgue-file/issues/91)) ([67edfe3](https://github.com/jimjohnsondev/morgue-file/commit/67edfe3cba2479cddf86aa188089808ad72de5e9))
+
 ## [1.27.0](https://github.com/jimjohnsondev/morgue-file/compare/v1.26.0...v1.27.0) (2026-11-11)
 
 
