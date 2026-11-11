@@ -2,7 +2,18 @@
 // between items, and the reader's page links (R18, R19).
 import { expect, test } from '../support/shared-server-test.js';
 
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+
+/**
+ * Reloads until a part of the page shows some text: a PDF's page count arrives with its thumbnail
+ * job, which may not have run yet when the test starts (as in item-pages.spec.ts).
+ */
+async function reloadUntil(page: Page, locator: Locator, text: string): Promise<void> {
+  await expect(async () => {
+    await page.reload();
+    await expect(locator).toContainText(text, { timeout: 1000 });
+  }).toPass({ timeout: 120_000 });
+}
 
 /** Scrolls the window to this many pixels down and waits until it's there. */
 async function scrollTo(page: Page, top: number): Promise<void> {
@@ -81,14 +92,16 @@ test('R19: turning a PDF’s pages with → or Go to page keeps the scroll posit
     .first()
     .click();
   const nav = page.locator('.reader-nav');
-  await expect(nav).toContainText('of 72');
+  await reloadUntil(page, nav, 'of 72');
   await page.waitForLoadState('load');
   await scrollTo(page, 250);
   await page.keyboard.press('ArrowRight');
   await expect(nav).toContainText('Pages 2–3 of 72');
   await expectScrolledTo(page, 250);
 
+  // Filling the field mustn't scroll the page: the toolbar is on screen at this position.
   await page.getByLabel('Go to page').fill('12');
+  expect(await scrollTop(page)).toBe(250);
   await page.getByRole('button', { name: 'Go', exact: true }).last().click();
   await expect(nav).toContainText('Pages 12–13 of 72');
   await expectScrolledTo(page, 250);
@@ -99,7 +112,16 @@ test('R18: while items are being selected, ← and → leave the Index page alon
 }) => {
   await page.goto('/photos/figure?page=3&select=on');
   await page.waitForLoadState('load');
-  await page.keyboard.press('ArrowRight');
-  await page.waitForTimeout(500);
+  // A key the page handles is marked handled; one it leaves alone isn't.
+  const isHandled = await page.evaluate(() => {
+    const event = new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.body.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(isHandled).toBe(false);
   await expect(page.locator('.index-page__heading')).toContainText('page 3 of 13');
 });
