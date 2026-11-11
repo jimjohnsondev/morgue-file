@@ -41,10 +41,16 @@ test.use({ viewport: { width: 1280, height: 700 } });
 
 test('R18: clicking a page number keeps the scroll position', async ({ page }) => {
   await page.goto('/photos/figure?page=3');
-  await scrollTo(page, 600);
-  await page.locator('.pager').first().getByRole('link', { name: '4', exact: true }).click();
+  await page.waitForLoadState('load');
+  // Scrolled down to the pager under the grid, as a visitor would be to click it: Playwright
+  // scrolls a link into view before clicking it, so it must already be in view.
+  const pager = page.locator('.grid-panel__footer .pager');
+  await pager.scrollIntoViewIfNeeded();
+  const top = await scrollTop(page);
+  expect(top).toBeGreaterThan(0);
+  await pager.getByRole('link', { name: '4', exact: true }).click();
   await expect(page.locator('.index-page__heading')).toContainText('page 4 of 13');
-  await expectScrolledTo(page, 600);
+  await expectScrolledTo(page, top);
 });
 
 test('R18: ← and → turn an Index page and keep the scroll position', async ({ page }) => {
